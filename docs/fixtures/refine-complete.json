@@ -1,0 +1,46 @@
+{
+  "_note": "Example `complete` event payload after a lodging+activity refinement. Only the changed slice differs from trip-complete.json; flights and unaffected days are identical. `refinement.diff` drives the UI's changed-item highlighting and budget delta.",
+  "version": 2,
+  "refinement": {
+    "utterance": "swap the hotel for something nearer the beach, and add a day trip to a quieter island",
+    "scope": "lodging",
+    "budgetDelta": 145,
+    "diff": [
+      {
+        "op": "replace",
+        "path": "itinerary.stays[0]",
+        "before": { "name": "Studios Agios Prokopios", "price": { "amount": 980, "currency": "EUR" } },
+        "after": { "name": "Studio Thalassa", "price": { "amount": 1040, "currency": "EUR" } },
+        "priceDelta": 60
+      },
+      {
+        "op": "add",
+        "path": "itinerary.days[4].items[0]",
+        "after": { "kind": "transit", "title": "Day trip to Koufonisia (incl. ferry)", "price": { "amount": 85, "currency": "EUR" } },
+        "priceDelta": 85
+      }
+    ]
+  },
+  "trip": {
+    "id": "trip_naxos_v2",
+    "summary": "8 days on Naxos — €2,555 for two",
+    "status": "complete",
+    "budget": {
+      "currency": "EUR",
+      "target": { "amount": 2500, "type": "soft" },
+      "total": 2555,
+      "status": "over",
+      "overageNote": "About €55 over your €2,500 target. Trim the boat trip (−€85) to come back under, or keep it.",
+      "lines": [
+        { "category": "flights", "amount": 620, "itemRefs": ["lst_fl_out", "lst_fl_ret"], "freshness": "mock" },
+        { "category": "transit", "amount": 181, "itemRefs": ["lst_ferry_in", "lst_koufonisia"], "freshness": "mock" },
+        { "category": "stay", "amount": 1040, "itemRefs": ["lst_stay_2"], "freshness": "mock" },
+        { "category": "activities", "amount": 414, "itemRefs": ["lst_boat"], "freshness": "mock" },
+        { "category": "buffer", "amount": 300, "itemRefs": [], "freshness": "mock" }
+      ],
+      "savings": [
+        { "description": "Trim the half-day boat trip", "delta": -85, "appliesTo": "activity_day" }
+      ]
+    }
+  }
+}

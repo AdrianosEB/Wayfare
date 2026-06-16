@@ -1,0 +1,38 @@
+This is the raw byte sequence the frontend will read from POST /api/session/:id/answers.
+Each event = an `event:` line + a `data:` line (single-line JSON) + a blank line.
+Lines starting with `:` are heartbeats/comments and must be ignored.
+
+: ping
+
+event: status
+data: {"step":"resolve","message":"Picking the right Greek island for a quieter, relaxed beach trip…"}
+
+event: status
+data: {"step":"search_flights","message":"Searching flights London→Greek islands…"}
+
+event: partial
+data: {"patch":{"itinerary":{"flights":[{"id":"fl_out","direction":"outbound","from":"LGW","to":"JTR","listing":{"id":"lst_fl_out","kind":"flight","title":"London Gatwick → Santorini","price":{"amount":155,"currency":"EUR"},"source":{"provider":"mock:curated","label":"Estimated price"},"freshness":"mock"}}]}}}
+
+event: status
+data: {"step":"search_stays","message":"Comparing beachfront stays on Naxos…"}
+
+event: partial
+data: {"patch":{"itinerary":{"stays":[{"id":"stay_1","name":"Studios Agios Prokopios","nights":8,"listing":{"id":"lst_stay_1","kind":"stay","price":{"amount":980,"currency":"EUR"},"source":{"provider":"mock:curated","label":"Estimated price"},"freshness":"mock"}}]}}}
+
+event: status
+data: {"step":"search_activities","message":"Finding beaches, a boat trip and a lively night…"}
+
+event: assumption
+data: {"field":"dates","assumed":"Aug 23–31 (flexible window)","reason":"you said late August, flexible"}
+
+event: status
+data: {"step":"compute_budget","message":"Costing it out…"}
+
+event: partial
+data: {"patch":{"budget":{"currency":"EUR","total":2410,"status":"under"}}}
+
+event: complete
+data: {"trip":{"id":"trip_naxos_v1","summary":"8 days on Naxos — €2,410 for two","status":"complete"},"version":1}
+
+Note: the `complete` event's `trip` is the FULL Trip object (see trip-complete.json) — it is
+authoritative and replaces whatever the working copy accumulated from `partial` patches.
