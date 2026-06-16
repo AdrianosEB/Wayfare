@@ -3,59 +3,56 @@
 @tailwind utilities;
 
 /*
- * Theme tokens — RGB channel triples so Tailwind opacity modifiers work
- * (e.g. `bg-primary/10`). Light is the warm "golden-hour" default; `.dark` flips
- * to the deep-ink chat surface. See docs/DESIGN_SYSTEM.md.
+ * Wayfare azure token system — see docs/design/TOKENS.md.
+ * White-dominant, bright sky-azure (#2F80ED) used with intent. Light theme only.
+ *
+ * Colors are stored as space-separated RGB channel triples so Tailwind opacity
+ * modifiers work (e.g. `bg-azure-500/10`, `text-ink-2/60`). The tailwind config
+ * wraps each as `rgb(var(--x) / <alpha-value>)`.
+ *
+ * Legacy token names (sand / primary / accent / muted / faint / ontarget) are
+ * aliased onto this azure palette in tailwind.config.ts, so the planner that was
+ * built on the older "golden-hour" tokens re-skins to azure with no churn.
  */
 @layer base {
   :root {
     color-scheme: light;
-    /* surfaces */
-    --c-sand: 250 246 239; /* warm off-white / soft sand */
-    --c-surface: 255 253 249; /* card */
-    --c-surface-2: 244 238 228; /* inset / subtle fills */
-    --c-border: 228 219 205;
-    --c-shadow: 60 40 20;
-    /* text */
-    --c-ink: 43 36 32; /* deep ink */
-    --c-muted: 110 99 88;
-    --c-faint: 150 139 126;
-    /* brand */
-    --c-primary: 14 138 138; /* confident sea / teal */
-    --c-primary-fg: 255 255 255;
-    --c-primary-soft: 214 238 236;
-    --c-accent: 233 110 67; /* sunset coral */
-    --c-accent-soft: 251 226 213;
-    /* semantic budget state */
-    --c-under: 47 145 95; /* green = under budget */
-    --c-under-soft: 214 238 224;
-    --c-ontarget: 199 138 38; /* amber = on target */
-    --c-ontarget-soft: 248 234 206;
-    --c-over: 200 70 66; /* red = over (used calmly) */
-    --c-over-soft: 248 220 217;
-  }
 
-  .dark {
-    color-scheme: dark;
-    --c-sand: 20 17 14;
-    --c-surface: 32 28 24;
-    --c-surface-2: 42 37 31;
-    --c-border: 58 51 43;
-    --c-shadow: 0 0 0;
-    --c-ink: 240 233 222;
-    --c-muted: 176 165 151;
-    --c-faint: 132 122 109;
-    --c-primary: 45 197 190;
-    --c-primary-fg: 8 33 33;
-    --c-primary-soft: 28 64 64;
-    --c-accent: 245 138 96;
-    --c-accent-soft: 74 47 33;
-    --c-under: 86 191 134;
-    --c-under-soft: 28 62 44;
-    --c-ontarget: 226 176 86;
-    --c-ontarget-soft: 66 52 26;
-    --c-over: 232 116 110;
-    --c-over-soft: 70 38 36;
+    /* Base / surfaces — white dominant */
+    --bg: 255 255 255; /* #FFFFFF */
+    --surface: 247 249 252; /* #F7F9FC */
+    --surface-2: 238 243 250; /* #EEF3FA */
+    --border: 226 232 240; /* #E2E8F0 */
+    --scrim: 15 23 42; /* slate-900 channels — used at ~45% over hero photos */
+
+    /* Ink / text */
+    --ink: 15 23 42; /* #0F172A */
+    --ink-2: 71 85 105; /* #475569 */
+    --ink-3: 148 163 184; /* #94A3B8 */
+
+    /* Azure accent scale */
+    --azure-50: 234 242 254; /* #EAF2FE */
+    --azure-100: 214 230 253; /* #D6E6FD */
+    --azure-200: 175 207 251; /* #AFCFFB */
+    --azure-400: 92 156 240; /* #5C9CF0 */
+    --azure-500: 47 128 237; /* #2F80ED — PRIMARY */
+    --azure-600: 30 111 224; /* #1E6FE0 — hover / pressed */
+    --azure-700: 26 95 191; /* #1A5FBF — emphasis text on light */
+    --azure-ring: 47 128 237; /* ring uses azure-500 at ~35% */
+
+    /* Semantic — budget state (used sparingly) */
+    --under: 22 163 74; /* #16A34A under budget */
+    --on-target: 47 128 237; /* on target stays on-brand azure */
+    --over: 224 83 61; /* #E0533D over budget — calm warm red */
+
+    /* soft tints (budget pills, status backgrounds) */
+    --under-soft: 219 244 228;
+    --on-target-soft: 234 242 254;
+    --over-soft: 250 226 221;
+
+    /* Source / freshness */
+    --live: 22 163 74; /* live price */
+    --estimate: 148 163 184; /* mock / estimate — neutral, honest */
   }
 
   html,
@@ -64,25 +61,27 @@
   }
 
   body {
-    @apply bg-sand text-ink antialiased;
+    @apply bg-bg text-ink antialiased;
     font-family: theme('fontFamily.sans');
     font-feature-settings: 'cv11', 'ss01';
   }
 
-  /* Inter var when available */
+  /* Inter var when available (self-hosted / variable axis). */
   @supports (font-variation-settings: normal) {
     body {
       font-family: 'Inter var', theme('fontFamily.sans');
     }
   }
 
+  /* Always-visible azure focus ring; never removed without a replacement. */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-sand;
+    @apply outline-none ring-2 ring-azure-500/45 ring-offset-2 ring-offset-bg;
   }
 }
 
 @layer utilities {
   /* All prices use tabular figures so budget columns align. */
+  .tnum,
   .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1, 'lnum' 1;
@@ -94,6 +93,23 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Scrim gradient for legible text over hero photography. */
+  .bg-scrim {
+    background-image: linear-gradient(
+      to top,
+      rgb(var(--scrim) / 0.7) 0%,
+      rgb(var(--scrim) / 0.35) 45%,
+      rgb(var(--scrim) / 0.15) 100%
+    );
+  }
+
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+  }
+  .snap-start {
+    scroll-snap-align: start;
   }
 }
 

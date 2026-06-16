@@ -64,8 +64,8 @@ export function PromptInput({
   return (
     <div
       className={cn(
-        'group flex items-end gap-2 rounded-3xl border border-border bg-surface',
-        'shadow-card transition focus-within:border-primary/50 focus-within:shadow-lift',
+        'group flex items-end gap-2 rounded-3xl border border-border bg-bg',
+        'shadow-card transition focus-within:border-azure-400 focus-within:shadow-float',
         isHero ? 'p-2.5 pl-5' : 'p-2 pl-4',
         disabled && 'opacity-60',
       )}
@@ -81,7 +81,7 @@ export function PromptInput({
         placeholder={placeholder ?? (isHero ? 'Where do you want to go?' : 'Refine your trip…')}
         aria-label={isHero ? 'Describe your trip' : 'Refine your trip'}
         className={cn(
-          'no-scrollbar w-full resize-none bg-transparent py-2 text-ink placeholder:text-faint',
+          'no-scrollbar w-full resize-none bg-transparent py-2 text-ink placeholder:text-ink-3',
           'focus:outline-none',
           isHero ? 'text-lg leading-relaxed' : 'text-[15px] leading-relaxed',
         )}
@@ -92,8 +92,8 @@ export function PromptInput({
         disabled={!canSend}
         aria-label="Send"
         className={cn(
-          'flex shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg',
-          'transition enabled:hover:brightness-105 enabled:active:scale-95',
+          'flex shrink-0 items-center justify-center rounded-2xl bg-azure-500 text-white',
+          'transition enabled:hover:bg-azure-600 enabled:active:scale-95',
           'disabled:cursor-not-allowed disabled:opacity-40',
           isHero ? 'h-12 w-12 text-xl' : 'h-10 w-10 text-lg',
         )}
@@ -107,7 +107,7 @@ export function PromptInput({
 function Spinner() {
   return (
     <span
-      className="h-4 w-4 animate-spin rounded-full border-2 border-primary-fg/40 border-t-primary-fg"
+      className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
       role="status"
       aria-label="Working"
     />
