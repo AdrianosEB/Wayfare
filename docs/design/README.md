@@ -52,6 +52,13 @@ to the **mock** API (no backend changes). Every price renders its source/freshne
 this pass** — design the components to accept them, but don't build flows that need real
 providers.
 
+**Imagery is frontend-supplied this pass.** The wire contract carries **no image fields**,
+and we are NOT adding any now. The photo-rich look comes entirely from the client — see the
+"Imagery" note in [COMPONENTS.md](./COMPONENTS.md). Components take a plain `image` prop fed
+client-side (a curated map / stock URLs), so they swap to backend-supplied `imageUrl` later
+with zero component change. Do not change `@wayfare/shared`, the server, or the fixtures for
+images.
+
 ## Definition of done (this pass)
 
 - Azure token system + fonts wired into Tailwind; light theme only.

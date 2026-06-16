@@ -8,6 +8,24 @@ from [MOTION.md](./MOTION.md).
 Conventions: all components are TS + Tailwind; prices use `.tnum`; every interactive element
 has a visible azure focus ring; nothing is color-only.
 
+### Imagery (frontend-supplied — not from the API)
+
+The wire contract has **no image fields** and we're not adding any this pass. All photography
+is supplied by the client:
+
+- Add a small helper `apps/web/src/lib/images.ts` that maps a key (destination name, trip
+  vibe, or stay/activity category) → an image URL. Back it with a **curated set** of a dozen
+  or so tasteful destination/lifestyle photos (bundled in `public/img/` or hotlinked from a
+  stock source like Unsplash). Provide a deterministic fallback so any key returns *something*
+  on-brand (sun-soaked, azure-friendly).
+- Components that show a photo (`TripCard`, `StayCard`, `HeroPrompt`, `TripHeader`,
+  `TripTypeGrid`) take a **plain `image: string` prop**. The screen/data layer calls
+  `images.for(key)` to fill it — components never fetch images themselves and never read an
+  image field off `Listing`/`Trip` (there isn't one).
+- This is the **swap seam**: when the backend later carries `imageUrl` (Option B), only
+  `images.ts` / the data layer changes — the components stay identical.
+- Always set meaningful `alt`; lazy-load below-the-fold; reserve aspect ratio to avoid CLS.
+
 ---
 
 ## Primitives
