@@ -1,0 +1,143 @@
+{
+  "trip": {
+    "id": "trip_naxos_v1",
+    "summary": "8 days on Naxos — €2,410 for two",
+    "status": "complete",
+    "request": {
+      "destination": { "value": "Greece", "source": "prompt", "confidence": 0.95 },
+      "origin": { "value": "London", "source": "answer", "confidence": 1 },
+      "durationDays": { "value": 8, "source": "prompt", "confidence": 0.98 },
+      "dates": { "value": { "month": 8, "part": "late", "flexibility": "window" }, "source": "prompt", "confidence": 0.9 },
+      "partySize": { "value": { "adults": 2 }, "source": "prompt", "confidence": 0.95 },
+      "budget": { "value": { "amount": 2500, "currency": "EUR", "type": "soft" }, "source": "prompt", "confidence": 0.9 },
+      "vibe": { "value": ["relaxed", "beach"], "source": "answer", "confidence": 0.95 },
+      "pace": { "value": "relaxed", "source": "inferred", "confidence": 0.8 },
+      "mustHaves": { "value": ["beach"], "source": "prompt", "confidence": 0.8 }
+    },
+    "travelers": [
+      { "id": "trav_1", "type": "adult" },
+      { "id": "trav_2", "type": "adult" }
+    ],
+    "preferences": {
+      "pace": "relaxed",
+      "interests": ["beach", "food"],
+      "lodgingStyle": ["quiet", "near_beach"]
+    },
+    "assumptions": [
+      { "field": "dates", "assumed": "Aug 23–31 (flexible window)", "reason": "you said late August, flexible" }
+    ],
+    "itinerary": {
+      "destinationResolved": "Naxos, Greece",
+      "startDate": "2026-08-23",
+      "endDate": "2026-08-31",
+      "flights": [
+        {
+          "id": "fl_out",
+          "direction": "outbound",
+          "from": "LGW",
+          "to": "JTR",
+          "departISO": "2026-08-23T07:10:00Z",
+          "arriveISO": "2026-08-23T13:05:00Z",
+          "stops": 0,
+          "carrier": "EasyJet",
+          "listing": {
+            "id": "lst_fl_out",
+            "kind": "flight",
+            "title": "London Gatwick → Santorini",
+            "price": { "amount": 155, "currency": "EUR" },
+            "source": { "provider": "mock:curated", "label": "Estimated price" },
+            "fetchedAt": "2026-06-16T10:00:00Z",
+            "freshness": "mock",
+            "confidence": 0.7
+          }
+        },
+        {
+          "id": "fl_ret",
+          "direction": "return",
+          "from": "JTR",
+          "to": "LGW",
+          "departISO": "2026-08-31T14:20:00Z",
+          "arriveISO": "2026-08-31T16:25:00Z",
+          "stops": 0,
+          "carrier": "EasyJet",
+          "listing": {
+            "id": "lst_fl_ret",
+            "kind": "flight",
+            "title": "Santorini → London Gatwick",
+            "price": { "amount": 155, "currency": "EUR" },
+            "source": { "provider": "mock:curated", "label": "Estimated price" },
+            "fetchedAt": "2026-06-16T10:00:00Z",
+            "freshness": "mock",
+            "confidence": 0.7
+          }
+        }
+      ],
+      "stays": [
+        {
+          "id": "stay_1",
+          "name": "Studios Agios Prokopios",
+          "type": "apartment",
+          "location": { "lat": 37.07, "lng": 25.35, "name": "Agios Prokopios, Naxos" },
+          "checkIn": "2026-08-23",
+          "checkOut": "2026-08-31",
+          "nights": 8,
+          "rating": 4.5,
+          "amenities": ["kitchen", "balcony", "air_conditioning"],
+          "distanceToFocus": { "label": "to beach", "meters": 350 },
+          "listing": {
+            "id": "lst_stay_1",
+            "kind": "stay",
+            "title": "Studios Agios Prokopios — 8 nights",
+            "price": { "amount": 980, "currency": "EUR" },
+            "source": { "provider": "mock:curated", "label": "Estimated price" },
+            "fetchedAt": "2026-06-16T10:00:00Z",
+            "freshness": "mock",
+            "confidence": 0.7
+          }
+        }
+      ],
+      "days": [
+        {
+          "index": 1,
+          "date": "2026-08-23",
+          "title": "Arrive & ferry to Naxos",
+          "items": [
+            { "id": "it_d1_1", "kind": "transit", "title": "Ferry Santorini → Naxos", "startTime": "16:00", "endTime": "18:00",
+              "listing": { "id": "lst_ferry_in", "kind": "transit", "title": "Ferry to Naxos", "price": { "amount": 48, "currency": "EUR" },
+                "source": { "provider": "mock:curated", "label": "Estimated price" }, "fetchedAt": "2026-06-16T10:00:00Z", "freshness": "mock", "confidence": 0.7 } },
+            { "id": "it_d1_2", "kind": "free", "title": "Settle in, sunset at Agios Prokopios beach" }
+          ]
+        },
+        {
+          "index": 5,
+          "date": "2026-08-27",
+          "title": "Beach day & boat trip",
+          "items": [
+            { "id": "it_d5_1", "kind": "activity", "title": "Half-day boat trip to Rina Cave", "startTime": "10:00", "endTime": "14:00",
+              "walkingFromPrev": { "minutes": 8, "meters": 600 },
+              "listing": { "id": "lst_boat", "kind": "activity", "title": "Half-day boat trip", "price": { "amount": 110, "currency": "EUR" },
+                "source": { "provider": "mock:curated", "label": "Estimated price" }, "fetchedAt": "2026-06-16T10:00:00Z", "freshness": "mock", "confidence": 0.7 } },
+            { "id": "it_d5_2", "kind": "free", "title": "Evening in Naxos Town (Chora)" }
+          ]
+        }
+      ]
+    },
+    "budget": {
+      "currency": "EUR",
+      "target": { "amount": 2500, "type": "soft" },
+      "total": 2410,
+      "status": "under",
+      "lines": [
+        { "category": "flights", "amount": 620, "itemRefs": ["lst_fl_out", "lst_fl_ret"], "freshness": "mock" },
+        { "category": "transit", "amount": 96, "itemRefs": ["lst_ferry_in"], "freshness": "mock" },
+        { "category": "stay", "amount": 980, "itemRefs": ["lst_stay_1"], "freshness": "mock" },
+        { "category": "activities", "amount": 414, "itemRefs": ["lst_boat"], "freshness": "mock" },
+        { "category": "buffer", "amount": 300, "itemRefs": [], "freshness": "mock" }
+      ],
+      "savings": [
+        { "description": "Shift outbound one day earlier", "delta": -48, "appliesTo": "flights" }
+      ]
+    }
+  },
+  "version": 1
+}
