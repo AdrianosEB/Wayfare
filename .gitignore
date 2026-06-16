@@ -5,6 +5,7 @@ node_modules/
 # build output
 dist/
 *.tsbuildinfo
+.vite
 
 # env & secrets (keys live only in the server env — never commit them)
 .env
@@ -18,5 +19,9 @@ pnpm-debug.log*
 
 # editor / OS
 .DS_Store
+*.local
 .idea/
 .vscode/
+
+# Claude Code local workspace (worktrees, memory, local settings)
+.claude/

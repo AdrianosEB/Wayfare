@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens — RGB channel triples so Tailwind opacity modifiers work
+ * (e.g. `bg-primary/10`). Light is the warm "golden-hour" default; `.dark` flips
+ * to the deep-ink chat surface. See docs/DESIGN_SYSTEM.md.
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+    /* surfaces */
+    --c-sand: 250 246 239; /* warm off-white / soft sand */
+    --c-surface: 255 253 249; /* card */
+    --c-surface-2: 244 238 228; /* inset / subtle fills */
+    --c-border: 228 219 205;
+    --c-shadow: 60 40 20;
+    /* text */
+    --c-ink: 43 36 32; /* deep ink */
+    --c-muted: 110 99 88;
+    --c-faint: 150 139 126;
+    /* brand */
+    --c-primary: 14 138 138; /* confident sea / teal */
+    --c-primary-fg: 255 255 255;
+    --c-primary-soft: 214 238 236;
+    --c-accent: 233 110 67; /* sunset coral */
+    --c-accent-soft: 251 226 213;
+    /* semantic budget state */
+    --c-under: 47 145 95; /* green = under budget */
+    --c-under-soft: 214 238 224;
+    --c-ontarget: 199 138 38; /* amber = on target */
+    --c-ontarget-soft: 248 234 206;
+    --c-over: 200 70 66; /* red = over (used calmly) */
+    --c-over-soft: 248 220 217;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --c-sand: 20 17 14;
+    --c-surface: 32 28 24;
+    --c-surface-2: 42 37 31;
+    --c-border: 58 51 43;
+    --c-shadow: 0 0 0;
+    --c-ink: 240 233 222;
+    --c-muted: 176 165 151;
+    --c-faint: 132 122 109;
+    --c-primary: 45 197 190;
+    --c-primary-fg: 8 33 33;
+    --c-primary-soft: 28 64 64;
+    --c-accent: 245 138 96;
+    --c-accent-soft: 74 47 33;
+    --c-under: 86 191 134;
+    --c-under-soft: 28 62 44;
+    --c-ontarget: 226 176 86;
+    --c-ontarget-soft: 66 52 26;
+    --c-over: 232 116 110;
+    --c-over-soft: 70 38 36;
+  }
+
+  html,
+  body {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-sand text-ink antialiased;
+    font-family: theme('fontFamily.sans');
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Inter var when available */
+  @supports (font-variation-settings: normal) {
+    body {
+      font-family: 'Inter var', theme('fontFamily.sans');
+    }
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-sand;
+  }
+}
+
+@layer utilities {
+  /* All prices use tabular figures so budget columns align. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Respect prefers-reduced-motion globally (motion variants also honor it). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

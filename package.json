@@ -2,14 +2,18 @@
   "name": "wayfare",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayfare — chat-first AI trip planner (monorepo root).",
+  "description": "Wayfare — a trip planned for you from one sentence.",
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:server": "pnpm --filter server dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
   }
 }
