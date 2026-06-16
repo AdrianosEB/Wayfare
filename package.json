@@ -1,0 +1,16 @@
+{
+  "name": "wayfare",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Wayfare — a trip planned for you from one sentence.",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  }
+}

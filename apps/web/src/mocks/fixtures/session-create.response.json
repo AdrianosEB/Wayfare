@@ -1,0 +1,45 @@
+{
+  "sessionId": "sess_abc123",
+  "agentMessage": "Nice — a relaxed 8 days by the sea in Greece, late August, for two, ~€2,500. Two quick things:",
+  "extracted": {
+    "destination": { "value": "Greece", "source": "prompt", "confidence": 0.95 },
+    "durationDays": { "value": 8, "source": "prompt", "confidence": 0.98 },
+    "dates": {
+      "value": { "month": 8, "part": "late", "flexibility": "window" },
+      "source": "prompt",
+      "confidence": 0.9
+    },
+    "partySize": { "value": { "adults": 2 }, "source": "prompt", "confidence": 0.95 },
+    "budget": {
+      "value": { "amount": 2500, "currency": "EUR", "type": "soft" },
+      "source": "prompt",
+      "confidence": 0.9
+    },
+    "vibe": { "value": ["relaxed", "beach"], "source": "prompt", "confidence": 0.9 },
+    "pace": { "value": "relaxed", "source": "inferred", "confidence": 0.8 },
+    "mustHaves": { "value": ["beach"], "source": "prompt", "confidence": 0.8 },
+    "origin": null
+  },
+  "clarifyQuestions": [
+    {
+      "id": "origin",
+      "question": "Where are you flying from?",
+      "format": "city",
+      "skippable": true,
+      "skipDefault": "Assume flexible origin; start from major hubs near you.",
+      "placeholder": "e.g. London"
+    },
+    {
+      "id": "vibe_dest",
+      "question": "More lively or quieter?",
+      "format": "chips",
+      "options": [
+        { "value": "lively", "label": "Lively (Mykonos)" },
+        { "value": "quieter", "label": "Quieter (Naxos / Milos)" },
+        { "value": "mix", "label": "A mix" }
+      ],
+      "skippable": true,
+      "skipDefault": "Pick a balanced island for the region."
+    }
+  ]
+}
