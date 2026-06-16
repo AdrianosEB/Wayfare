@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import type { StatusStep } from '@/types';
+import type { AgentStep } from '@/types';
 import type { StatusLine } from '@/store/session';
 import { cn } from '@/lib/cn';
 import {
@@ -20,7 +20,7 @@ import {
  * completes the whole group collapses to a single "done" line, expandable to see the steps.
  */
 
-const stepIcon: Record<StatusStep, typeof PlaneIcon> = {
+const stepIcon: Record<AgentStep, typeof PlaneIcon> = {
   resolve: MapPinIcon,
   search_flights: PlaneIcon,
   search_stays: BedIcon,
@@ -109,7 +109,7 @@ export function AgentStatusLine({
   message,
   active,
 }: {
-  step: StatusStep;
+  step: AgentStep;
   message: string;
   active: boolean;
 }) {
@@ -135,7 +135,7 @@ export function AgentStatusLine({
   );
 }
 
-function StepGlyph({ step, className }: { step: StatusStep; className?: string }) {
+function StepGlyph({ step, className }: { step: AgentStep; className?: string }) {
   const Icon = stepIcon[step] ?? SparkleIcon;
   return <Icon className={className} />;
 }

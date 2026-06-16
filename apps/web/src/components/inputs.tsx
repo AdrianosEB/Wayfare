@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { CurrencyAnswer, StepperAnswer } from '@/types';
+import type { Money, PartySize } from '@/types';
 import { cn } from '@/lib/cn';
 import { currencySymbol } from '@/lib/format';
 import { CheckIcon, MinusIcon, PlusIcon, MapPinIcon } from './icons';
@@ -57,13 +57,13 @@ export function ChipSelect({ options, value, multi, onChange }: ChipSelectProps)
 /* -------------------------------------------------------------------- Stepper --- */
 
 export interface StepperProps {
-  value: StepperAnswer | undefined;
-  onChange: (value: StepperAnswer) => void;
+  value: PartySize | undefined;
+  onChange: (value: PartySize) => void;
 }
 
 export function Stepper({ value, onChange }: StepperProps) {
-  const v: StepperAnswer = value ?? { adults: 1 };
-  const set = (next: Partial<StepperAnswer>) => onChange({ ...v, ...next });
+  const v: PartySize = value ?? { adults: 1 };
+  const set = (next: Partial<PartySize>) => onChange({ ...v, ...next });
 
   return (
     <div className="flex flex-col gap-3">
@@ -273,10 +273,10 @@ export function ShortText({ value, placeholder, onChange }: ShortTextProps) {
 /* --------------------------------------------------------------- CurrencyInput --- */
 
 export interface CurrencyInputProps {
-  value: CurrencyAnswer | undefined;
+  value: Money | undefined;
   placeholder?: string;
   currency?: string;
-  onChange: (value: CurrencyAnswer) => void;
+  onChange: (value: Money) => void;
 }
 
 export function CurrencyInput({

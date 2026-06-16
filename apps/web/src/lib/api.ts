@@ -1,7 +1,7 @@
 import type {
   AnswersRequest,
   ApiError,
-  CreateSessionResponse,
+  SessionCreateResponse,
   RefineRequest,
   SessionStateResponse,
 } from '@/types';
@@ -55,7 +55,7 @@ const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 export async function createSession(
   prompt: string,
   signal?: AbortSignal,
-): Promise<CreateSessionResponse> {
+): Promise<SessionCreateResponse> {
   const res = await fetch(`${BASE}/session`, {
     method: 'POST',
     headers: jsonHeaders,
@@ -63,7 +63,7 @@ export async function createSession(
     signal,
   });
   if (!res.ok) throw await asError(res);
-  return (await res.json()) as CreateSessionResponse;
+  return (await res.json()) as SessionCreateResponse;
 }
 
 /** POST /api/session/:id/answers — submit answers, returns the SSE stream Response. */

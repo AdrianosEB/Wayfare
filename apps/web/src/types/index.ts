@@ -1,11 +1,9 @@
 /**
- * The single import surface for wire types — the swap point.
+ * The single import surface for wire types.
  *
- * Today it re-exports the local mirror in `./wire`. When the backend publishes
- * `packages/shared`, change the one line below to:
- *
- *     export * from '@wayfare/shared';
- *
- * and delete `./wire`. Every component imports from `@/types`, so nothing else changes.
+ * Re-exports `@wayfare/shared` — the ONE source of truth for the I/O contract, shared
+ * verbatim with the API server. Every component imports from `@/types`, never from a local
+ * mirror. Do not redefine wire shapes here; if you need a field that doesn't exist, change
+ * `packages/shared` + API_CONTRACT.md + the fixtures, not this file.
  */
-export * from './wire';
+export * from '@wayfare/shared';

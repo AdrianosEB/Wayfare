@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Refinement } from '@/types';
+import type { RefinementRecord } from '@/types';
 import { useSession } from '@/store/session';
 import { cn } from '@/lib/cn';
 import { formatDelta } from '@/lib/format';
@@ -77,7 +77,7 @@ function SummaryCard({
   refinement,
   summary,
 }: {
-  refinement?: Refinement;
+  refinement?: RefinementRecord;
   summary: string;
 }) {
   // Initial plan ready.
@@ -95,7 +95,7 @@ function SummaryCard({
     );
   }
 
-  // Refinement recap — what changed + budget delta (US-4.4).
+  // RefinementRecord recap — what changed + budget delta (US-4.4).
   const currency = guessCurrency(refinement);
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent-soft/40 px-4 py-3">
@@ -141,7 +141,7 @@ function SummaryCard({
   );
 }
 
-function diffLabel(d: Refinement['diff'][number]): string {
+function diffLabel(d: RefinementRecord['diff'][number]): string {
   const after = d.after as { name?: string; title?: string } | undefined;
   const before = d.before as { name?: string; title?: string } | undefined;
   const name = after?.name ?? after?.title;
@@ -157,7 +157,7 @@ function diffLabel(d: Refinement['diff'][number]): string {
   }
 }
 
-function guessCurrency(refinement: Refinement): string {
+function guessCurrency(refinement: RefinementRecord): string {
   for (const d of refinement.diff) {
     const after = d.after as { price?: { currency?: string } } | undefined;
     if (after?.price?.currency) return after.price.currency;

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",
+    "@wayfare/shared": "workspace:*",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.0",
     "react": "^18.3.1",

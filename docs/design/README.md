@@ -26,6 +26,12 @@ spreadsheet.
 
 ## Authoritative inputs (don't re-derive these)
 
+- **I/O contract:** [IO_CONTRACT.md](./IO_CONTRACT.md) — the exact request/response and SSE
+  shapes, pinned to `@wayfare/shared` type names. **Read this before touching `lib/api.ts`,
+  `lib/sse.ts`, the store, or any component that renders server data.**
+- **One source of types:** import ALL wire types from `@wayfare/shared` via the `@/types`
+  barrel. There is no local mirror (`wire.ts` was deleted). Never redefine a wire shape in
+  `apps/web`; change `packages/shared` + API_CONTRACT + fixtures instead.
 - **Wire/data shapes:** [../API_CONTRACT.md](../API_CONTRACT.md) + `@wayfare/shared` types.
   Components render `Trip`/`Listing`/`Budget` etc. — never invent fields.
 - **Sample data to build against:** [../fixtures/](../fixtures) (byte-identical to what the

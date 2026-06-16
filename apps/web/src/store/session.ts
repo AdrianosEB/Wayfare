@@ -3,8 +3,8 @@ import type {
   Assumption,
   BudgetCategory,
   ClarifyQuestion,
-  Refinement,
-  StatusStep,
+  RefinementRecord,
+  AgentStep,
   Trip,
   TripRequest,
   AnswersRequest,
@@ -18,7 +18,7 @@ import { applyMergePatch } from '@/lib/mergePatch';
 export type ChatRole = 'user' | 'agent';
 
 export interface StatusLine {
-  step: StatusStep;
+  step: AgentStep;
   message: string;
 }
 
@@ -29,7 +29,7 @@ export type ChatMessage =
   /** One planning/refine run's streamed "thinking" lines; collapses when done. */
   | { id: string; role: 'agent'; type: 'statusGroup'; statuses: StatusLine[]; done: boolean }
   /** A "plan ready" / "what changed" marker tied to a trip version. */
-  | { id: string; role: 'agent'; type: 'summary'; version: number; refinement?: Refinement };
+  | { id: string; role: 'agent'; type: 'summary'; version: number; refinement?: RefinementRecord };
 
 export type Phase =
   | 'idle'
@@ -58,7 +58,7 @@ interface SessionState {
   version: number;
 
   assumptions: Assumption[];
-  lastRefinement: Refinement | null;
+  lastRefinement: RefinementRecord | null;
   budgetDelta: number | null;
   changedKeys: ChangedKeys;
 
@@ -82,7 +82,7 @@ const nextId = (p: string) => `${p}_${++idSeq}`;
 let runController: AbortController | null = null;
 
 /** Derive the set of changed identifiers from a refinement diff. */
-function deriveChangedKeys(refinement: Refinement): ChangedKeys {
+function deriveChangedKeys(refinement: RefinementRecord): ChangedKeys {
   const keys = new Set<string>();
   const collect = (v: unknown) => {
     if (v && typeof v === 'object') {

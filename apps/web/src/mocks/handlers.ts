@@ -1,7 +1,7 @@
 import { http, HttpResponse, delay } from 'msw';
 import type {
-  CreateSessionResponse,
-  Refinement,
+  SessionCreateResponse,
+  RefinementRecord,
   Trip,
 } from '@/types';
 import { applyMergePatch } from '@/lib/mergePatch';
@@ -18,13 +18,13 @@ import refineComplete from './fixtures/refine-complete.json';
  */
 
 const BASE_TRIP = tripComplete.trip as unknown as Trip;
-const REFINE = refineComplete.refinement as unknown as Refinement;
+const REFINE = refineComplete.refinement as unknown as RefinementRecord;
 
 /* ----------------------------------------------------- POST /api/session (synchronous) --- */
 
 const createHandler = http.post('/api/session', async () => {
   await delay(450);
-  return HttpResponse.json(sessionCreate as unknown as CreateSessionResponse);
+  return HttpResponse.json(sessionCreate as unknown as SessionCreateResponse);
 });
 
 /* --------------------------- POST /api/session/:id/answers — stream the initial plan --- */
