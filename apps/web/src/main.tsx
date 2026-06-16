@@ -1,4 +1,3 @@
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
@@ -29,14 +28,16 @@ async function bootstrap() {
     await startMocks();
   }
 
+  // NOTE: StrictMode intentionally omitted. Its dev-only double-mount stalls Framer Motion's
+  // staggered entrance orchestration (staggerChildren), leaving cards/itinerary items frozen
+  // near opacity:0 — the "disappearing UI" bug. StrictMode is a no-op in production, so this
+  // only affects dev; removing it makes dev match prod. (See lib/motion.ts stagger variants.)
   createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <App />
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </StrictMode>,
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </ErrorBoundary>,
   );
 }
 

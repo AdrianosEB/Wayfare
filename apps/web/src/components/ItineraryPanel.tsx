@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from 'framer-motion';
 import type {
   Flight,
   ItineraryItem,
@@ -8,12 +7,13 @@ import type {
 import { useSession } from '@/store/session';
 import { cn } from '@/lib/cn';
 import { formatDateRange } from '@/lib/format';
-import { staggerContainer, staggerIn } from '@/lib/motion';
+import { images } from '@/lib/images';
+import { Photo } from './Photo';
 import { FlightCard } from './FlightCard';
 import { StayCard } from './StayCard';
 import { DayTimeline } from './DayTimeline';
 import { AssumptionsReveal } from './AssumptionsReveal';
-import { PlaneIcon, BedIcon, MapPinIcon, SparkleIcon } from './icons';
+import { PlaneIcon, BedIcon, MapPinIcon } from './icons';
 
 /**
  * Container for the whole plan (DESIGN_SYSTEM §4). Reads the authoritative `trip` when
@@ -54,13 +54,7 @@ export function ItineraryPanel() {
     changedKeys.has(i.title) || changedKeys.has(i.id) || changedKeys.has(i.listing?.id ?? '');
 
   return (
-    <motion.section
-      aria-label="Your itinerary"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-      className="flex flex-col gap-5"
-    >
+    <section aria-label="Your itinerary" className="flex flex-col gap-5">
       <Header trip={view} planning={planning} />
 
       {/* Flights */}
@@ -126,7 +120,7 @@ export function ItineraryPanel() {
       </Section>
 
       {assumptions.length > 0 && <AssumptionsReveal assumptions={assumptions} />}
-    </motion.section>
+    </section>
   );
 }
 
@@ -140,29 +134,37 @@ function Header({ trip, planning }: { trip: Partial<Trip> | null; planning: bool
       : null;
   const party = partyLabel(trip);
 
+  const heroKey = dest ?? 'beach';
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-4 shadow-card">
-      <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold text-primary-fg"
-        style={{
-          background:
-            'linear-gradient(135deg, rgb(var(--c-primary)), rgb(var(--c-accent)))',
-        }}
-        aria-hidden
-      >
-        {dest ? dest.charAt(0).toUpperCase() : <SparkleIcon />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-lg font-bold text-ink">
-          {summary ?? (planning ? 'Assembling your trip…' : dest ?? 'Your trip')}
-        </h2>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted">
-          {dest && <span>{dest}</span>}
-          {dates && <span className="text-faint">·</span>}
-          {dates && <span className="tabular">{dates}</span>}
-          {party && <span className="text-faint">·</span>}
-          {party && <span>{party}</span>}
-        </p>
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+      <div className="relative">
+        <Photo
+          image={images.for(heroKey)}
+          imageKey={heroKey}
+          alt={dest ?? 'Your destination'}
+          ratio="aspect-[16/7]"
+          eager
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to top, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.20) 55%, rgba(15,23,42,0) 100%)',
+          }}
+          aria-hidden
+        />
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <h2 className="text-balance text-lg font-bold text-white sm:text-xl">
+            {summary ?? (planning ? 'Assembling your trip…' : dest ?? 'Your trip')}
+          </h2>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-white/85">
+            {dest && <span>{dest}</span>}
+            {dates && <span className="text-white/50">·</span>}
+            {dates && <span className="tabular">{dates}</span>}
+            {party && <span className="text-white/50">·</span>}
+            {party && <span>{party}</span>}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -209,10 +211,7 @@ function Section({
 }
 
 function Item({ children }: { children: React.ReactNode }) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div variants={reduce ? undefined : staggerIn}>{children}</motion.div>
-  );
+  return <div>{children}</div>;
 }
 
 function Skeleton({

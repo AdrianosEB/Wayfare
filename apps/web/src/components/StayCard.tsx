@@ -1,5 +1,7 @@
 import type { Stay } from '@/types';
 import { formatDistance, humanize } from '@/lib/format';
+import { images } from '@/lib/images';
+import { Photo } from './Photo';
 import { Price } from './Price';
 import { ChangedBadge, DiffHighlight } from './DiffHighlight';
 import { BedIcon, MapPinIcon, StarIcon, WalkIcon } from './icons';
@@ -21,7 +23,14 @@ export function StayCard({
 }) {
   return (
     <DiffHighlight changed={!!changed} focused={focused} pulseKey={pulseKey}>
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+        <Photo
+          image={images.for(stay.location?.name ?? stay.type)}
+          imageKey={stay.name}
+          alt={stay.name}
+          ratio="aspect-[16/9]"
+        />
+        <div className="flex flex-col gap-3 p-4">
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
             <BedIcon className="text-lg" />
@@ -68,6 +77,7 @@ export function StayCard({
               {humanize(a)}
             </span>
           ))}
+        </div>
         </div>
       </div>
     </DiffHighlight>

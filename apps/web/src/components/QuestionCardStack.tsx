@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import type { AnswerValue, AnswersRequest, ClarifyQuestion } from '@/types';
 import { cn } from '@/lib/cn';
-import { cardIn, staggerContainer } from '@/lib/motion';
 import {
   ChipSelect,
   CityAutocomplete,
@@ -29,7 +27,6 @@ interface CardState {
 }
 
 export function QuestionCardStack({ questions, busy, onSubmit }: QuestionCardStackProps) {
-  const reduce = useReducedMotion();
   const [state, setState] = useState<Record<string, CardState>>({});
   const [attempted, setAttempted] = useState(false);
 
@@ -68,22 +65,16 @@ export function QuestionCardStack({ questions, busy, onSubmit }: QuestionCardSta
   };
 
   return (
-    <motion.div
-      variants={reduce ? undefined : staggerContainer}
-      initial={reduce ? undefined : 'hidden'}
-      animate={reduce ? undefined : 'show'}
-      className="flex flex-col gap-3"
-    >
+    <div className="flex flex-col gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {questions.map((q) => {
           const cs = state[q.id] ?? { skipped: false };
           const missing = attempted && !q.skippable && !isAnswered(q);
           return (
-            <motion.div
+            <div
               key={q.id}
-              variants={reduce ? undefined : cardIn}
               className={cn(
-                'flex flex-col gap-3 rounded-2xl border bg-surface p-4 shadow-card transition',
+                'flex flex-col gap-3 rounded-2xl border bg-surface p-4 shadow-card transition-colors',
                 missing ? 'border-over/60' : 'border-border',
                 cs.skipped && 'opacity-70',
               )}
@@ -108,7 +99,7 @@ export function QuestionCardStack({ questions, busy, onSubmit }: QuestionCardSta
                 />
               )}
               {missing && <span className="text-xs text-over">This one’s needed to plan.</span>}
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -132,7 +123,7 @@ export function QuestionCardStack({ questions, busy, onSubmit }: QuestionCardSta
           <span className="text-xs text-faint">Answer or skip each card to start.</span>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
