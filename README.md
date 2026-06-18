@@ -49,5 +49,7 @@ must serialize to exactly their shape.
 
 ## Status
 
-MVP backend (shared contract + API + agent + global mock provider) is implemented and
-tested. See [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+MVP is implemented end-to-end: the shared contract + API + planning agent + global mock
+provider on the backend, and the azure/Layla web client (marketing landing + conversational
+planner) on the frontend — wired together (`VITE_USE_MOCKS=0` talks to the live API). See
+[docs/ROADMAP.md](docs/ROADMAP.md) and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
