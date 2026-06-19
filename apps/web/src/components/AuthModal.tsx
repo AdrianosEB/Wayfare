@@ -153,7 +153,9 @@ export function AuthModal({ open, mode: initialMode, onClose }: AuthModalProps) 
       {open && (
         <motion.div
           className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-6"
-          initial={{ opacity: 0 }}
+          // Appear solid immediately (never gate the whole modal on an opacity tween that can
+          // stall and leave it see-through); keep the fade-OUT on close.
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
@@ -172,7 +174,7 @@ export function AuthModal({ open, mode: initialMode, onClose }: AuthModalProps) 
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+            initial={false}
             animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
