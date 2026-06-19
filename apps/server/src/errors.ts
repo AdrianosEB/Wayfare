@@ -10,7 +10,18 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   unplannable: 422,
   rate_limited: 429,
   internal: 500,
+  // auth (see @wayfare/shared/auth + AUTH_CONTRACT.md)
+  email_taken: 409,
+  invalid_credentials: 401,
+  unauthenticated: 401,
 };
+
+export const emailTaken = (message = "That email is already registered.") =>
+  new AppError("email_taken", message);
+export const invalidCredentials = (message = "Invalid email or password.") =>
+  new AppError("invalid_credentials", message);
+export const unauthenticated = (message = "Sign in required.") =>
+  new AppError("unauthenticated", message);
 
 export class AppError extends Error {
   readonly code: ErrorCode;
