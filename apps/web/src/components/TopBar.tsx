@@ -1,6 +1,7 @@
 import { useSession } from '@/store/session';
 import { navigate } from '@/lib/router';
 import { Wordmark } from './Wordmark';
+import { AuthControls } from './AuthControls';
 import { PlusIcon } from './icons';
 
 /** Planner app chrome (SCREENS): slim top bar — Wayfare mark · "New trip". */
@@ -20,7 +21,7 @@ export function TopBar() {
         <Wordmark />
       </button>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         {started && (
           <button
             type="button"
@@ -31,6 +32,7 @@ export function TopBar() {
             New trip
           </button>
         )}
+        <AuthControls />
       </div>
     </header>
   );

@@ -3,6 +3,11 @@ import type {
   SessionCreateResponse,
   RefinementRecord,
   Trip,
+  User,
+  AuthResponse,
+  MeResponse,
+  SignupRequest,
+  LoginRequest,
 } from '@/types';
 import { applyMergePatch } from '@/lib/mergePatch';
 import { buildSseStream, sseResponse, type MockFrame } from './sse';
@@ -224,4 +229,103 @@ const getHandler = http.get('/api/session/:id', ({ params }) => {
   });
 });
 
-export const handlers = [createHandler, answersHandler, refineHandler, getHandler];
+/* =================================================================== auth (AUTH_CONTRACT) ===
+ * A tiny in-memory backend for email + password: a fake users store + a single "current
+ * session" flag (the mock stand-in for the httpOnly cookie). Conforms to AUTH_CONTRACT.md so
+ * the whole app works in mock mode (the dev default). Guest mode is the default — /me returns
+ * `{ user: null }` at 200 until someone signs up or logs in.
+ */
+
+interface StoredUser extends User {
+  password: string;
+}
+
+// Seed one demo account so "log in" works out of the box: demo@wayfare.app / password123.
+const users: StoredUser[] = [
+  {
+    id: 'usr_demo',
+    email: 'demo@wayfare.app',
+    name: 'Demo Traveler',
+    createdAt: '2026-01-01T00:00:00Z',
+    password: 'password123',
+  },
+];
+
+// The "cookie": which user id (if any) the current browser session is authenticated as.
+let sessionUserId: string | null = null;
+
+const publicUser = (u: StoredUser): User => ({
+  id: u.id,
+  email: u.email,
+  name: u.name,
+  createdAt: u.createdAt,
+});
+
+const authError = (code: string, message: string, status: number) =>
+  HttpResponse.json({ error: { code, message } }, { status });
+
+const signupHandler = http.post('/api/auth/signup', async ({ request }) => {
+  await delay(350);
+  const body = (await request.json().catch(() => ({}))) as Partial<SignupRequest>;
+  const email = (body.email ?? '').trim().toLowerCase();
+  const name = (body.name ?? '').trim();
+  const password = body.password ?? '';
+
+  if (!email || !password) {
+    return authError('invalid_request', 'Email and password are required.', 400);
+  }
+  if (password.length < 8) {
+    return authError('weak_password', 'Use at least 8 characters.', 400);
+  }
+  if (users.some((u) => u.email.toLowerCase() === email)) {
+    return authError('email_taken', 'That email is already registered.', 409);
+  }
+
+  const user: StoredUser = {
+    id: `usr_${Math.random().toString(36).slice(2, 10)}`,
+    email,
+    name,
+    createdAt: new Date().toISOString(),
+    password,
+  };
+  users.push(user);
+  sessionUserId = user.id;
+  return HttpResponse.json<AuthResponse>({ user: publicUser(user) });
+});
+
+const loginHandler = http.post('/api/auth/login', async ({ request }) => {
+  await delay(350);
+  const body = (await request.json().catch(() => ({}))) as Partial<LoginRequest>;
+  const email = (body.email ?? '').trim().toLowerCase();
+  const password = body.password ?? '';
+
+  const user = users.find((u) => u.email.toLowerCase() === email && u.password === password);
+  if (!user) {
+    return authError('invalid_credentials', 'Invalid email or password.', 401);
+  }
+  sessionUserId = user.id;
+  return HttpResponse.json<AuthResponse>({ user: publicUser(user) });
+});
+
+const logoutHandler = http.post('/api/auth/logout', async () => {
+  await delay(120);
+  sessionUserId = null;
+  return HttpResponse.json({ ok: true });
+});
+
+const meHandler = http.get('/api/auth/me', async () => {
+  await delay(120);
+  const user = sessionUserId ? users.find((u) => u.id === sessionUserId) : undefined;
+  return HttpResponse.json<MeResponse>({ user: user ? publicUser(user) : null });
+});
+
+export const handlers = [
+  createHandler,
+  answersHandler,
+  refineHandler,
+  getHandler,
+  signupHandler,
+  loginHandler,
+  logoutHandler,
+  meHandler,
+];
