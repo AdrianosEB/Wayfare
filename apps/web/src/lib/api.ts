@@ -4,6 +4,10 @@ import type {
   SessionCreateResponse,
   RefineRequest,
   SessionStateResponse,
+  AuthResponse,
+  MeResponse,
+  SignupRequest,
+  LoginRequest,
 } from '@/types';
 
 /**
@@ -106,4 +110,52 @@ export async function getSession(
   const res = await fetch(`${BASE}/session/${encodeURIComponent(sessionId)}`, { signal });
   if (!res.ok) throw await asError(res);
   return (await res.json()) as SessionStateResponse;
+}
+
+/* ------------------------------------------------------------------------- auth --- */
+// Email + password (AUTH_CONTRACT.md). The session is an httpOnly cookie, so every auth call
+// sends `credentials: 'include'` and never touches a token. Guest mode is the default — a
+// guest is `user: null` from /me at 200, never an error.
+
+/** POST /api/auth/signup — create an account; sets the session cookie. */
+export async function signup(body: SignupRequest, signal?: AbortSignal): Promise<AuthResponse> {
+  const res = await fetch(`${BASE}/auth/signup`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    credentials: 'include',
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) throw await asError(res);
+  return (await res.json()) as AuthResponse;
+}
+
+/** POST /api/auth/login — sign in; sets the session cookie. */
+export async function login(body: LoginRequest, signal?: AbortSignal): Promise<AuthResponse> {
+  const res = await fetch(`${BASE}/auth/login`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    credentials: 'include',
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) throw await asError(res);
+  return (await res.json()) as AuthResponse;
+}
+
+/** POST /api/auth/logout — clear the session cookie. Idempotent. */
+export async function logout(signal?: AbortSignal): Promise<void> {
+  const res = await fetch(`${BASE}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    signal,
+  });
+  if (!res.ok) throw await asError(res);
+}
+
+/** GET /api/auth/me — hydrate the session. Returns `{ user: null }` for guests (200). */
+export async function getMe(signal?: AbortSignal): Promise<MeResponse> {
+  const res = await fetch(`${BASE}/auth/me`, { credentials: 'include', signal });
+  if (!res.ok) throw await asError(res);
+  return (await res.json()) as MeResponse;
 }

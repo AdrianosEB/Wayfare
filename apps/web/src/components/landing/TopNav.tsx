@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
+import { AuthControls } from '@/components/AuthControls';
 import { navigate, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
@@ -75,6 +76,7 @@ export function TopNav() {
           <Button className="ml-2" onClick={goPlan}>
             {MARKETING.hero.cta}
           </Button>
+          <AuthControls onLight={!solid} className="ml-1" />
         </nav>
 
         {/* Mobile hamburger */}
@@ -118,6 +120,9 @@ export function TopNav() {
               <Button className="mt-2 w-full" size="lg" onClick={goPlan}>
                 {MARKETING.hero.cta}
               </Button>
+              <div className="mt-2 flex items-center justify-center border-t border-border pt-3">
+                <AuthControls />
+              </div>
             </nav>
           </motion.div>
         )}

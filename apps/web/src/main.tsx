@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useAuth } from './store/auth';
 import './index.css';
 
 /**
@@ -27,6 +28,10 @@ async function bootstrap() {
     const { startMocks } = await import('./mocks/browser');
     await startMocks();
   }
+
+  // Resolve the auth session exactly once (GET /api/auth/me). Guest mode is the default, so
+  // this never blocks rendering — it only personalizes the TopBar once it returns.
+  void useAuth.getState().hydrate();
 
   // NOTE: StrictMode intentionally omitted. Its dev-only double-mount stalls Framer Motion's
   // staggered entrance orchestration (staggerChildren), leaving cards/itinerary items frozen
