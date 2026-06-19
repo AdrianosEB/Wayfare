@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { config, useAgent } from "./config.js";
 import { createApp } from "./app.js";
 import { InMemorySessionStore } from "./session/store.js";
+import { createInMemoryAuthDeps } from "./auth/index.js";
 import type { RouteDeps } from "./routes/session.js";
 
 /**
@@ -14,6 +15,7 @@ const agentEnabled = useAgent(config) && Boolean(config.anthropicApiKey);
 
 const deps: RouteDeps = {
   store: new InMemorySessionStore(now),
+  auth: createInMemoryAuthDeps(now),
   now,
   year: Number(config.now.slice(0, 4)) || 2026,
   useAgent: agentEnabled,

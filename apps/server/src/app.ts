@@ -1,7 +1,9 @@
 import express, { type Application, type NextFunction, type Request, type Response } from "express";
+import cookieParser from "cookie-parser";
 import { ZodError } from "zod";
 import { AppError } from "./errors.js";
 import { createSessionRouter, type RouteDeps } from "./routes/session.js";
+import { createAuthRouter, createInMemoryAuthDeps, type AuthDeps } from "./auth/index.js";
 
 /**
  * Build the Express application. Factory form so tests can inject a fresh store/clock and drive
@@ -10,10 +12,16 @@ import { createSessionRouter, type RouteDeps } from "./routes/session.js";
 export function createApp(deps: RouteDeps): Application {
   const app = express();
   app.use(express.json({ limit: "256kb" }));
+  app.use(cookieParser());
 
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", planner: deps.useAgent ? "agent" : "deterministic" });
   });
+
+  // Auth is additive: mounted alongside the planner, never gating it. If the caller didn't
+  // inject auth deps, fall back to a fresh in-memory wiring (mirrors how tests build the app).
+  const authDeps: AuthDeps = deps.auth ?? createInMemoryAuthDeps(deps.now);
+  app.use("/api", createAuthRouter(authDeps));
 
   app.use("/api", createSessionRouter(deps));
 
