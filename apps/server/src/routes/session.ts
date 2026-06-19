@@ -12,6 +12,7 @@ import {
 import { AppError, invalid, notFound, notReady } from "../errors.js";
 import { SseStream } from "../sse.js";
 import type { SessionStore } from "../session/store.js";
+import type { AuthDeps } from "../auth/index.js";
 import { parsePrompt } from "../agent/parse.js";
 import { selectClarifyQuestions } from "../agent/clarify.js";
 import { mergeAnswers } from "../agent/merge.js";
@@ -26,6 +27,8 @@ export interface RouteDeps {
   useAgent: boolean;
   anthropic?: Anthropic;
   model: string;
+  /** Optional auth wiring. When omitted, createApp builds a fresh in-memory instance. */
+  auth?: AuthDeps;
 }
 
 function emitterFor(sse: SseStream): PlanEmitter {
