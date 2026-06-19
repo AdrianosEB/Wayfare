@@ -24,6 +24,10 @@ export const ErrorCodeSchema = z.enum([
   "unplannable", // 422 — constraints contradictory/meaningless
   "rate_limited", // 429 — provider/agent budget exhausted
   "internal", // 500 — unexpected
+  // --- auth (see ./auth) — same { error: { code, message } } envelope ---
+  "email_taken", // 409 — signup email already exists
+  "invalid_credentials", // 401 — login failed (email unknown OR wrong password; never distinguish)
+  "unauthenticated", // 401 — protected route without a valid session (NOT planner routes)
 ]);
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
 
