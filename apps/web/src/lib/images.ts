@@ -33,6 +33,14 @@ const CURATED: Record<string, string> = {
   paris: u('1502602898657-3e91760cbb34'),
   barcelona: u('1583422409516-2895a77efded'),
   valencia: u('1583422409516-2895a77efded'),
+  // budget showcase destinations
+  sofia: u('1601581875309-fafbf2d3ed3a'),
+  krakow: u('1606992894456-799462dc3b3a'),
+  budapest: u('1565426873118-a17ed65d74b9'),
+  prague: u('1541849546-216549ae216d'),
+  porto: u('1555881400-74d7acaacd8b'),
+  naples: u('1518730518541-d0843268c287'),
+  athens: u('1555993539-1732b0258235'),
 
   // trip vibes / types
   couple: u('1518621736915-f3b1c41bfd00'),

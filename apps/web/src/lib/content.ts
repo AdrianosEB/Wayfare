@@ -112,6 +112,95 @@ export const SAMPLE_TRIPS: SampleTrip[] = [
   },
 ];
 
+/**
+ * Budget showcase for the `/pricing` page — the cheapest trips we'd point someone to.
+ * `fromAmount` is an illustrative "from" figure (marketing copy for a few nights, solo or
+ * two-person framing), not a sourced Listing price. Tapping a card seeds the planner.
+ */
+export const BUDGET_TRIPS: SampleTrip[] = [
+  {
+    place: 'Sofia, Bulgaria',
+    imageKey: 'sofia',
+    lengthDays: 3,
+    fromAmount: 160,
+    currency: 'EUR',
+    vibe: 'Solo · 3 nights',
+    prompt: 'A cheap 3-night solo city break in Sofia, Bulgaria, around €160 all-in',
+  },
+  {
+    place: 'Kraków, Poland',
+    imageKey: 'krakow',
+    lengthDays: 3,
+    fromAmount: 170,
+    currency: 'EUR',
+    vibe: 'Solo · 3 nights',
+    prompt: 'A budget 3-night solo trip to Kraków, Poland, old town and food, around €170',
+  },
+  {
+    place: 'Valencia, Spain',
+    imageKey: 'valencia',
+    lengthDays: 3,
+    fromAmount: 190,
+    currency: 'EUR',
+    vibe: 'Solo · 3 nights',
+    prompt: 'A cheap sunny 3-night solo break in Valencia, Spain, beach and tapas, around €190',
+  },
+  {
+    place: 'Budapest, Hungary',
+    imageKey: 'budapest',
+    lengthDays: 4,
+    fromAmount: 200,
+    currency: 'EUR',
+    vibe: 'For two · 4 nights',
+    prompt: 'A budget 4-night trip to Budapest for two, thermal baths and ruin bars, around €200pp',
+  },
+  {
+    place: 'Prague, Czechia',
+    imageKey: 'prague',
+    lengthDays: 4,
+    fromAmount: 210,
+    currency: 'EUR',
+    vibe: 'For two · 4 nights',
+    prompt: 'A cheap 4-night city break in Prague for two, around €210pp',
+  },
+  {
+    place: 'Lisbon, Portugal',
+    imageKey: 'lisbon',
+    lengthDays: 3,
+    fromAmount: 220,
+    currency: 'EUR',
+    vibe: 'Solo · 3 nights',
+    prompt: 'A budget 3-night solo trip to Lisbon, viewpoints and pastéis, around €220',
+  },
+  {
+    place: 'Porto, Portugal',
+    imageKey: 'porto',
+    lengthDays: 3,
+    fromAmount: 230,
+    currency: 'EUR',
+    vibe: 'For two · 3 nights',
+    prompt: 'A cheap 3-night trip to Porto for two, river views and port tasting, around €230pp',
+  },
+  {
+    place: 'Naples, Italy',
+    imageKey: 'naples',
+    lengthDays: 3,
+    fromAmount: 240,
+    currency: 'EUR',
+    vibe: 'For two · 3 nights',
+    prompt: 'A budget 3-night trip to Naples for two, pizza and the bay, around €240pp',
+  },
+  {
+    place: 'Athens, Greece',
+    imageKey: 'athens',
+    lengthDays: 4,
+    fromAmount: 260,
+    currency: 'EUR',
+    vibe: 'For two · 4 nights',
+    prompt: 'A cheap 4-night trip to Athens for two, ruins and rooftop tavernas, around €260pp',
+  },
+];
+
 export interface ValueCardItem {
   key: string;
   title: string;

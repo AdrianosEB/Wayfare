@@ -13,10 +13,10 @@ import { MARKETING } from '@/lib/content';
  * that reveals a slide-down menu.
  */
 
-const LINKS: { label: string; href: string }[] = [
+const LINKS: { label: string; href: string; route?: boolean }[] = [
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Trip types', href: '#trip-types' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Pricing', href: '/pricing', route: true },
 ];
 
 export function TopNav() {
@@ -65,6 +65,14 @@ export function TopNav() {
             <a
               key={l.href}
               href={l.href}
+              onClick={
+                l.route
+                  ? (e) => {
+                      e.preventDefault();
+                      navigate(l.href);
+                    }
+                  : undefined
+              }
               className={cn(
                 'rounded-pill px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2',
                 solid ? 'text-ink-2 hover:bg-surface hover:text-ink' : 'text-white/90 hover:bg-white/10 hover:text-white',
@@ -111,7 +119,13 @@ export function TopNav() {
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setOpen(false)}
+                  onClick={(e) => {
+                    if (l.route) {
+                      e.preventDefault();
+                      navigate(l.href);
+                    }
+                    setOpen(false);
+                  }}
                   className="rounded-md px-3 py-3 text-base font-medium text-ink hover:bg-surface focus-visible:ring-2"
                 >
                   {l.label}
