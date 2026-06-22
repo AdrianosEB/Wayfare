@@ -1,6 +1,8 @@
 import type { ItineraryItem } from '@/types';
 import { cn } from '@/lib/cn';
 import { formatClock, formatDistance } from '@/lib/format';
+import { images } from '@/lib/images';
+import { Photo } from './Photo';
 import { Price } from './Price';
 import { ChangedBadge } from './DiffHighlight';
 import {
@@ -37,6 +39,8 @@ export function ActivityItem({
   const Icon = kindIcon[item.kind];
   const isFree = item.kind === 'free' || !item.listing;
   const time = item.startTime ?? (item.listing ? '' : '');
+  // Small category thumbnail (beach/boat/museum/food…) derived from the item's title + kind.
+  const thumbKey = images.categoryFor(item.title, item.kind);
 
   return (
     <li className="relative flex gap-3">
@@ -68,6 +72,13 @@ export function ActivityItem({
             focused ? 'border-primary/50 ring-1 ring-primary/40' : 'border-border',
           )}
         >
+          <Photo
+            image={images.for(thumbKey)}
+            imageKey={thumbKey}
+            alt=""
+            ratio="aspect-square"
+            className="h-11 w-11 shrink-0 rounded-lg"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               {time && (

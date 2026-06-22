@@ -58,7 +58,19 @@ const CURATED: Record<string, string> = {
   hotel: u('1582719478250-c89cae4dc85b'),
   stay: u('1582719478250-c89cae4dc85b'),
   boat_trip: u('1544551763-46a013bb70d5'),
+  boat: u('1544551763-46a013bb70d5'),
   food: u('1414235077428-338989a2e8c0'),
+  meal: u('1414235077428-338989a2e8c0'),
+  museum: u('1565060169194-19fabf63012c'),
+  ruins: u('1555993539-1732b0258235'),
+  viewpoint: u('1502602898657-3e91760cbb34'),
+  hike: u('1551632811-561732d1e306'),
+  sunset: u('1495616811223-4d98c6e9c869'),
+  nightlife: u('1514525253161-7a46d19cd819'),
+  flight: u('1436491865332-7a61a109cc05'),
+  ferry: u('1559827260-dc66d52bef19'),
+  transit: u('1559827260-dc66d52bef19'),
+  walk: u('1502602898657-3e91760cbb34'),
 };
 
 /** Deterministic on-brand fallback pool (no key collisions with branded surfaces). */
@@ -92,6 +104,34 @@ export const images = {
     const byFirst = CURATED[first];
     if (byFirst) return byFirst;
     return FALLBACKS[hash(k) % FALLBACKS.length] ?? DEFAULT_IMG;
+  },
+
+  /**
+   * Pick an image key for an itinerary item from its free-text title (and kind fallback).
+   * Used for the small activity thumbnails in the day timeline. Keyword-matched against the
+   * curated category set; falls back to the item kind so `for()` always resolves something.
+   */
+  categoryFor(title: string, kind: string): string {
+    const t = title.toLowerCase();
+    const rules: [RegExp, string][] = [
+      [/beach|swim|cove|lagoon/, 'beach'],
+      [/boat|cruise|sail|kayak|snorkel/, 'boat'],
+      [/ferry/, 'ferry'],
+      [/flight|fly|airport|→/, kind === 'transit' ? 'transit' : 'flight'],
+      [/museum|gallery|exhibit/, 'museum'],
+      [/temple|ruin|acropolis|castle|palace|ancient|archaeolog/, 'ruins'],
+      [/hike|trail|trek|mountain|gorge|walk/, 'hike'],
+      [/sunset|sunrise/, 'sunset'],
+      [/view|panoram|lookout|miradouro/, 'viewpoint'],
+      [/hotel|studio|stay|check-in|check in|apartment|villa|\bnights?\b/, 'stay'],
+      [/dinner|lunch|breakfast|taverna|food|eat|restaurant|tasting|meze/, 'food'],
+      [/\bbar\b|club|nightlife|drinks|evening|\bnight\b/, 'nightlife'],
+    ];
+    for (const [re, key] of rules) if (re.test(t)) return key;
+    if (kind === 'meal') return 'food';
+    if (kind === 'transit') return 'transit';
+    if (kind === 'activity') return 'beach';
+    return 'city';
   },
 
   /** A deterministic azure gradient — used as a CLS-safe placeholder / onError fallback. */
