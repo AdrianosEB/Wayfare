@@ -19,7 +19,7 @@ import type { SampleTrip } from '@/lib/content';
 export function PricingPage() {
   return (
     <div className="min-h-full bg-bg">
-      <TopNav />
+      <TopNav alwaysSolid />
       <main>
         <PricingHero />
 

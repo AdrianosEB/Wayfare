@@ -11,6 +11,10 @@ import { MARKETING } from '@/lib/content';
  * Sticky marketing nav. Transparent over the hero at the very top; becomes white with a
  * hairline border once the page scrolls. Below `md` the links collapse into a hamburger
  * that reveals a slide-down menu.
+ *
+ * Pages without a dark full-bleed hero behind the nav (e.g. `/pricing`) must pass
+ * `alwaysSolid` — otherwise the transparent-at-top state renders white text on the white
+ * page background and the bar reads as invisible until you scroll down.
  */
 
 const LINKS: { label: string; href: string; route?: boolean }[] = [
@@ -19,20 +23,21 @@ const LINKS: { label: string; href: string; route?: boolean }[] = [
   { label: 'Pricing', href: '/pricing', route: true },
 ];
 
-export function TopNav() {
+export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
 
   useEffect(() => {
+    if (alwaysSolid) return;
     const onScroll = () => setScrolled(window.scrollY > 16);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [alwaysSolid]);
 
   // On a solid (white) bar the wordmark/links go dark; over the hero they stay light.
-  const solid = scrolled || open;
+  const solid = alwaysSolid || scrolled || open;
 
   const goPlan = () => {
     setOpen(false);
