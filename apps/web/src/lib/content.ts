@@ -222,6 +222,8 @@ export interface Testimonial {
   author: string;
   tripTaken: string;
   rating: number;
+  /** image key for lib/images.ts — the destination they travelled to. */
+  imageKey: string;
 }
 
 export const TESTIMONIALS: Testimonial[] = [
@@ -230,18 +232,21 @@ export const TESTIMONIALS: Testimonial[] = [
     author: 'Mara & Tom',
     tripTaken: '8 days on Naxos',
     rating: 5,
+    imageKey: 'naxos',
   },
   {
     quote: 'I told it “max €600, sunny, just me” and it found a week I could afford. The price labels made me trust it.',
     author: 'Devin O.',
     tripTaken: 'Solo week in Valencia',
     rating: 5,
+    imageKey: 'valencia',
   },
   {
     quote: 'Travelling with two kids is usually a spreadsheet nightmare. This felt like texting a friend who happens to be great at logistics.',
     author: 'The Okonkwo family',
     tripTaken: 'Long weekend in Lisbon',
     rating: 5,
+    imageKey: 'lisbon',
   },
 ];
 

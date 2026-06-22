@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Photo } from '@/components/Photo';
 import { StarIcon } from '@/components/icons';
+import { images } from '@/lib/images';
 import { TESTIMONIALS } from '@/lib/content';
 import { Section } from './_shared';
 
@@ -28,31 +30,56 @@ export function TestimonialCarousel() {
 
       <div className="relative mt-8">
         <div
-          className="overflow-hidden rounded-lg border border-border bg-bg p-8 shadow-card sm:p-10"
+          className="grid grid-cols-1 overflow-hidden rounded-lg border border-border bg-bg shadow-card sm:grid-cols-[minmax(0,15rem)_1fr]"
           aria-live="polite"
         >
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.figure
-              key={index}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="flex items-center gap-1 text-azure-500" aria-label={`Rated ${current.rating} out of 5`}>
-                {Array.from({ length: current.rating }).map((_, i) => (
-                  <StarIcon key={i} className="text-base" />
-                ))}
-              </div>
-              <blockquote className="mt-4 font-display text-xl font-medium leading-relaxed text-ink sm:text-2xl">
-                “{current.quote}”
-              </blockquote>
-              <figcaption className="mt-5 text-sm text-ink-2">
-                <span className="font-semibold text-ink">{current.author}</span>
-                <span className="text-ink-3"> · {current.tripTaken}</span>
-              </figcaption>
-            </motion.figure>
-          </AnimatePresence>
+          {/* Destination photo — visible by default; only the label crossfades. */}
+          <div className="relative isolate min-h-[10rem] sm:min-h-0">
+            <Photo
+              image={images.for(current.imageKey)}
+              imageKey={current.imageKey}
+              alt={`${current.tripTaken}`}
+              className="absolute inset-0 h-full w-full"
+            />
+            <span className="absolute inset-0 bg-scrim" aria-hidden />
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={index}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-x-0 bottom-0 p-4 text-sm font-semibold leading-tight text-white"
+              >
+                {current.tripTaken}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+
+          <div className="p-8 sm:p-10">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.figure
+                key={index}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="flex items-center gap-1 text-azure-500" aria-label={`Rated ${current.rating} out of 5`}>
+                  {Array.from({ length: current.rating }).map((_, i) => (
+                    <StarIcon key={i} className="text-base" />
+                  ))}
+                </div>
+                <blockquote className="mt-4 font-display text-xl font-medium leading-relaxed text-ink sm:text-2xl">
+                  “{current.quote}”
+                </blockquote>
+                <figcaption className="mt-5 text-sm text-ink-2">
+                  <span className="font-semibold text-ink">{current.author}</span>
+                  <span className="text-ink-3"> · {current.tripTaken}</span>
+                </figcaption>
+              </motion.figure>
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Controls */}
