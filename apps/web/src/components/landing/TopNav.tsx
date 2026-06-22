@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { AuthControls } from '@/components/AuthControls';
-import { navigate, planHref } from '@/lib/router';
+import { navigate, navigateToSection, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
 /**
@@ -44,6 +44,18 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
     navigate(planHref());
   };
 
+  // Section links (`#id`) only exist on the landing — route home + scroll from anywhere.
+  // Route links (`/pricing`) navigate. Never leave a dead anchor on a sub-page.
+  const onLinkClick = (l: { href: string; route?: boolean }) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpen(false);
+    if (l.route) {
+      navigate(l.href);
+    } else {
+      navigateToSection(l.href.replace(/^#/, ''));
+    }
+  };
+
   return (
     <header
       className={cn(
@@ -69,15 +81,8 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
           {LINKS.map((l) => (
             <a
               key={l.href}
-              href={l.href}
-              onClick={
-                l.route
-                  ? (e) => {
-                      e.preventDefault();
-                      navigate(l.href);
-                    }
-                  : undefined
-              }
+              href={l.route ? l.href : `/${l.href}`}
+              onClick={onLinkClick(l)}
               className={cn(
                 'rounded-pill px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2',
                 solid ? 'text-ink-2 hover:bg-surface hover:text-ink' : 'text-white/90 hover:bg-white/10 hover:text-white',
@@ -123,14 +128,8 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
               {LINKS.map((l) => (
                 <a
                   key={l.href}
-                  href={l.href}
-                  onClick={(e) => {
-                    if (l.route) {
-                      e.preventDefault();
-                      navigate(l.href);
-                    }
-                    setOpen(false);
-                  }}
+                  href={l.route ? l.href : `/${l.href}`}
+                  onClick={onLinkClick(l)}
                   className="rounded-md px-3 py-3 text-base font-medium text-ink hover:bg-surface focus-visible:ring-2"
                 >
                   {l.label}

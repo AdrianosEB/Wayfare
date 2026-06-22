@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Wordmark } from '@/components/Wordmark';
-import { navigate, planHref } from '@/lib/router';
+import { navigate, navigateToSection, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
 /**
@@ -20,8 +20,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: 'Product',
     links: [
       { label: 'Plan a trip', onClick: () => navigate(planHref()) },
-      { label: 'Trip types', href: '#trip-types' },
-      { label: 'How it works', href: '#how-it-works' },
+      { label: 'Trip types', onClick: () => navigateToSection('trip-types') },
+      { label: 'How it works', onClick: () => navigateToSection('how-it-works') },
     ],
   },
   {

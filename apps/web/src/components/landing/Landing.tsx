@@ -8,6 +8,7 @@ import { PartnerLogoRow, PressStrip } from './LogoStrips';
 import { TestimonialCarousel } from './TestimonialCarousel';
 import { FAQAccordion } from './FAQAccordion';
 import { SiteFooter } from './SiteFooter';
+import { useScrollToHash } from '@/lib/router';
 
 /**
  * Marketing landing page (`/`) — modeled on layla.ai, re-skinned white + azure, photo-rich.
@@ -15,6 +16,7 @@ import { SiteFooter } from './SiteFooter';
  * presets, and imagery come from lib/content.ts + lib/images.ts; routing via lib/router.ts.
  */
 export function Landing() {
+  useScrollToHash();
   return (
     <div className="min-h-full bg-bg">
       <TopNav />
