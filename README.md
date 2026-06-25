@@ -49,7 +49,20 @@ must serialize to exactly their shape.
 
 ## Status
 
-MVP is implemented end-to-end: the shared contract + API + planning agent + global mock
-provider on the backend, and the azure/Layla web client (marketing landing + conversational
-planner) on the frontend — wired together (`VITE_USE_MOCKS=0` talks to the live API). See
-[docs/ROADMAP.md](docs/ROADMAP.md) and [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+MVP is implemented end-to-end and wired together (`VITE_USE_MOCKS=0` talks to the live API):
+
+- **Backend** — the shared wire contract, the API, the planning agent (deterministic mock
+  planner by default; live `claude-opus-4-8` tool-use loop when `ANTHROPIC_API_KEY` is set),
+  and the global two-tier mock provider (curated + procedural).
+- **Frontend** — the azure/Layla web client: a photo-rich marketing **landing** (Hero → how
+  it works → trip types → low pricing → past trips → testimonials/FAQ/footer; minimal nav,
+  explored by scroll), a standalone **/pricing** cheapest-trips showcase, and the
+  conversational **planner** (prompt → clarify → stream → itinerary + budget → refine).
+- **Auth** — email+password, **guest-first and optional** (cookie sessions); the planner is
+  never gated. See [docs/AUTH_CONTRACT.md](docs/AUTH_CONTRACT.md).
+- **Imagery** — frontend-supplied via `apps/web/src/lib/images.ts` (a swap-seam for a real
+  provider `imageUrl` later); the wire carries no image fields.
+
+Next: real pricing providers behind the provider interface, then saved trips for logged-in
+users. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md),
+and the onboarding brief in [docs/SESSION_HANDOFF.md](docs/SESSION_HANDOFF.md).

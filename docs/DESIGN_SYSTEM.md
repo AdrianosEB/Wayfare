@@ -115,7 +115,8 @@ the full ambition while the build stays staged.
 | **PDF export** / offline itinerary | ✓ | v1 | Export button |
 | Booking hand-off (Skyscanner, Booking.com, Viator, GetYourGuide) | ✓ | later | Deep-link CTAs + partner row |
 | Multi-language (16 languages) | ✓ | later | i18n; language switcher in footer |
-| Save / account / share | partial | later | Account, share link |
+| Account / auth (guest-first login) | partial | **MVP** (built) | AuthModal + TopBar avatar menu |
+| Save trip / share | partial | later | Account, share link |
 
 Honesty rule carries through every priced surface: in MVP all prices render an
 **"Estimated"** chip (mock); the same component shows **"Live · Skyscanner · 2h ago"** later
@@ -142,8 +143,14 @@ Wayfare
 
 Mirrors Layla's structure, re-skinned white + azure, photo-rich.
 
-1. **Top nav** — left: Wayfare wordmark (azure dot/mark). Center/right: `How it works`,
-   `Trip types`, `Pricing`(later), and a solid azure **"Plan my trip"** button. Sticky,
+> **As built:** the landing (`/`) and a standalone `/pricing` page ship in `apps/web`
+> (`components/landing/` + `components/pricing/`). The nav is intentionally minimal — the page
+> is explored by **scrolling** rather than jump-tabs; the logo + section links route home from
+> any page. Order as built: Hero → Where to go → value cards → all-in-one → trip types → low
+> pricing → past trips → partners/press → testimonials → FAQ → footer.
+
+1. **Top nav** — left: Wayfare wordmark (azure dot/mark). Center/right: section links +
+   `Pricing` (built — `/pricing`) and a solid azure **"Plan my trip"** button. Sticky,
    white, hairline border on scroll.
 2. **Hero** — oversized headline **"Your trip. Planned in minutes."** + one-line subhead.
    Beneath it, **the live prompt box itself** (not just a button) — a big rounded input

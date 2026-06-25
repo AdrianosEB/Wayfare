@@ -8,14 +8,13 @@ Legend: ✅ in scope for the phase · 🚫 explicitly deferred.
 
 ---
 
-## Phase 0 — Specs _(current)_
+## Phase 0 — Specs _(done ✅)_
 
-The `/docs` folder: this set of specs. **No application code.** Exit criterion: specs
-reviewed and approved.
+The `/docs` folder: this set of specs. Specs reviewed and approved; code now exists.
 
 ---
 
-## Phase 1 — MVP: the full loop on mock data
+## Phase 1 — MVP: the full loop on mock data _(done ✅)_
 
 **Goal:** the complete conversational loop — prompt → clarify → plan → refine — working
 end-to-end on mock pricing, for any destination, with the budget always visible and honest.
@@ -37,7 +36,7 @@ end-to-end on mock pricing, for any destination, with the budget always visible 
 - ✅ Session + in-memory trip versioning.
 - 🚫 Real providers, accounts, saving/sharing, booking.
 
-**Exit criteria:**
+**Exit criteria (met ✅):**
 - The three VISION.md journeys (student €600, couple €2,500, family £1,800) all complete
   end-to-end on mock data.
 - A refinement ("swap the hotel", "add a day trip") re-plans only the affected slice and
@@ -45,9 +44,21 @@ end-to-end on mock pricing, for any destination, with the budget always visible 
 - Any arbitrary global destination returns a coherent, honestly-labeled plan.
 - Mock plan returns < 15 s with streamed progress (NFR-1/2).
 
+**Also landed (beyond the original MVP slice):**
+- ✅ **Full Layla-style marketing landing** (`/`) — Hero (live prompt box) → how it works →
+  trip types → low pricing → past trips → partners/press → testimonials → FAQ → footer.
+  Minimal nav; the page is explored by scrolling. Photo-rich, azure-on-white.
+- ✅ **Standalone `/pricing` page** — a cheapest-trips showcase; tapping a card seeds the
+  planner and auto-starts.
+- ✅ **Live agent option** — alongside the deterministic mock planner, the real
+  `claude-opus-4-8` tool-use loop runs when `ANTHROPIC_API_KEY`/`PLANNER_MODE=agent` is set.
+- ✅ **Email+password auth, guest-first** — cookie sessions, optional, never gates the
+  planner (pulled forward from Phase 3 as a self-contained slice). See
+  [AUTH_CONTRACT.md](./AUTH_CONTRACT.md). Persisting/saving trips to an account is still later.
+
 ---
 
-## Phase 2 — v1: real pricing, one category at a time
+## Phase 2 — v1: real pricing, one category at a time _(next)_
 
 **Goal:** replace mock with real data behind the same interface, starting with the lowest-
 risk category, without touching the agent or UI.
@@ -79,7 +90,9 @@ risk category, without touching the agent or UI.
 **Goal:** make trips durable, shareable, and actionable.
 
 **Build:**
-- ✅ Accounts/auth; persistent storage (swap in-memory session store → Postgres/Redis).
+- ◑ Accounts/auth — **the auth slice already shipped in Phase 1** (email+password,
+  guest-first, in-memory cookie sessions per [AUTH_CONTRACT.md](./AUTH_CONTRACT.md)). Remaining
+  here: persistent storage (swap the in-memory user/session stores → Postgres/Redis).
 - ✅ Save trips; revisit; **undo/revert** refinements (US-4.5) on top of existing versioning.
 - ✅ Share a read-only itinerary link (US-6.2); compare saved trips (US-6.3).
 - ✅ **Booking hand-off**: affiliate deep links (Kiwi/Booking/Viator) so shown prices become

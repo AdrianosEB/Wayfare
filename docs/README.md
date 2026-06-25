@@ -36,31 +36,34 @@ running total and the tradeoffs behind it are always visible and honest.
 
 ## Status
 
-**Phase 0 — specs.** This `/docs` folder is the product and engineering spec. No
-application code exists yet. The MVP will run entirely on **mock pricing data** behind a
-clean integration interface, then swap in real providers without touching the agent or
-UI. Scope is **global** from day one (see the two-tier mock strategy in
-[INTEGRATIONS.md](./INTEGRATIONS.md)).
+**MVP is built end-to-end** (Phase 1 complete). The monorepo is live: `@wayfare/shared`
+(the wire contract), the API server (planning agent + global mock provider), and the
+azure/Layla web client (marketing landing + `/pricing` showcase + conversational planner).
+Email+password auth (guest-first, cookie sessions) is wired. Everything runs on **mock
+pricing data** behind a clean integration interface; real providers swap in next without
+touching the agent or UI. Scope is **global** from day one (see the two-tier mock strategy in
+[INTEGRATIONS.md](./INTEGRATIONS.md)). For a fast onboarding brief, read
+[SESSION_HANDOFF.md](./SESSION_HANDOFF.md).
 
-## How to run it (once built)
-
-> Placeholder — the scaffold lands in Phase 1. Expected shape:
+## How to run it
 
 ```bash
-# 1. Install
-npm install
+# 1. Install (pnpm workspaces, Node 20+)
+corepack enable && pnpm install
+pnpm -r build                          # build packages (shared first)
 
-# 2. Configure — server-side keys only, never exposed to the client
-cp .env.example .env        # ANTHROPIC_API_KEY, provider keys (optional in mock mode)
+# 2. Web only, mock-driven (no server, no keys) — default in dev
+pnpm --filter web dev                  # http://localhost:5173 (MSW replays fixtures)
 
-# 3. Run the API server + web client (mock pricing by default)
-npm run dev
-
-# Open http://localhost:5173
+# 3. Full stack — web talks to the live API
+pnpm --filter @wayfare/server dev      # http://localhost:3000 (no key required to boot)
+VITE_USE_MOCKS=0 pnpm --filter web dev # web → Vite proxy → :3000
 ```
 
-Mock mode requires only `ANTHROPIC_API_KEY`. Real pricing providers are opt-in per
-[INTEGRATIONS.md](./INTEGRATIONS.md).
+The server boots and plans with the **deterministic mock planner** with no env at all.
+Set `ANTHROPIC_API_KEY` (optionally `PLANNER_MODE=agent`) to run the live `claude-opus-4-8`
+tool-use loop. Keys live only on the server (NFR-4); copy `apps/server/.env.example` →
+`apps/server/.env`. Real pricing providers are opt-in per [INTEGRATIONS.md](./INTEGRATIONS.md).
 
 ## The docs
 
@@ -76,7 +79,10 @@ Mock mode requires only `ANTHROPIC_API_KEY`. Real pricing providers are opt-in p
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Visual direction, key screens, component inventory, feel |
 | [ROADMAP.md](./ROADMAP.md) | Phased milestones: MVP → v1 → later |
 | [API_CONTRACT.md](./API_CONTRACT.md) | **Frozen** FE↔BE wire contract: endpoints, SSE protocol, errors |
+| [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) | **Frozen** auth wire: email+password, guest-optional cookie sessions |
+| [design/](./design) | Implementation-ready design package (tokens, components, screens, landing, voice) |
 | [fixtures/](./fixtures) | Canonical JSON payloads both sessions build against |
+| [SESSION_HANDOFF.md](./SESSION_HANDOFF.md) | **Start here** — onboarding brief for the next session: state, run, gotchas, what's next |
 | [BACKEND_BRIEF.md](./BACKEND_BRIEF.md) | Scoped kickoff brief for the backend session |
 | [FRONTEND_BRIEF.md](./FRONTEND_BRIEF.md) | Scoped kickoff brief for the frontend session |
 
@@ -88,3 +94,4 @@ Mock mode requires only `ANTHROPIC_API_KEY`. Real pricing providers are opt-in p
 - **Budget-aware & honest.** The running total and its tradeoffs are always visible.
 - **Re-planning is cheap.** A refinement touches only the affected parts of the trip.
 - **Keys stay server-side.** Pricing and model keys never reach the client.
+- **Guest-first.** Auth is optional and additive — the planner is never gated behind login.
