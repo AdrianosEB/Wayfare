@@ -201,6 +201,65 @@ export const BUDGET_TRIPS: SampleTrip[] = [
   },
 ];
 
+/**
+ * Recently-planned showcase — curated example trips used as inspiration / social proof on the
+ * landing. For now this is hand-authored marketing content; it's shaped to become real saved
+ * per-user trip history when trip-saving lands (swap the array for the user's trips, keep the
+ * card). `summary` is the one-line recap, `vibe` a short mood line, `prompt` seeds the planner.
+ */
+export interface PastTrip {
+  place: string;
+  imageKey: string;
+  summary: string;
+  vibe: string;
+  prompt: string;
+}
+
+export const PAST_TRIPS: PastTrip[] = [
+  {
+    place: 'Naxos, Greece',
+    imageKey: 'naxos',
+    summary: '8 days on Naxos — €2,410 for two',
+    vibe: 'Slow beach mornings, taverna nights.',
+    prompt: 'Relaxed 8-day beach trip on Naxos for two in late August, around €2,500',
+  },
+  {
+    place: 'Lisbon, Portugal',
+    imageKey: 'lisbon',
+    summary: '4 days in Lisbon — €720 for two',
+    vibe: 'Pastéis, viewpoints, and tram 28.',
+    prompt: 'A 4-day city break in Lisbon with great food and viewpoints, around €800',
+  },
+  {
+    place: 'Kyoto, Japan',
+    imageKey: 'kyoto',
+    summary: '7 days in Kyoto — €2,980 for two',
+    vibe: 'Temples at dawn, ramen at midnight.',
+    prompt: 'A week in Kyoto for two, temples and food, mid-range budget',
+  },
+  {
+    place: 'Amalfi Coast, Italy',
+    imageKey: 'amalfi',
+    summary: '6 days on the Amalfi Coast — €1,840 for two',
+    vibe: 'Cliffside drives and lemon spritz.',
+    prompt: 'A 6-day coastal trip on the Amalfi Coast for two, scenic and romantic',
+  },
+  {
+    place: 'Valencia, Spain',
+    imageKey: 'valencia',
+    summary: 'A solo week in Valencia — €610',
+    vibe: 'Beach, tapas, and zero stress.',
+    prompt: 'A relaxed solo week in Valencia, beach and tapas, around €600',
+  },
+  {
+    place: 'Kraków, Poland',
+    imageKey: 'krakow',
+    summary: '3 nights in Kraków — €170 solo',
+    vibe: 'Old town wanders on a tiny budget.',
+    prompt: 'A budget 3-night solo trip to Kraków, Poland, old town and food, around €170',
+  },
+];
+
 export interface ValueCardItem {
   key: string;
   title: string;

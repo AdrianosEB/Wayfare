@@ -5,6 +5,7 @@ import { ValueCards } from './ValueCards';
 import { AllInOne } from './AllInOne';
 import { TripTypeGrid } from './TripTypeGrid';
 import { LowPricing } from './LowPricing';
+import { PastTrips } from './PastTrips';
 import { PartnerLogoRow, PressStrip } from './LogoStrips';
 import { TestimonialCarousel } from './TestimonialCarousel';
 import { FAQAccordion } from './FAQAccordion';
@@ -28,6 +29,7 @@ export function Landing() {
         <AllInOne />
         <TripTypeGrid />
         <LowPricing />
+        <PastTrips />
         <PartnerLogoRow />
         <PressStrip />
         <TestimonialCarousel />
