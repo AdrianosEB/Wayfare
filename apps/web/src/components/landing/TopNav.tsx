@@ -4,24 +4,21 @@ import { cn } from '@/lib/cn';
 import { Wordmark } from '@/components/Wordmark';
 import { Button } from '@/components/Button';
 import { AuthControls } from '@/components/AuthControls';
-import { navigate, navigateToSection, planHref } from '@/lib/router';
+import { navigate, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
 /**
  * Sticky marketing nav. Transparent over the hero at the very top; becomes white with a
- * hairline border once the page scrolls. Below `md` the links collapse into a hamburger
- * that reveals a slide-down menu.
+ * hairline border once the page scrolls. Below `md` it collapses into a hamburger that
+ * reveals a slide-down menu.
+ *
+ * Minimal by design: just the logo, the "Plan my trip" CTA, and auth. The marketing content
+ * (how it works, trip types, pricing) is explored by scrolling the page, not by jump-tabs.
  *
  * Pages without a dark full-bleed hero behind the nav (e.g. `/pricing`) must pass
  * `alwaysSolid` — otherwise the transparent-at-top state renders white text on the white
  * page background and the bar reads as invisible until you scroll down.
  */
-
-const LINKS: { label: string; href: string; route?: boolean }[] = [
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Trip types', href: '#trip-types' },
-  { label: 'Pricing', href: '/pricing', route: true },
-];
 
 export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
@@ -44,18 +41,6 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
     navigate(planHref());
   };
 
-  // Section links (`#id`) only exist on the landing — route home + scroll from anywhere.
-  // Route links (`/pricing`) navigate. Never leave a dead anchor on a sub-page.
-  const onLinkClick = (l: { href: string; route?: boolean }) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setOpen(false);
-    if (l.route) {
-      navigate(l.href);
-    } else {
-      navigateToSection(l.href.replace(/^#/, ''));
-    }
-  };
-
   return (
     <header
       className={cn(
@@ -76,22 +61,9 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
           <Wordmark onLight={!solid} />
         </a>
 
-        {/* Desktop links */}
+        {/* Desktop: CTA + auth only — explore by scrolling, no jump-tabs. */}
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
-          {LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.route ? l.href : `/${l.href}`}
-              onClick={onLinkClick(l)}
-              className={cn(
-                'rounded-pill px-3.5 py-2 text-sm font-medium transition focus-visible:ring-2',
-                solid ? 'text-ink-2 hover:bg-surface hover:text-ink' : 'text-white/90 hover:bg-white/10 hover:text-white',
-              )}
-            >
-              {l.label}
-            </a>
-          ))}
-          <Button className="ml-2" onClick={goPlan}>
+          <Button onClick={goPlan}>
             {MARKETING.hero.cta}
           </Button>
           <AuthControls onLight={!solid} className="ml-1" />
@@ -125,17 +97,7 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
             className="overflow-hidden border-t border-border bg-bg md:hidden"
           >
             <nav className="mx-auto flex max-w-site flex-col gap-1 px-6 py-4" aria-label="Mobile">
-              {LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.route ? l.href : `/${l.href}`}
-                  onClick={onLinkClick(l)}
-                  className="rounded-md px-3 py-3 text-base font-medium text-ink hover:bg-surface focus-visible:ring-2"
-                >
-                  {l.label}
-                </a>
-              ))}
-              <Button className="mt-2 w-full" size="lg" onClick={goPlan}>
+              <Button className="w-full" size="lg" onClick={goPlan}>
                 {MARKETING.hero.cta}
               </Button>
               <div className="mt-2 flex items-center justify-center border-t border-border pt-3">
