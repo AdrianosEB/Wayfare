@@ -98,6 +98,9 @@ export function generateStays(
     return stay;
   });
 
+  // Apply the per-night ceiling with a 5% tolerance (avoids dropping a stay that's a rounding
+  // hair over). If the cap filters everything out, fall back to the full set rather than
+  // returning nothing — a slightly-over stay beats no stay at all.
   const capped = q.maxNightly
     ? candidates.filter((s) => s.listing.price.amount / s.nights <= q.maxNightly! * 1.05)
     : candidates;

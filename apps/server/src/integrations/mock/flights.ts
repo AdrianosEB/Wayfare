@@ -52,6 +52,11 @@ export function generateFlights(
   const flightHours = Math.max(1, dist / 750) + 0.6;
 
   const built = options.map((opt, i) => {
+    // Per-person round-trip fare = base × option multiplier × seeded demand jitter, plus a flat
+    // €35 per stop. Split evenly across the two legs and scaled to a party total; each leg's
+    // Listing price is therefore (rtPP / 2) × pax, and `total` (both legs) drives the sort.
+    // (The `opt.stops === 1 ? 1 : 1` term is an intentional no-op placeholder for a future
+    // stops-based multiplier — stops are currently priced only via the flat +35 above.)
     const demand = 0.9 + rng.float() * 0.3;
     const rtPP = baseRtPP * opt.mult * demand * (opt.stops === 1 ? 1 : 1) + opt.stops * 35;
     const legPriceParty = round((rtPP / 2) * pax);

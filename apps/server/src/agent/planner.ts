@@ -93,6 +93,8 @@ function buildSavings(opts: {
   return hints;
 }
 
+// Translate the free-text `avoid` list (e.g. "no layovers", "max 1 stop") into a numeric
+// maxStops constraint the flight search understands. Returns undefined when nothing matches.
 const maxStopsFromAvoid = (request: TripRequest): number | undefined => {
   const avoid = (request.avoid?.value ?? []).join(" ").toLowerCase();
   if (/non-?stop|no layover|direct/.test(avoid)) return 0;
@@ -134,6 +136,9 @@ export async function planDeterministic(
   emit.partial({ itinerary: { flights: pair } });
 
   // SCOUR — stays
+  // Budgeting heuristic: reserve ~45% of the total budget for lodging, spread across the
+  // nights, to derive a per-night ceiling we hand the stay search. Keeps the stay in line
+  // with the trip budget before activities are even costed.
   emit.status("search_stays", `Comparing stays in ${destShort}…`);
   const nightlyCap = pc.budget ? (pc.budget.amount * 0.45) / pc.dates.nights : undefined;
   const stays = await toolbox.searchStays({
@@ -159,6 +164,9 @@ export async function planDeterministic(
   });
 
   // 3. RANK / 4. ASSEMBLE
+  // Activities only get the budget left after the unavoidable fixed costs (flights + stay),
+  // and we leave an 8% cushion (×0.92) for the food/contingency buffer that compute_budget
+  // adds later. `headroom` is what selectActivities is allowed to spend on paid experiences.
   const fixedSoFar =
     pair[0].listing.price.amount + pair[1].listing.price.amount + stay.listing.price.amount;
   const headroom = pc.budget ? pc.budget.amount * 0.92 - fixedSoFar : Number.POSITIVE_INFINITY;

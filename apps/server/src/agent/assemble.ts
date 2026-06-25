@@ -132,7 +132,10 @@ export function assembleDays(opts: {
     transitListings.push(departure.listing);
   }
 
-  // distribute paid activities across middle days, respecting the per-day cap
+  // distribute paid activities across middle days, respecting the per-day cap.
+  // Fill order biases toward interior days (2..N) first, leaving the arrival day (index 0)
+  // for last and lightly — you rarely want a packed schedule on the day you land. `cursor`
+  // round-robins across days so activities spread out instead of stacking on the first slot.
   const interiorOrder: number[] = [];
   for (let d = 1; d < nights; d++) interiorOrder.push(d); // day 2..N (0-based 1..N-1)
   interiorOrder.push(0); // day 1 last, lightly

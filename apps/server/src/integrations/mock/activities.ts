@@ -40,6 +40,12 @@ const TEMPLATES: Template[] = [
   { category: "hike", title: "Coastal or mountain hike", mult: 0, durationMin: 240, tags: ["nature", "adventure"], kid: true },
 ];
 
+/**
+ * Interest-match score = number of template tags that overlap the user's interests. Matching is
+ * substring-both-ways (tag in interest OR interest in tag) so "food"/"foodie" and "kid"/"kids"
+ * align without an exact-string requirement. No interests given → score 1 (everything ties, the
+ * seeded shuffle then picks a balanced spread).
+ */
 function matches(t: Template, interests: string[]): number {
   if (interests.length === 0) return 1;
   return t.tags.filter((tag) => interests.some((i) => i.toLowerCase().includes(tag) || tag.includes(i.toLowerCase()))).length;

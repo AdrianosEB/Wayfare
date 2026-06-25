@@ -88,7 +88,9 @@ export function computeBudget(input: ComputeBudgetInput): Budget {
     });
   }
 
-  // food/contingency buffer — not an itinerary listing, so it has no itemRefs.
+  // food/contingency buffer — not an itinerary listing, so it has no itemRefs. It's a
+  // per-person, per-day food allowance scaled by the destination cost tier, rounded to the
+  // nearest 25 (major units) so it reads as a deliberate estimate, not a false-precision figure.
   const bufferRaw = convertFromEur(nights * partySize * foodPerDayEur(tier), currency);
   const bufferAmount = Math.round(bufferRaw / 25) * 25;
   if (bufferAmount > 0) {

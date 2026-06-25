@@ -110,7 +110,9 @@ export function selectClarifyQuestions(request: TripRequest): ClarifyQuestion[] 
   // 1. origin — near-always top when missing
   if (!has(request.origin)) out.push(Q.origin());
 
-  // 2. budget — governs everything
+  // 2. budget — governs everything. Ask for an amount if missing; otherwise only ask
+  // hard-vs-soft when the parse was low-confidence AND no firmness was stated (a confidently
+  // parsed "max €2,000" already implies hard, so don't re-interrogate).
   if (!has(request.budget)) out.push(Q.budget());
   else if (request.budget && request.budget.confidence < 0.85 && request.budget.value.type == null) {
     out.push(Q.budget_firmness());

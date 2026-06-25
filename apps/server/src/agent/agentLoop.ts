@@ -74,7 +74,11 @@ export async function planWithAgent(
   const provider = new MockProvider({ now: deps.ctx.now, currency: pc.currency });
   const toolbox = new Toolbox(provider);
 
-  // registries so we can resolve the model's chosen ids back to typed objects
+  // The model only ever sees and returns Listing IDs (strings), never the full typed objects.
+  // As each search tool runs we stash its results here keyed by id (see `capture`), so when the
+  // model calls present_plan with its chosen ids we can resolve them back to typed Flight/Stay/
+  // Activity objects (see `assembleFromSelection`). An id the model invents that isn't in these
+  // maps fails resolution → fall back to the deterministic plan.
   const flightsById = new Map<string, Flight>();
   const staysById = new Map<string, Stay>();
   const activitiesById = new Map<string, Activity>();
@@ -109,6 +113,8 @@ export async function planWithAgent(
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "ok" });
         continue;
       }
+      // Hard cap on search calls (NFR-5). Past the budget we stop running tools but keep the
+      // loop alive, nudging the model to finalize with what it already has rather than looping.
       if (++toolCalls > MAX_TOOL_CALLS) {
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "tool budget exhausted; call present_plan now", is_error: true });
         continue;

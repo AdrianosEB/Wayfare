@@ -134,7 +134,9 @@ function extractDestination(text: string, original: string): Tracked<string> | n
       return t(d.charAt(0).toUpperCase() + d.slice(1), "prompt", 0.95);
     }
   }
-  // vague: "somewhere <vibe>", "in Europe", "sunny"
+  // vague: "somewhere <vibe>", "in Europe", "sunny".
+  // "in <Capitalized>" is a weak destination signal — but guard against month names so
+  // "travelling in March" isn't misread as a place called "March".
   const inMatch = original.match(/\bin\s+([A-Z][a-zA-Z]+)\b/);
   if (inMatch && !/march|april|august|june|july|may/i.test(inMatch[1]!)) {
     return t(inMatch[1]!, "prompt", 0.7);

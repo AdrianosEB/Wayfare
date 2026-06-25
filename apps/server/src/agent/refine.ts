@@ -38,6 +38,13 @@ const STATUS_BY_SCOPE: Record<RefinementScope, string> = {
   info: "Looking that up…",
 };
 
+/**
+ * Map a free-text refinement utterance to a single scope. Order matters: question-detection
+ * runs first (so "why this hotel?" is `info`, not `lodging`), then scopes are checked
+ * most-impactful → least (destination/budget/dates trigger a full re-plan; lodging/flights/
+ * activity_day touch one slice). Anything unmatched falls through to `info` — change nothing,
+ * just answer — which is the safe default against over-eager re-planning.
+ */
 export function classifyScope(utterance: string): RefinementScope {
   const u = utterance.toLowerCase();
   const isQuestion =
@@ -133,6 +140,8 @@ function addDayTrip(trip: Trip, utterance: string, ctx: MockContext, diff: ItemD
     freshness: "mock",
     confidence: 0.7,
   };
+  // Drop the day trip on a mid-trip day (never day 1/arrival), capped at day index 4 so it
+  // lands in the heart of the stay even on long trips.
   const dayIdx = Math.min(4, Math.max(1, Math.floor(trip.itinerary.days.length / 2)));
   const day = next.itinerary.days[dayIdx];
   if (!day) return next;
@@ -190,7 +199,9 @@ export async function refine(
     next = addDayTrip(structuredClone(prev), utterance, localCtx, diff);
   }
 
-  // re-cost (compute_budget is still the only summer) + over-budget trims
+  // re-cost (compute_budget is still the only summer) + over-budget trims.
+  // If a slice refiner couldn't make a change it returns `prev` unmodified; clone before we
+  // mutate budget/id/summary so we never write through to the stored previous version.
   emit.status("compute_budget", "Re-costing…");
   const rebuilt: Trip = next === prev ? structuredClone(prev) : next;
   const newBudget = recomputeBudget(rebuilt);

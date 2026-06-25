@@ -105,6 +105,9 @@ function resolveVague(request: TripRequest): { name: string; reason: string } {
   const origin = resolvePlace(request.origin?.value ?? "London");
   const avoid = (request.avoid?.value ?? []).map((a) => a.toLowerCase());
 
+  // Score each candidate: +3 per matched taste tag (the dominant signal), a cheap-destination
+  // bonus only for tight hard budgets, a proximity bonus when the user wants a short hop, and a
+  // small seeded jitter so ties break deterministically rather than by array order.
   const rng = new Rng("resolve", request.destination?.value ?? "", request.origin?.value ?? "");
   const scored = CANDIDATES.filter((c) => !avoid.some((a) => c.name.toLowerCase().includes(a)))
     .map((c) => {
@@ -137,7 +140,9 @@ export function buildPlanContext(request: TripRequest, year: number): PlanContex
     assumptions.push({ field: "origin", assumed: origin, reason: "you skipped origin; starting from a major hub near you." });
   }
 
-  // destination
+  // destination — resolution priority: (1) a curated hero pack owns it (e.g. "Greece" → Naxos),
+  // (2) it's vague ("somewhere sunny") → score the candidate shortlist, recording an assumption,
+  // (3) otherwise take the named place verbatim. Only (2) and the curated picks add assumptions.
   const rawDest = request.destination?.value;
   const curated = rawDest ? findCuratedPack(rawDest) : undefined;
   let destinationResolved: string;

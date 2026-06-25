@@ -42,6 +42,9 @@ function emitterFor(sse: SseStream): PlanEmitter {
 
 function planDeps(deps: RouteDeps): RunDeps {
   return {
+    // ctx.currency here is only a placeholder — the planner rebinds the provider to the
+    // currency it infers from origin/budget (see buildPlanContext → MockProvider), so every
+    // listing ends up in the resolved trip currency regardless of this "EUR".
     ctx: { now: deps.now(), currency: "EUR" },
     year: deps.year,
     useAgent: deps.useAgent,

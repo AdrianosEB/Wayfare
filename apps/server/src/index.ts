@@ -11,6 +11,9 @@ import type { RouteDeps } from "./routes/session.js";
  * planning. Keys live only here, server-side (NFR-4).
  */
 const now = () => config.now;
+// useAgent() can return true for PLANNER_MODE=agent even without a key; we re-gate on an actual
+// key here so a misconfigured `agent` mode degrades to the deterministic planner instead of
+// constructing an Anthropic client with no credentials and failing at request time.
 const agentEnabled = useAgent(config) && Boolean(config.anthropicApiKey);
 
 const deps: RouteDeps = {
