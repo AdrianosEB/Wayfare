@@ -4,6 +4,20 @@ import { cn } from '@/lib/cn';
 import { currencySymbol } from '@/lib/format';
 import { CheckIcon, MinusIcon, PlusIcon, MapPinIcon } from './icons';
 
+/**
+ * The low-friction input primitives the clarifying-question cards render, one per
+ * ClarifyQuestion `format` (see QuestionCardStack's QuestionInput switch):
+ *   - ChipSelect       single-select (radiogroup) or multi-select (group) pill chips.
+ *   - Stepper          party size — adults/children counters → PartySize.
+ *   - CurrencyInput    a budget amount → Money ({ amount, currency }).
+ *   - CityAutocomplete a short text field with a small curated city suggestion list.
+ *   - ShortText        plain free text.
+ *   - SkipControl      the visible Skip toggle that shows a question's default.
+ *
+ * Each is controlled and calls `onChange` with the typed AnswerValue for its format. No data
+ * fetching or store access — these are dumb, reusable form atoms.
+ */
+
 /* ----------------------------------------------------------------- ChipSelect --- */
 
 export interface ChipSelectProps {

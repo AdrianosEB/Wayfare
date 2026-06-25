@@ -1,3 +1,47 @@
+/**
+ * The planner's SSE-driven state machine — how a prompt becomes a plan in the client.
+ *
+ * This Zustand store owns the entire "prompt → plan → refine" lifecycle. The flow is:
+ *
+ *   1. submitPrompt(prompt)   POST /api/session (cheap, synchronous JSON).
+ *                             → agent message + extracted request + clarifying questions.
+ *                             Phase: idle → creating → clarifying (or straight to planning
+ *                             when there are no questions, via an empty submitAnswers).
+ *
+ *   2. submitAnswers(body)    POST /api/session/:id/answers — opens the SSE stream that
+ *                             builds the initial plan. Phase: clarifying → planning → ready.
+ *
+ *   3. refine(utterance)      POST /api/session/:id/refine — opens an SSE stream that streams
+ *                             the delta against the current trip. Phase: ready → refining →
+ *                             ready. Guarded against re-entry while a stream is live.
+ *
+ * Streaming is driven imperatively (not React Query): `consumeStream` reads the SSE body via
+ * `parseSseStream` (fetch + ReadableStream — see lib/sse.ts for why not EventSource) and maps
+ * each event onto store mutations:
+ *   - `status`     → append a thinking line to the run's collapsible statusGroup message.
+ *   - `partial`    → RFC-7386 merge-patch into `workingTrip` (the progressive working copy;
+ *                    see lib/mergePatch.ts). Components render `trip ?? workingTrip` so the
+ *                    itinerary fills in live (flights → stay → days) instead of a blank spinner.
+ *   - `assumption` → accumulate de-duped assumptions surfaced as the plan is built.
+ *   - `message`    → append an agent text bubble.
+ *   - `complete`   → the AUTHORITATIVE `trip` lands; it replaces `workingTrip` wholesale, bumps
+ *                    `version`, and (on refine) records the diff + budgetDelta + changedKeys.
+ *   - `error`      → `degraded:true` surfaces softly as an agent message (plan still completes
+ *                    with labeled estimates); otherwise it sets `error`.
+ *
+ * A single module-level AbortController (`runController`) backs cancel()/reset() and is also
+ * passed to fetch so navigating away or starting a new run tears the stream down cleanly.
+ *
+ * `changedKeys` (derived from the refinement diff) is a loose Set of names/titles/listing-ids
+ * that itinerary components match themselves against to render "changed" badges — intentionally
+ * robust to sparse fixture arrays where positional diffing would be brittle.
+ *
+ * NOTE on motion: itinerary/plan content here renders VISIBLE BY DEFAULT. Do not gate it behind
+ * opacity-from-0 Framer entrance animations — StrictMode's dev double-mount (now removed in
+ * main.tsx) and paused/backgrounded tabs can stall `staggerChildren` orchestration mid-flight,
+ * freezing newly-streamed cards near opacity:0 (the "disappearing UI" bug). See main.tsx and
+ * lib/motion.ts.
+ */
 import { create } from 'zustand';
 import type {
   Assumption,

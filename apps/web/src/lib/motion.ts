@@ -12,6 +12,21 @@ export const EASE: Easing = [0.22, 1, 0.36, 1];
 /** Legacy alias kept for existing planner imports. */
 export const easeOut = EASE;
 
+/**
+ * ⚠️ "Disappearing UI" guardrail — read before reusing these on critical content.
+ *
+ * `staggerChild` starts at opacity:0 and is revealed by its parent `staggerContainer`'s
+ * `staggerChildren` orchestration. That orchestration can STALL — under React StrictMode's
+ * dev double-mount (now removed in main.tsx) or in paused/backgrounded tabs — leaving the
+ * children frozen near opacity:0, i.e. invisible. That was the "disappearing UI" bug.
+ *
+ * Safe usage (what the landing does): drive these from `whileInView` with
+ * `viewport={{ once: true }}` for non-essential, scroll-revealed marketing chrome — the
+ * IntersectionObserver re-triggers and self-heals. Do NOT gate must-see content (the streamed
+ * itinerary, plan, or budget in the planner) behind an opacity-from-0 entrance; render that
+ * VISIBLE BY DEFAULT. See main.tsx and store/session.ts.
+ */
+
 /** Container that staggers its children in (cards, itinerary items, question cards). */
 export const staggerContainer: Variants = {
   hidden: {},
