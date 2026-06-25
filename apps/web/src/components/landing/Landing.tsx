@@ -4,6 +4,7 @@ import { WhereToGo } from './WhereToGo';
 import { ValueCards } from './ValueCards';
 import { AllInOne } from './AllInOne';
 import { TripTypeGrid } from './TripTypeGrid';
+import { LowPricing } from './LowPricing';
 import { PartnerLogoRow, PressStrip } from './LogoStrips';
 import { TestimonialCarousel } from './TestimonialCarousel';
 import { FAQAccordion } from './FAQAccordion';
@@ -26,6 +27,7 @@ export function Landing() {
         <ValueCards />
         <AllInOne />
         <TripTypeGrid />
+        <LowPricing />
         <PartnerLogoRow />
         <PressStrip />
         <TestimonialCarousel />
