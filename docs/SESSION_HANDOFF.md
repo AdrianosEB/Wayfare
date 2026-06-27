@@ -1,138 +1,212 @@
-# Session handoff — start here
+# Session handoff — control brief (START HERE)
 
-A crisp onboarding brief so the next session can get productive in minutes. For the deep
-specs, follow the links into the rest of `/docs`.
+> **You are the next agent on Wayfare. Read this one doc and you can be productive in 5
+> minutes.** It is self-contained; the previous session is gone. For deep specs, follow the
+> links into the rest of `/docs`. Repo: `/Users/adrianosbotsios/Desktop/tripPlanner`, branch
+> `main`.
 
-## What Wayfare is
+---
 
-A trip planner that turns **one sentence** ("a relaxed 8-day beach trip in Greece in late
-August for two, ~€2,500") into a complete, costed, day-by-day itinerary you refine by
-chatting — with every price showing its source + freshness and the running budget always on
-the table.
+## 1. What Wayfare is
 
-## Current state — what's built & working
+Wayfare is an **AI trip planner**: you describe a trip in **one sentence** ("a relaxed 8-day
+beach trip in Greece in late August for two, ~€2,500") and it returns a complete, **costed,
+day-by-day itinerary** you then **refine by chatting** ("swap the hotel", "add a day trip") —
+with the **running budget always visible** and every price showing its source + freshness. The
+front door is one prompt box, not a form.
 
-The MVP is implemented end-to-end (Phase 1 in [ROADMAP.md](./ROADMAP.md)) and the two apps
-are wired together.
+---
 
-- **Shared contract** (`@wayfare/shared`) — TS types + Zod schemas for the entire wire
-  (`Trip`/`Itinerary`/`Listing`/`Budget`/SSE events/auth). The single source of truth.
-- **API server** (`@wayfare/server`) — session state, the planning agent, the mock provider,
-  and auth routes. Boots with **no env**.
-  - **Planner has two modes** (`apps/server/src/config.ts`): a **deterministic, seeded mock
-    planner** (default, offline, repeatable) and the **live `claude-opus-4-8` tool-use loop**
-    (only when `ANTHROPIC_API_KEY` is set, or `PLANNER_MODE=agent`). `auto` picks the agent
-    iff a key is present.
-  - **Global mock provider** — two tiers (`apps/server/src/integrations`): curated hero
-    destinations + a procedural generator for everywhere else; deterministic per
-    (destination, dates, party).
-- **Web client** (`apps/web`) — the azure/Layla design system (white-dominant, sky-azure
-  `#2F80ED`, photo-rich). Three routes via a tiny history-API router (`lib/router.ts`, no
-  router dep — see `App.tsx`):
-  - **`/` — marketing landing** (`components/landing/Landing.tsx`): Hero (a *live prompt box*,
-    not just a button) → Where to go → value cards → all-in-one → trip types → **low pricing**
-    → **past trips** → partners/press → testimonials → FAQ → footer. **Minimal nav, explored
-    by scroll** (no jump-tabs; logo + section links route home from any page).
-  - **`/pricing`** (`components/pricing/PricingPage.tsx`): a cheapest-trips showcase; tapping
-    a card seeds the planner (`planHref({ seed, autostart })`) and auto-starts.
-  - **`/plan` (+ `/plan/:type`) — the planner**: prompt → clarifying cards → streamed agent
-    status → itinerary + budget panel → refine chat. Streams over SSE.
-- **Auth** — email+password, **guest-first** (cookie sessions). The `AuthModal` opens from the
-  TopBar; logged-out shows Log in / Sign up, logged-in shows an avatar menu. See
-  [AUTH_CONTRACT.md](./AUTH_CONTRACT.md). Stores are in-memory (swap to a DB later).
-- **Imagery is frontend-supplied** (`apps/web/src/lib/images.ts`) — the wire carries no image
-  fields.
+## 2. Current state — what's built & working
 
-## Repo / monorepo layout
+**The MVP is done end-to-end on mock data** (Phase 1 in [ROADMAP.md](./ROADMAP.md)); both apps
+are wired together and everything is on `main`.
+
+- **Monorepo** — pnpm workspaces, Node 20+, TypeScript everywhere: `packages/shared`,
+  `apps/server`, `apps/web`.
+- **Conversational planner, full loop** — prompt → clarifying questions → **SSE-streamed**
+  agent progress → itinerary + budget panel → refine chat (partial re-plan + "what changed"
+  diff + budget delta).
+- **Global two-tier mock pricing provider** — curated hero destinations + a procedural
+  generator for everywhere else; **deterministic/seeded** per (destination, dates, party).
+- **Two planner modes** — a **deterministic mock planner** (default, offline, repeatable) and a
+  **live `claude-opus-4-8` tool-use agent** that runs only when `ANTHROPIC_API_KEY` is set (or
+  `PLANNER_MODE=agent`).
+- **Marketing landing** (`/`) — azure/Layla design system (white-dominant, sky-azure `#2F80ED`,
+  photo-rich). **Minimal nav, explored by scrolling**: hero (a live prompt box) → how it works →
+  trip types → low pricing → past trips → testimonials → FAQ → footer. Plus a standalone
+  **`/pricing`** cheapest-trips showcase (tapping a card seeds + auto-starts the planner).
+- **Email + password auth, guest-first** — httpOnly cookie sessions, bcrypt hashing; opens from
+  the TopBar; **never gates the planner**. Stores are in-memory. See
+  [AUTH_CONTRACT.md](./AUTH_CONTRACT.md).
+- **Imagery is frontend-supplied** via `apps/web/src/lib/images.ts` — the wire carries **no**
+  image fields.
+
+---
+
+## 3. How to run
+
+```bash
+corepack enable          # provides pnpm (pinned in package.json)
+pnpm install
+pnpm -r build            # build packages — shared first
+
+# A) Web only, mock-driven — no server, no keys (MSW replays docs/fixtures)
+pnpm --filter web dev                       # http://localhost:5173
+
+# B) Full stack — web hits the live API
+pnpm --filter server dev                    # http://localhost:3000  (boots with NO env)
+VITE_USE_MOCKS=0 pnpm --filter web dev      # web → Vite proxy /api → :3000
+```
+
+**Switch to the live agent (optional):** copy `apps/server/.env.example` → `apps/server/.env`,
+set `ANTHROPIC_API_KEY=…`, then run the server. `PLANNER_MODE` (in that `.env`) is `auto` |
+`deterministic` | `agent` — `auto` uses the agent **iff a key is present**; `agent` without a
+key throws; `deterministic` always uses the mock planner. Model defaults to `claude-opus-4-8`.
+
+**Checks (run before declaring done):**
+
+```bash
+pnpm -r typecheck
+pnpm -r test                # shared: fixture conformance · server: journeys/refine/HTTP/auth
+pnpm --filter web build     # catch web type/build breaks
+```
+
+The JSON in [`docs/fixtures/`](./fixtures) are **golden tests** — schemas/endpoints must
+serialize to exactly those shapes.
+
+---
+
+## 4. Repo map
 
 ```
-wayfare/                      pnpm workspaces · Node 20+ · TypeScript everywhere
-├── docs/                     authoritative specs (this folder) + design/ + fixtures/
+wayfare/
+├── docs/                         authoritative specs + design/ + fixtures/  (index: docs/README.md)
 ├── packages/
-│   └── shared/               @wayfare/shared — TS types + Zod schemas (THE wire contract)
+│   └── shared/src/               @wayfare/shared — THE frozen wire contract (TS types + Zod)
+│       common · listing · request · trip · budget · refinement · session · api · sse · auth
 └── apps/
-    ├── server/               @wayfare/server — API + planning agent + mock integrations + auth
-    │   src/agent/            planner, agent loop, tools, refine, clarify, merge
-    │   src/integrations/     mock provider (curated/ + mock/), provider interface, composite
-    │   src/auth/             userStore, sessionStore, password (bcrypt), cookies, routes
-    │   src/session/          in-memory trip/session store + versioning
-    └── web/                  React + Vite + Tailwind + Framer Motion; Zustand + React Query
-        src/components/landing/   marketing sections
-        src/components/pricing/   /pricing page
-        src/components/            planner UI (Planner, ItineraryPanel, BudgetPanel, …)
-        src/lib/               router, images, api, sse, content, format, motion
-        src/store/             session.ts, auth.ts (Zustand)
-        src/mocks/             MSW handlers + fixtures (mock-mode wire replay)
+    ├── server/src/               @wayfare/server — API + agent + mock integrations + auth
+    │   index · app · config · errors · sse · dates · ids · rng
+    │   routes/session.ts         the /api/session* endpoints
+    │   agent/                     parse · clarify · merge · planner · agentLoop · tools ·
+    │                              assemble · refine · resolve · run · budget · prompts
+    │   integrations/             provider · composite · mockProvider · listingFactory ·
+    │                              geo · costIndex · curated/ · mock/
+    │   auth/                      userStore · sessionStore · password (bcrypt) · cookies · routes
+    │   session/store.ts          in-memory trip/session store + versioning
+    └── web/src/                  React + Vite + Tailwind + Framer Motion; Zustand + React Query
+        App.tsx · main.tsx        tiny history-API router (no router dep) — see lib/router.ts
+        types/index.ts            the @/types barrel → re-exports @wayfare/shared (NO local mirror)
+        components/landing/       Hero · WhereToGo · ValueCards · AllInOne · TripTypeGrid ·
+                                  LowPricing · PastTrips · LogoStrips · TestimonialCarousel ·
+                                  FAQAccordion · SiteFooter · TopNav · TripCard · Landing
+        components/pricing/       PricingPage.tsx
+        components/               planner UI — Planner · ItineraryPanel · BudgetPanel ·
+                                  DayTimeline · FlightCard · StayCard · ActivityItem ·
+                                  AgentStatusLine · QuestionCardStack · RefineComposer ·
+                                  SourceChip · Price · AuthModal · TopBar · …
+        store/                    session.ts · auth.ts  (Zustand)
+        lib/                      router · sse · api · images · content · format · motion ·
+                                  mergePatch · cn
+        mocks/                    MSW handlers + fixtures (mock-mode wire replay)
 ```
 
 API on `:3000`, web on `:5173` (Vite proxies `/api` → `:3000`).
 
-## How to run
+**Wire endpoints** (see [API_CONTRACT.md](./API_CONTRACT.md) / [AUTH_CONTRACT.md](./AUTH_CONTRACT.md)):
+`POST /api/session` (parse + clarify) · `POST /api/session/:id/answers` (SSE, initial plan) ·
+`POST /api/session/:id/refine` (SSE, partial re-plan) · `GET /api/session/:id` · auth:
+`POST /api/auth/{signup,login,logout}` · `GET /api/auth/me`. SSE events: `status`, `partial`,
+`assumption`, `message`, `complete`, `error`. The web client streams via `fetch` +
+`ReadableStream` against the POST endpoints (no GET-stream endpoint in v1).
 
-```bash
-corepack enable && pnpm install
-pnpm -r build                          # build packages (shared first)
+---
 
-# Web only, mock-driven — no server, no keys (MSW replays docs/fixtures)
-pnpm --filter web dev                  # http://localhost:5173
+## 5. Rules & conventions you MUST follow
 
-# Full stack — web hits the live API
-pnpm --filter @wayfare/server dev      # http://localhost:3000  (boots with NO env)
-VITE_USE_MOCKS=0 pnpm --filter web dev # web → Vite proxy → :3000
+1. **NEVER `git push`** (or anything that publishes to GitHub) unless the user **explicitly
+   says "push" in that same turn.** Commit locally only and hand the user the push command.
+   This is a hard standing rule the user set — do not infer it from "I'm done."
+2. **`@wayfare/shared` is the SINGLE SOURCE OF TRUTH for the FE↔BE wire.** Both apps import it
+   (web via the `@/types` barrel — there is **no** local `wire.ts` mirror). To add/rename a
+   field: change `packages/shared` **+** [API_CONTRACT.md](./API_CONTRACT.md) /
+   [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) **+** the fixtures **first**, together — then both
+   apps follow. Never redefine a wire shape locally.
+3. **Guest-first.** Auth is optional/additive; **never gate the planner behind login.** A guest
+   is "no valid session cookie"; `GET /api/auth/me` returns `{ user: null }` with **200** (not
+   401). No auth middleware on `/api/session*`.
+4. **UI renders VISIBLE BY DEFAULT.** Do **not** gate load-bearing content behind `opacity: 0`
+   Framer entrance animations — they can stall hidden (this caused the "disappearing UI" bug).
+   Animate *enhancements*, not visibility. **StrictMode is intentionally omitted** in
+   `apps/web/src/main.tsx` (its dev double-mount triggered the stall); don't re-add it without
+   re-auditing entrance animations.
+5. **Images are frontend-supplied** via `lib/images.ts`. The wire carries no image fields — do
+   not add one to `@wayfare/shared`, the server, or the fixtures.
+6. **Security invariants:** keys live **server-side only**; `compute_budget` is the **only**
+   place totals are summed; **no password ever crosses the wire** (`User` has no password
+   field); login **never reveals whether an email exists** (`invalid_credentials` either way).
+7. **Price provenance:** never hardcode the word "mock" in the UI — render the `SourceChip` from
+   `Listing.source` / `Listing.freshness` so the same component shows `"Amadeus · 2h ago"` later
+   with zero changes.
+8. **The repo is PRIVATE.** GitHub contributions only appear with the profile's **"Private
+   contributions"** toggle enabled.
 
-# Live agent (optional): set ANTHROPIC_API_KEY in apps/server/.env, then
-PLANNER_MODE=agent pnpm --filter @wayfare/server dev
-```
+---
 
-Checks: `pnpm -r typecheck` · `pnpm -r test`. The JSON in [fixtures/](./fixtures) are golden
-tests — schemas/endpoints must serialize to exactly those shapes.
+## 6. Known gotchas / lessons
 
-- **`VITE_USE_MOCKS`** (web): default on in dev, off in prod. `0`/`false` → hit the live API.
-- **Backend needs no key** to run the deterministic planner. `ANTHROPIC_API_KEY` is
-  **optional** and only enables the live agent. Keys live server-side only (NFR-4).
+- **Headless/background preview pauses ALL animations** (Framer *and* CSS), so any `opacity: 0`
+  reading taken there is an **artifact**, not a real bug — verify visibility in a real
+  foreground tab before "fixing" it.
+- **Worktree-isolated subagents branch off `origin/main` (pushed state).** If you spawn one, it
+  will **not** have your unpushed commits. Either push the relevant contract commits **before**
+  spawning (only if the user authorized a push), or keep the work in this session.
+- **Split parallel agents on clean boundaries only** — contracts or disjoint files. Keep coupled
+  work (e.g. a single landing file) inside one agent to avoid merge thrash.
+- **Stale worktrees exist** under `.claude/worktrees/` (`backend`, `frontend`, and a detached
+  `friendly-shannon-78edda`) from earlier parallel sessions. They are not part of the live tree;
+  ignore them unless the user asks to clean them up.
+- **Stale dir to ignore:** `apps/server/src/integrations 2/` is an empty leftover (note the space
+  in the name). The real code is in `apps/server/src/integrations/`.
+- **Minor copy quirk:** the deterministic planner has a small "for you" vs. party-size wording
+  inconsistency — noted for a later polish pass, not blocking.
 
-## The contract-first rule (non-negotiable)
+---
 
-**`@wayfare/shared` is the single source of truth for the wire.** Both apps import it; neither
-invents fields.
+## 7. What's next (Phase 2)
 
-- Web imports wire types from `@wayfare/shared` via the `@/types` barrel. **There is no local
-  mirror** (`wire.ts` was deleted). Never redefine a wire shape in `apps/web`.
-- To change the wire: edit `packages/shared` **+** [API_CONTRACT.md](./API_CONTRACT.md) /
-  [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) **+** the fixtures, together — then both apps follow.
+See [ROADMAP.md](./ROADMAP.md). Replace mock with real data **behind the same provider
+interface** (`PricingProvider` / `CompositeProvider`), one category at a time, each with a mock
+fallback and honest source/freshness labels — **no agent or UI change required**:
 
-## Key gotchas & lessons (read before touching the frontend)
+1. **Amadeus flights** behind `searchFlights` (test tier → prod) — lowest risk first.
+2. Then **hotels** behind `searchStays`.
+3. Then **activities** via Google Places / OSM behind `searchActivities`.
 
-1. **The "disappearing UI" bug — critical content must render VISIBLE BY DEFAULT.** Do **not**
-   gate load-bearing content behind `opacity: 0` Framer Motion entrance animations. Under
-   React StrictMode (or a paused/backgrounded tab) the staggered-entrance orchestration
-   (`staggerChildren`) can stall, leaving cards/itinerary items frozen near `opacity: 0` —
-   i.e. an invisible page. Animate *enhancements*, not visibility. The landing/pricing cards
-   render solid by default and only add a subtle hover lift.
-2. **StrictMode is intentionally removed** in `apps/web/src/main.tsx` for exactly that reason
-   (its dev-only double-mount triggered the stall). It's a no-op in prod, so removing it makes
-   dev match prod. Don't re-add it without re-checking the entrance animations.
-3. **Auth is guest-first / optional — never gate the planner.** A guest is just "no valid
-   session cookie"; `GET /api/auth/me` returns `{ user: null }` with **200** (not 401). Auth
-   only personalizes the TopBar. No auth middleware on `/api/session*`.
-4. **Imagery is frontend-supplied** via `lib/images.ts` — the swap-seam for a real provider
-   `imageUrl`. The wire carries **no** image fields; do not add one to `@wayfare/shared`, the
-   server, or the fixtures. When the backend later supplies `imageUrl`, only `images.ts` + its
-   call sites change; components stay identical.
-5. **The repo is PRIVATE.** Contributions need the GitHub **"Private contributions"** profile
-   toggle enabled for them to show up.
-6. **Push only when the user explicitly says so** (that turn). Commit locally; never `git
-   push` on your own initiative.
-7. **Where the docs live:** everything is under `/docs`. Specs in the top level, the
-   implementation-ready design package in [design/](./design), golden payloads in
-   [fixtures/](./fixtures). Index: [docs/README.md](./README.md).
+After pricing: **persistence / saved trips for logged-in users** — swap the in-memory
+user/session/trip stores for a real DB; saving a planned trip makes the landing's "Past trips"
+section real.
 
-## What's next
+---
 
-- **v1 — real pricing providers** behind the existing provider interface (`PricingProvider` /
-  `CompositeProvider`), one category at a time (flights first via Amadeus), with mock fallback
-  and honest source/freshness labels. Swapping mock→real must require no agent or UI change.
-- **Saved trips for logged-in users** — persist the in-memory user/session/trip stores to a
-  real DB; saving a planned trip makes the landing's **"Past trips"** section real.
-- **Later:** interactive map, PDF/offline export, i18n, booking hand-off (affiliate deep
-  links). See [ROADMAP.md](./ROADMAP.md) and [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) §3.
+## 8. Repo / branch state
+
+- Everything is on **`main`**, pushed to the **private** repo **`AdrianosEB/Trip-Planner`**.
+- Stale worktrees (`backend`, `frontend`, `friendly-shannon-78edda`) linger under
+  `.claude/worktrees/` — not the live tree (see §6).
+- Working tree is clean at handoff time. Confirm with `git status` before starting.
+
+---
+
+### Where the rest of the docs live
+
+Index: [docs/README.md](./README.md). Deep specs: [ARCHITECTURE.md](./ARCHITECTURE.md) ·
+[API_CONTRACT.md](./API_CONTRACT.md) · [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) ·
+[DATA_MODEL.md](./DATA_MODEL.md) · [AGENT_DESIGN.md](./AGENT_DESIGN.md) ·
+[CONVERSATION_FLOW.md](./CONVERSATION_FLOW.md) · [INTEGRATIONS.md](./INTEGRATIONS.md) ·
+[DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) · [ROADMAP.md](./ROADMAP.md) ·
+[REQUIREMENTS.md](./REQUIREMENTS.md) · [VISION.md](./VISION.md). Implementation-ready design
+package: [design/](./design). Golden payloads: [fixtures/](./fixtures).
+</content>
+</invoke>

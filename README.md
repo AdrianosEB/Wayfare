@@ -49,6 +49,10 @@ must serialize to exactly their shape.
 
 ## Status
 
+> **New here (human or agent)? Start with the control brief:
+> [docs/SESSION_HANDOFF.md](docs/SESSION_HANDOFF.md)** — what Wayfare is, how to run it, the
+> repo map, the non-negotiable rules, and what's next, in one self-contained doc.
+
 MVP is implemented end-to-end and wired together (`VITE_USE_MOCKS=0` talks to the live API):
 
 - **Backend** — the shared wire contract, the API, the planning agent (deterministic mock
