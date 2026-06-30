@@ -20,6 +20,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: 'Product',
     links: [
       { label: 'Plan a trip', onClick: () => navigate(planHref()) },
+      { label: 'Explore trips', onClick: () => navigate('/explore') },
       { label: 'Budget trips', onClick: () => navigate('/pricing') },
     ],
   },

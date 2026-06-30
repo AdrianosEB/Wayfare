@@ -260,6 +260,397 @@ export const PAST_TRIPS: PastTrip[] = [
   },
 ];
 
+/* ------------------------------------------------------------------ *
+ * Explore / Trending hub  (`/explore`)
+ *
+ * A richer, filterable gallery that absorbs the budget showcase and the "what others have
+ * done" social-proof angle into one browsable destination. Curated marketing content for now,
+ * shaped to graduate into real saved-trip data when trip-saving lands (Phase 2): swap the
+ * array, keep the cards + filters.
+ *
+ * Provenance rule (see SourceChip / price-provenance-rule): `source` + `freshness` are honest
+ * display strings — today every figure is a clearly-labelled "Estimated" starting point. Never
+ * hardcode the word "mock"; the card renders these strings verbatim, so the same chip flips to
+ * "Amadeus · 2h ago" later with zero card changes. `total` is the whole-trip illustrative cost
+ * for the stated party (not per-person) and equals the sum of the `budget` split.
+ * ------------------------------------------------------------------ */
+
+export type TripRegion = 'Europe' | 'Asia' | 'Americas';
+export type TripParty = 'Solo' | 'Couple' | 'Family' | 'Group';
+export type TripVibe =
+  | 'Beach'
+  | 'City'
+  | 'Culture'
+  | 'Coastal'
+  | 'Foodie'
+  | 'Nightlife'
+  | 'Adventure';
+/** How a trip is trending — drives the TrendingBadge tone. */
+export type TripTrend = 'Hot' | 'Rising' | 'Steady';
+/** Budget tiers used by the Explore filter (derived from `total` via `budgetBand`). */
+export type BudgetBand = 'Budget' | 'Mid-range' | 'Splurge';
+
+/** The four cost buckets of a trip — render the BudgetSplitBar; sum to `ExploreTrip.total`. */
+export interface BudgetSplit {
+  flights: number;
+  stay: number;
+  activities: number;
+  food: number;
+}
+
+export interface ExploreTrip {
+  /** Stable slug — React key and future `/trip/:id` handle. */
+  id: string;
+  place: string;
+  imageKey: string;
+  region: TripRegion;
+  party: TripParty;
+  partySize: number;
+  /** One or more vibes — used for both filtering and the card's chips. */
+  vibes: TripVibe[];
+  lengthDays: number;
+  /** Whole-trip illustrative total for the party (== sum of `budget`). */
+  total: number;
+  currency: string;
+  budget: BudgetSplit;
+  /** When it's best to go, e.g. "May–Sep". */
+  bestSeason: string;
+  /** Price provenance — honest label, never "mock". Renders as `${source} · ${freshness}`. */
+  source: string;
+  freshness: string;
+  /** Social proof — how many travellers planned something like this in the last week. */
+  plannedThisWeek: number;
+  trending: TripTrend;
+  /** One-line "what others did" recap. */
+  blurb: string;
+  /** Seeds the planner when the card is tapped. */
+  prompt: string;
+}
+
+/** Order the filter renders bands in. */
+export const BUDGET_BANDS: BudgetBand[] = ['Budget', 'Mid-range', 'Splurge'];
+export const TRIP_REGIONS: TripRegion[] = ['Europe', 'Asia', 'Americas'];
+export const TRIP_PARTIES: TripParty[] = ['Solo', 'Couple', 'Family', 'Group'];
+export const TRIP_VIBES: TripVibe[] = [
+  'Beach',
+  'City',
+  'Culture',
+  'Coastal',
+  'Foodie',
+  'Nightlife',
+  'Adventure',
+];
+
+/** Derive the budget band from a whole-trip total (keeps the band off the data — no drift). */
+export function budgetBand(total: number): BudgetBand {
+  if (total <= 800) return 'Budget';
+  if (total <= 2000) return 'Mid-range';
+  return 'Splurge';
+}
+
+export const EXPLORE_TRIPS: ExploreTrip[] = [
+  {
+    id: 'krakow-solo-3',
+    place: 'Kraków, Poland',
+    imageKey: 'krakow',
+    region: 'Europe',
+    party: 'Solo',
+    partySize: 1,
+    vibes: ['City', 'Culture'],
+    lengthDays: 3,
+    total: 170,
+    currency: 'EUR',
+    budget: { flights: 60, stay: 60, activities: 25, food: 25 },
+    bestSeason: 'Apr–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 64,
+    trending: 'Hot',
+    blurb: 'Old-town wanders, milk-bar lunches, and a Wieliczka mine day — all on a tiny budget.',
+    prompt: 'A budget 3-night solo trip to Kraków, Poland, old town and food, around €170',
+  },
+  {
+    id: 'sofia-solo-3',
+    place: 'Sofia, Bulgaria',
+    imageKey: 'sofia',
+    region: 'Europe',
+    party: 'Solo',
+    partySize: 1,
+    vibes: ['City', 'Adventure'],
+    lengthDays: 3,
+    total: 160,
+    currency: 'EUR',
+    budget: { flights: 70, stay: 45, activities: 20, food: 25 },
+    bestSeason: 'May–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 18,
+    trending: 'Rising',
+    blurb: 'Cheapest capital on the board — free walking tours and a Vitosha mountain escape.',
+    prompt: 'A cheap 3-night solo city break in Sofia, Bulgaria, around €160 all-in',
+  },
+  {
+    id: 'valencia-solo-7',
+    place: 'Valencia, Spain',
+    imageKey: 'valencia',
+    region: 'Europe',
+    party: 'Solo',
+    partySize: 1,
+    vibes: ['Beach', 'Foodie', 'City'],
+    lengthDays: 7,
+    total: 610,
+    currency: 'EUR',
+    budget: { flights: 120, stay: 280, activities: 90, food: 120 },
+    bestSeason: 'Apr–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 29,
+    trending: 'Rising',
+    blurb: 'A slow solo week: city beach mornings, paella, and zero-stress bike lanes.',
+    prompt: 'A relaxed solo week in Valencia, beach and tapas, around €600',
+  },
+  {
+    id: 'prague-couple-4',
+    place: 'Prague, Czechia',
+    imageKey: 'prague',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['City', 'Culture'],
+    lengthDays: 4,
+    total: 420,
+    currency: 'EUR',
+    budget: { flights: 140, stay: 160, activities: 60, food: 60 },
+    bestSeason: 'Apr–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 25,
+    trending: 'Steady',
+    blurb: 'Castle-district mornings and riverside beers — a cheap, romantic long weekend.',
+    prompt: 'A cheap 4-night city break in Prague for two, around €210pp',
+  },
+  {
+    id: 'porto-couple-3',
+    place: 'Porto, Portugal',
+    imageKey: 'porto',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['City', 'Foodie', 'Coastal'],
+    lengthDays: 3,
+    total: 460,
+    currency: 'EUR',
+    budget: { flights: 160, stay: 160, activities: 60, food: 80 },
+    bestSeason: 'May–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 33,
+    trending: 'Rising',
+    blurb: 'River views, a port-cellar crawl, and seafood by the Douro for two.',
+    prompt: 'A cheap 3-night trip to Porto for two, river views and port tasting, around €230pp',
+  },
+  {
+    id: 'lisbon-couple-4',
+    place: 'Lisbon, Portugal',
+    imageKey: 'lisbon',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['City', 'Foodie'],
+    lengthDays: 4,
+    total: 720,
+    currency: 'EUR',
+    budget: { flights: 240, stay: 300, activities: 80, food: 100 },
+    bestSeason: 'Mar–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 51,
+    trending: 'Hot',
+    blurb: 'Pastéis, viewpoints, and tram 28 — the all-time favourite city break for two.',
+    prompt: 'A 4-day city break in Lisbon with great food and viewpoints, around €800',
+  },
+  {
+    id: 'budapest-group-4',
+    place: 'Budapest, Hungary',
+    imageKey: 'budapest',
+    region: 'Europe',
+    party: 'Group',
+    partySize: 4,
+    vibes: ['City', 'Nightlife'],
+    lengthDays: 4,
+    total: 800,
+    currency: 'EUR',
+    budget: { flights: 320, stay: 240, activities: 120, food: 120 },
+    bestSeason: 'Apr–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 47,
+    trending: 'Hot',
+    blurb: 'Four friends, thermal baths by day and ruin bars by night — split-friendly throughout.',
+    prompt: 'A budget 4-night trip to Budapest for four, thermal baths and ruin bars, split-friendly',
+  },
+  {
+    id: 'athens-group-4',
+    place: 'Athens, Greece',
+    imageKey: 'athens',
+    region: 'Europe',
+    party: 'Group',
+    partySize: 4,
+    vibes: ['City', 'Culture'],
+    lengthDays: 4,
+    total: 1040,
+    currency: 'EUR',
+    budget: { flights: 480, stay: 320, activities: 120, food: 120 },
+    bestSeason: 'Mar–Jun · Sep–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 21,
+    trending: 'Steady',
+    blurb: 'Acropolis at opening, rooftop tavernas at dusk — ancient history for the group.',
+    prompt: 'A 4-night trip to Athens for four, ruins and rooftop tavernas',
+  },
+  {
+    id: 'paris-couple-4',
+    place: 'Paris, France',
+    imageKey: 'paris',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['City', 'Culture', 'Foodie'],
+    lengthDays: 4,
+    total: 1180,
+    currency: 'EUR',
+    budget: { flights: 360, stay: 520, activities: 160, food: 140 },
+    bestSeason: 'Apr–Jun · Sep–Oct',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 36,
+    trending: 'Rising',
+    blurb: 'A long weekend for two: a Marais flat, a Louvre morning, and wine-bar nights.',
+    prompt: 'A 4-day romantic city break in Paris for two, art and great food, mid-range',
+  },
+  {
+    id: 'barcelona-group-4',
+    place: 'Barcelona, Spain',
+    imageKey: 'barcelona',
+    region: 'Europe',
+    party: 'Group',
+    partySize: 4,
+    vibes: ['City', 'Beach', 'Nightlife'],
+    lengthDays: 4,
+    total: 1320,
+    currency: 'EUR',
+    budget: { flights: 520, stay: 480, activities: 160, food: 160 },
+    bestSeason: 'May–Sep',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 41,
+    trending: 'Hot',
+    blurb: 'Gaudí by day, Barceloneta sundowners, and a tapas crawl for four.',
+    prompt: 'A 4-night trip to Barcelona for a group of four, beach, Gaudí and nightlife',
+  },
+  {
+    id: 'mexico-city-solo-6',
+    place: 'Mexico City, Mexico',
+    imageKey: 'city',
+    region: 'Americas',
+    party: 'Solo',
+    partySize: 1,
+    vibes: ['City', 'Foodie', 'Culture'],
+    lengthDays: 6,
+    total: 1150,
+    currency: 'EUR',
+    budget: { flights: 620, stay: 220, activities: 160, food: 150 },
+    bestSeason: 'Oct–Apr',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 14,
+    trending: 'Rising',
+    blurb: 'Solo and food-first: Roma Norte cafés, Teotihuacán day trip, taquería dinners.',
+    prompt: 'A 6-day solo trip to Mexico City, food, museums and a Teotihuacán day trip',
+  },
+  {
+    id: 'amalfi-couple-6',
+    place: 'Amalfi Coast, Italy',
+    imageKey: 'amalfi',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['Coastal', 'Beach'],
+    lengthDays: 6,
+    total: 1840,
+    currency: 'EUR',
+    budget: { flights: 480, stay: 760, activities: 300, food: 300 },
+    bestSeason: 'May–Sep',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 17,
+    trending: 'Steady',
+    blurb: 'Cliffside drives, a Capri boat day, and lemon spritz at golden hour for two.',
+    prompt: 'A 6-day coastal trip on the Amalfi Coast for two, scenic and romantic',
+  },
+  {
+    id: 'santorini-couple-5',
+    place: 'Santorini, Greece',
+    imageKey: 'santorini',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['Coastal', 'Beach'],
+    lengthDays: 5,
+    total: 2200,
+    currency: 'EUR',
+    budget: { flights: 520, stay: 1080, activities: 300, food: 300 },
+    bestSeason: 'May–Sep',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 19,
+    trending: 'Steady',
+    blurb: 'A caldera-view cave suite, a catamaran sunset sail, and slow Oia evenings.',
+    prompt: 'A 5-day romantic Santorini trip for two, caldera views and a sunset sail',
+  },
+  {
+    id: 'naxos-couple-8',
+    place: 'Naxos, Greece',
+    imageKey: 'naxos',
+    region: 'Europe',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['Beach', 'Coastal'],
+    lengthDays: 8,
+    total: 2410,
+    currency: 'EUR',
+    budget: { flights: 520, stay: 980, activities: 410, food: 500 },
+    bestSeason: 'May–Sep',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 38,
+    trending: 'Hot',
+    blurb: 'Slow beach mornings and taverna nights — the relaxed 8-day Greece favourite.',
+    prompt: 'Relaxed 8-day beach trip on Naxos for two in late August, around €2,500',
+  },
+  {
+    id: 'kyoto-couple-7',
+    place: 'Kyoto, Japan',
+    imageKey: 'kyoto',
+    region: 'Asia',
+    party: 'Couple',
+    partySize: 2,
+    vibes: ['Culture', 'Foodie'],
+    lengthDays: 7,
+    total: 2980,
+    currency: 'EUR',
+    budget: { flights: 1400, stay: 760, activities: 320, food: 500 },
+    bestSeason: 'Mar–Apr · Oct–Nov',
+    source: 'Estimated',
+    freshness: 'Updated this week',
+    plannedThisWeek: 22,
+    trending: 'Rising',
+    blurb: 'Temples at dawn, a kaiseki splurge, and a Nishiki market crawl for two.',
+    prompt: 'A week in Kyoto for two, temples and food, mid-range budget',
+  },
+];
+
 export interface ValueCardItem {
   key: string;
   title: string;

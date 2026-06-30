@@ -12,8 +12,9 @@ import { MARKETING } from '@/lib/content';
  * hairline border once the page scrolls. Below `md` it collapses into a hamburger that
  * reveals a slide-down menu.
  *
- * Minimal by design: just the logo, the "Plan my trip" CTA, and auth. The marketing content
- * (how it works, trip types, pricing) is explored by scrolling the page, not by jump-tabs.
+ * Minimal by design: the logo, a single "Explore" jump-link to the trips hub, the "Plan my
+ * trip" CTA, and auth. The rest of the marketing content (how it works, trip types) is still
+ * explored by scrolling the page — Explore is the one destination worth a tab.
  *
  * Pages without a dark full-bleed hero behind the nav (e.g. `/pricing`) must pass
  * `alwaysSolid` — otherwise the transparent-at-top state renders white text on the white
@@ -41,6 +42,11 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
     navigate(planHref());
   };
 
+  const goExplore = () => {
+    setOpen(false);
+    navigate('/explore');
+  };
+
   return (
     <header
       className={cn(
@@ -61,8 +67,18 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
           <Wordmark onLight={!solid} />
         </a>
 
-        {/* Desktop: CTA + auth only — explore by scrolling, no jump-tabs. */}
+        {/* Desktop: one Explore jump-link, then the CTA + auth. */}
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          <button
+            type="button"
+            onClick={goExplore}
+            className={cn(
+              'inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium transition focus-visible:ring-2',
+              solid ? 'text-ink hover:bg-surface' : 'text-white hover:bg-white/10',
+            )}
+          >
+            Explore
+          </button>
           <Button onClick={goPlan}>
             {MARKETING.hero.cta}
           </Button>
@@ -100,6 +116,13 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
               <Button className="w-full" size="lg" onClick={goPlan}>
                 {MARKETING.hero.cta}
               </Button>
+              <button
+                type="button"
+                onClick={goExplore}
+                className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-pill text-sm font-medium text-ink transition hover:bg-surface focus-visible:ring-2"
+              >
+                Explore trips
+              </button>
               <div className="mt-2 flex items-center justify-center border-t border-border pt-3">
                 <AuthControls />
               </div>
