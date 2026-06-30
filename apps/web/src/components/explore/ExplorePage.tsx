@@ -1,8 +1,8 @@
 import { TopNav } from '@/components/landing/TopNav';
 import { SiteFooter } from '@/components/landing/SiteFooter';
 import { Section } from '@/components/landing/_shared';
-import { Chip } from '@/components/Chip';
 import { Button } from '@/components/Button';
+import { ExploreHero } from '@/components/explore/ExploreHero';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
 import { useExploreFilters } from '@/components/explore/useExploreFilters';
@@ -58,26 +58,6 @@ export function ExplorePage() {
       </main>
       <SiteFooter />
     </div>
-  );
-}
-
-function ExploreHero() {
-  return (
-    <Section className="pb-8 pt-16 sm:pt-24">
-      <div className="max-w-2xl">
-        <Chip as="span" className="mb-4">
-          Trending now
-        </Chip>
-        <h1 className="font-display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-          See where everyone’s going.
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-ink-2">
-          Real-shaped trips other travellers are planning right now — with the budget broken down,
-          the best season to go, and every price honest about where it came from. Filter by vibe,
-          who’s going, or what you want to spend, then tap one to make it yours.
-        </p>
-      </div>
-    </Section>
   );
 }
 
