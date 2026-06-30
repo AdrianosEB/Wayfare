@@ -3,6 +3,7 @@ import { SiteFooter } from '@/components/landing/SiteFooter';
 import { Section } from '@/components/landing/_shared';
 import { Button } from '@/components/Button';
 import { ExploreHero } from '@/components/explore/ExploreHero';
+import { ExploreStats } from '@/components/explore/ExploreStats';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
 import { useExploreFilters } from '@/components/explore/useExploreFilters';
@@ -30,6 +31,8 @@ export function ExplorePage() {
         <ExploreHero />
 
         <Section className="pt-0">
+          <ExploreStats className="mb-10" />
+
           <ExploreFilters {...filterControlProps} />
 
           {filtered.length > 0 ? (
