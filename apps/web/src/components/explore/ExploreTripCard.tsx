@@ -42,7 +42,7 @@ export function ExploreTripCard({
           className={reduce ? undefined : 'transition-transform duration-300 group-hover:scale-[1.03]'}
         />
         <div className="pointer-events-none absolute left-3 top-3">
-          <TrendingBadge trending={trip.trending} plannedThisWeek={trip.plannedThisWeek} />
+          <TrendingBadge trending={trip.trending} />
         </div>
         <div className="pointer-events-none absolute right-3 top-3 rounded-pill bg-bg/95 px-3 py-1.5 text-sm font-semibold text-ink shadow-card backdrop-blur">
           from <span className="tnum text-azure-700">{formatFrom(trip.total, trip.currency)}</span>
@@ -54,6 +54,9 @@ export function ExploreTripCard({
           <h3 className="font-display text-lg font-semibold text-ink">{trip.place}</h3>
           <p className="mt-0.5 text-sm text-ink-2">
             {trip.lengthDays} nights · {trip.party} · {trip.bestSeason}
+          </p>
+          <p className="mt-1 text-xs font-medium text-azure-700">
+            <span className="tnum">{trip.plannedThisWeek}</span> planned this week
           </p>
         </div>
 
