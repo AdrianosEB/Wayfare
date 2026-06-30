@@ -82,8 +82,8 @@ export function ExploreStats({ className }: { className?: string }) {
             </span>
             <dd
               className={cn(
-                'font-display text-2xl font-semibold leading-tight text-ink sm:text-3xl',
-                stat.numeric && 'tnum',
+                'font-display font-semibold leading-tight text-ink',
+                stat.numeric ? 'tnum text-2xl sm:text-3xl' : 'text-lg sm:text-xl',
               )}
             >
               {stat.figure}
