@@ -22,9 +22,17 @@ export function EmptyState({ initialPrompt }: EmptyStateProps) {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center px-5 py-12">
+      {/*
+        VISIBLE BY DEFAULT (see the "disappearing UI" guardrail): this wraps the whole planner
+        empty state — heading, prompt box, example chips — so it must never be gated behind an
+        opacity:0 entrance. A stalled fade here (e.g. on the SPA route change from the marketing
+        nav's "Plan my trip") would leave the planner body blank under the TopBar. So we animate
+        only a gentle slide-up as an enhancement; opacity stays 1 throughout, and under reduced
+        motion we skip the initial offset entirely.
+      */}
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={reduce ? false : { y: 16 }}
+        animate={{ y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
         className="w-full text-center"
       >
