@@ -10,6 +10,10 @@ import type { TripTrend } from '@/lib/content';
  * 'Hot' reads strongest (filled azure), 'Rising' a lighter azure, 'Steady' a neutral surface.
  * Visible by default — no entrance animation.
  */
+// Tone steps down the azure ramp with intensity (600 → 500 → neutral surface). The /90–/85
+// alpha keeps each background semi-opaque so the backdrop-blur reads over any photo while the
+// hue still shows through. Glyphs are aria-hidden decoration — the accessible name comes from
+// the aria-label below, so the raw emoji/arrow never reaches a screen reader.
 const TREND_META: Record<TripTrend, { glyph: string; label: TripTrend; tone: string }> = {
   Hot: { glyph: '🔥', label: 'Hot', tone: 'bg-azure-600/90 text-white' },
   Rising: { glyph: '↑', label: 'Rising', tone: 'bg-azure-500/85 text-white' },
