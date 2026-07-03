@@ -20,6 +20,8 @@ import { cn } from '@/lib/cn';
  */
 export function ExploreHero() {
   const reduce = useReducedMotion();
+  // Hover lift is the hero's only motion. Guarded by `useReducedMotion`: when the OS asks to
+  // reduce motion we drop the transform entirely (undefined) rather than animate it.
   const lift = reduce
     ? undefined
     : 'transition-transform duration-300 group-hover:scale-[1.04]';
@@ -41,13 +43,19 @@ export function ExploreHero() {
 
       {/* RIGHT — photo collage */}
       <div className="relative mx-auto w-full max-w-md lg:mx-0">
-        {/* Soft azure glow behind the collage */}
+        {/* Soft azure glow behind the collage. Kept flush to the collage's own width
+            (inset-x-0) and only bled vertically (-inset-y-6): an earlier wider glow
+            (-inset-x-*) painted past the viewport edge and caused a ~16px horizontal
+            overflow / scrollbar on mobile. Bleed up/down, never sideways. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 -inset-y-6 -z-10 rounded-[2rem] bg-azure-100/70 blur-3xl"
         />
 
-        {/* Balanced 2×2: the right column is nudged down for a gentle stagger. */}
+        {/* Balanced 2×2 of equal landscape tiles, capped by the max-w-md wrapper above so the
+            collage stays height-constrained and sits LEVEL with the copy (items-center on the
+            parent grid) rather than towering over it. The right column is nudged down (pt-6/pt-8)
+            purely for a gentle staggered look. */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div className="flex flex-col gap-3 sm:gap-4">
             <CollagePhoto
