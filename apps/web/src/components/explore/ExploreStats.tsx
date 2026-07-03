@@ -57,8 +57,10 @@ function deriveStats(trips: readonly ExploreTrip[]): Stat[] {
       accent: '\u{1F3F7}\u{FE0F}', // tag
     },
     {
+      // Price-honesty stat. Deliberately phrased around labelling/provenance — we never surface
+      // the word "mock" to travellers; a figure is an estimate with its source shown, full stop.
       figure: 'Every price labelled',
-      numeric: false,
+      numeric: false, // prose, not a figure — renders at the smaller (text-lg/xl) size below
       label: 'estimate · source shown',
       accent: (
         <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-azure-500" />
@@ -80,6 +82,9 @@ export function ExploreStats({ className }: { className?: string }) {
             <span className="flex items-center gap-1.5 text-base leading-none text-azure-600">
               {stat.accent}
             </span>
+            {/* Numeric figures get big + tabular (.tnum) so digits line up across the row;
+                non-numeric figures are prose (the price-honesty line), so they render a step
+                smaller to read as a sentence, not a headline number. */}
             <dd
               className={cn(
                 'font-display font-semibold leading-tight text-ink',
