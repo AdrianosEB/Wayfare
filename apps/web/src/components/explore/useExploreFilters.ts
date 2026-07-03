@@ -37,7 +37,10 @@ export const EXPLORE_SORTS: ExploreSort[] = [
   'Longest',
 ];
 
-/** Trend priority for the default `Trending` sort: Hot > Rising > Steady. */
+/**
+ * Trend priority for the default `Trending` sort: Hot > Rising > Steady. Lower rank sorts first,
+ * so this is a lookup we subtract in the comparator (a.rank - b.rank) rather than a label list.
+ */
 const TREND_RANK: Record<ExploreTrip['trending'], number> = {
   Hot: 0,
   Rising: 1,
@@ -87,7 +90,9 @@ export interface UseExploreFiltersResult {
 
 /**
  * Toggle helper for single-select facets: pick a new value, or clear it when the same value is
- * clicked again.
+ * clicked again. This "click the active chip to unset it" behaviour is why region/party/band are
+ * modeled as a lone value-or-undefined rather than a set — there's no separate "clear" affordance
+ * per group; re-tapping the lit chip is the clear.
  */
 function toggleSingle<T>(current: T | undefined, next: T): T | undefined {
   return current === next ? undefined : next;
@@ -112,6 +117,8 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
     (next: BudgetBand) => setBand((cur) => toggleSingle(cur, next)),
     [],
   );
+  // Vibe is the one MULTI-select facet: toggling adds/removes from a set rather than replacing,
+  // because a trip can legitimately match several vibes at once (see the OR match in `filtered`).
   const onToggleVibe = useCallback(
     (next: TripVibe) =>
       setVibes((cur) =>
@@ -121,7 +128,11 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
   );
   const onSortChange = useCallback((next: ExploreSort) => setSort(next), []);
 
-  /** Reset every facet. Sort is intentionally PRESERVED — the user's chosen ordering survives. */
+  /**
+   * Reset every facet. Sort is intentionally PRESERVED — "Clear all" is about the *filter* facets,
+   * and a user who deliberately picked, say, "Price: low to high" shouldn't have it snap back to
+   * `Trending` just because they widened their search. Note this doesn't touch `sort` at all.
+   */
   const clearAll = useCallback(() => {
     setRegion(undefined);
     setParty(undefined);
@@ -155,7 +166,9 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
         break;
       case 'Trending':
       default:
-        // Hot > Rising > Steady, then plannedThisWeek descending.
+        // Default ordering: bucket by trend momentum (Hot > Rising > Steady), then within a bucket
+        // break ties by raw popularity (plannedThisWeek descending). The `|| b - a` is a classic
+        // comparator chain — the second key only decides when TREND_RANK is equal.
         sorted.sort(
           (a, b) =>
             TREND_RANK[a.trending] - TREND_RANK[b.trending] ||
@@ -166,6 +179,10 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
     return sorted;
   }, [trips, region, party, band, vibes, sort]);
 
+  // activeCount is the count of *chips lit*, not facet groups touched: each single-select facet
+  // contributes 0 or 1, and every selected vibe counts individually. It gates the "Clear all"
+  // affordance in the UI (shown only when > 0), not the filtering itself. resultCount is derived
+  // rather than tracked so it always mirrors `filtered` exactly.
   const activeCount =
     (region ? 1 : 0) + (party ? 1 : 0) + (band ? 1 : 0) + vibes.length;
   const resultCount = filtered.length;
