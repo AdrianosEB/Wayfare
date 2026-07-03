@@ -41,9 +41,17 @@ export function ExploreTripCard({
           ratio="aspect-[16/10]"
           className={reduce ? undefined : 'transition-transform duration-300 group-hover:scale-[1.03]'}
         />
+        {/*
+          The two photo overlays are pinned to OPPOSITE corners on purpose: TrendingBadge
+          top-left, price pill top-right. Keeping the badge compact (status only) is what stops
+          the two from colliding at narrow card widths — see TrendingBadge's header. Both are
+          pointer-events-none so the whole card stays a single click target for onPlan.
+        */}
         <div className="pointer-events-none absolute left-3 top-3">
           <TrendingBadge trending={trip.trending} />
         </div>
+        {/* .tnum keeps the price figure tabular so digits don't jitter across cards; azure-700
+            is the design-system "figure" accent used for prices elsewhere (see PricingPage). */}
         <div className="pointer-events-none absolute right-3 top-3 rounded-pill bg-bg/95 px-3 py-1.5 text-sm font-semibold text-ink shadow-card backdrop-blur">
           from <span className="tnum text-azure-700">{formatFrom(trip.total, trip.currency)}</span>
         </div>
@@ -72,6 +80,9 @@ export function ExploreTripCard({
 
         <p className="text-sm leading-relaxed text-ink-2">{trip.blurb}</p>
 
+        {/* mt-auto pins the provenance chip to the card's bottom edge so it lines up across a
+            grid of cards regardless of how much blurb/vibe content sits above it. The chip
+            renders source/freshness verbatim from the trip data — never a hardcoded "mock". */}
         <div className="mt-auto pt-1">
           <ProvenanceChip source={trip.source} freshness={trip.freshness} />
         </div>
