@@ -25,18 +25,25 @@ export function ExplorePage() {
   const { filtered, filterControlProps } = useExploreFilters(EXPLORE_TRIPS);
 
   return (
+    // Page composition, top to bottom: hero Section → stats → filters → grid → CTA.
     <div className="min-h-full bg-bg">
       <TopNav alwaysSolid />
       <main>
+        {/* The hero gets its OWN <Section> so its centered max-w-site container aligns the
+            copy/collage with the stats + grid below. ExploreHero renders no Section of its own
+            (it can't, or the widths wouldn't line up), so alignment is this wrapper's job. */}
         <Section className="pb-8 pt-16 sm:pt-24">
           <ExploreHero />
         </Section>
 
+        {/* Everything below the hero shares one Section (one aligned column): the derived stats
+            band, the filter bar, and then the results. */}
         <Section className="pt-0">
           <ExploreStats className="mb-10" />
 
           <ExploreFilters {...filterControlProps} />
 
+          {/* Grid when anything matches; otherwise the empty state with a one-tap clear-all. */}
           {filtered.length > 0 ? (
             <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((trip) => (
@@ -97,6 +104,9 @@ function ExploreCTA() {
           <Button size="lg" onClick={() => navigate(planHref())}>
             Plan my trip
           </Button>
+          {/* Keep /pricing cross-linked: Explore (trending) and Pricing (budget showcase) are
+              sibling discovery surfaces — a browser who bounces off Explore should land on the
+              cheap-trips board, not a dead end. */}
           <Button size="lg" variant="secondary" onClick={() => navigate('/pricing')}>
             Cheapest trips
           </Button>
