@@ -28,7 +28,9 @@ export function ExplorePage() {
     <div className="min-h-full bg-bg">
       <TopNav alwaysSolid />
       <main>
-        <ExploreHero />
+        <Section className="pb-8 pt-16 sm:pt-24">
+          <ExploreHero />
+        </Section>
 
         <Section className="pt-0">
           <ExploreStats className="mb-10" />
