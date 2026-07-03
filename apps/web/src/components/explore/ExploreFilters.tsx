@@ -54,6 +54,9 @@ export function ExploreFilters({
         </p>
 
         <div className="flex items-center gap-3">
+          {/* "Clear all" is rendered only when something is actually filtered — no dead control when
+              every chip is already off. activeCount (not resultCount) is the gate: it tracks lit
+              chips, so it's non-zero exactly when there's something to clear. */}
           {activeCount > 0 && (
             <button
               type="button"
@@ -65,6 +68,11 @@ export function ExploreFilters({
             </button>
           )}
 
+          {/* The native <select> is visually restyled (appearance-none + our own chevron), but stays
+              a real <select> for keyboard/AT support. The visible label is collapsed to sr-only to
+              keep the compact pill look, so we give the control an explicit accessible name — both
+              the sr-only <span> inside the wrapping <label> and the redundant aria-label guarantee
+              it's announced as "Sort trips" regardless of how the AT resolves the name. */}
           <label className="relative flex items-center">
             <span className="sr-only">Sort trips</span>
             <select
@@ -87,7 +95,9 @@ export function ExploreFilters({
         </div>
       </div>
 
-      {/* Facet groups */}
+      {/* Facet groups. Note the two "selected" shapes below: single-select facets light a chip via
+          equality (region === value), while Vibe uses vibes.includes(value) because it's the one
+          multi-select group. Both go through the same onToggle* callbacks the hook owns. */}
       <div className="flex flex-col gap-4">
         <FacetGroup label="Region">
           {TRIP_REGIONS.map((value) => (
