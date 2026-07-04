@@ -9,6 +9,7 @@ import { ExploreSpotlight } from '@/components/explore/ExploreSpotlight';
 import { ExploreVibeTiles } from '@/components/explore/ExploreVibeTiles';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
+import { ExploreCollections } from '@/components/explore/ExploreCollections';
 import { useExploreFilters } from '@/components/explore/useExploreFilters';
 import { EXPLORE_TRIPS, type TripVibe } from '@/lib/content';
 import { navigate, planHref } from '@/lib/router';
@@ -97,6 +98,11 @@ export function ExplorePage() {
               honestly.
             </p>
           </div>
+        </Section>
+
+        {/* Another way in below the results: themed, data-derived collections. */}
+        <Section className="pt-0">
+          <ExploreCollections />
         </Section>
 
         <ExploreCTA />
