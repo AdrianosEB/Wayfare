@@ -1,13 +1,15 @@
+import { useRef } from 'react';
 import { TopNav } from '@/components/landing/TopNav';
 import { SiteFooter } from '@/components/landing/SiteFooter';
 import { Section } from '@/components/landing/_shared';
 import { Button } from '@/components/Button';
 import { ExploreHero } from '@/components/explore/ExploreHero';
 import { ExploreStats } from '@/components/explore/ExploreStats';
+import { ExploreVibeTiles } from '@/components/explore/ExploreVibeTiles';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
 import { useExploreFilters } from '@/components/explore/useExploreFilters';
-import { EXPLORE_TRIPS } from '@/lib/content';
+import { EXPLORE_TRIPS, type TripVibe } from '@/lib/content';
 import { navigate, planHref } from '@/lib/router';
 
 /**
@@ -24,6 +26,16 @@ import { navigate, planHref } from '@/lib/router';
 export function ExplorePage() {
   const { filtered, filterControlProps } = useExploreFilters(EXPLORE_TRIPS);
 
+  // "Browse by vibe" tiles drive the same vibe facet as the filter chips. Picking one toggles
+  // the vibe and scrolls down to the (now-filtered) results so the interaction feels live.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const handleVibePick = (vibe: TripVibe) => {
+    filterControlProps.onToggleVibe(vibe);
+    requestAnimationFrame(() =>
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  };
+
   return (
     // Page composition, top to bottom: hero Section → stats → filters → grid → CTA.
     <div className="min-h-full bg-bg">
@@ -39,31 +51,37 @@ export function ExplorePage() {
         {/* Everything below the hero shares one Section (one aligned column): the derived stats
             band, the filter bar, and then the results. */}
         <Section className="pt-0">
-          <ExploreStats className="mb-10" />
+          <ExploreStats className="mb-12" />
 
-          <ExploreFilters {...filterControlProps} />
+          <ExploreVibeTiles onPick={handleVibePick} />
 
-          {/* Grid when anything matches; otherwise the empty state with a one-tap clear-all. */}
-          {filtered.length > 0 ? (
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((trip) => (
-                <ExploreTripCard
-                  key={trip.id}
-                  trip={trip}
-                  onPlan={() => navigate(planHref({ seed: trip.prompt, autostart: true }))}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState onClear={filterControlProps.clearAll} />
-          )}
+          {/* Filters + results. scroll-mt-24 keeps the sticky nav from covering the top when a
+              vibe tile scrolls us here. */}
+          <div ref={resultsRef} className="mt-14 scroll-mt-24">
+            <ExploreFilters {...filterControlProps} />
 
-          <p className="mt-8 max-w-prose text-sm text-ink-3">
-            Totals are illustrative “from” starting points for the whole trip and party shown —
-            every figure is a clearly-labelled estimate until live providers are connected. Tap a
-            trip to tailor it to your dates, origin and budget; we’ll price the real thing
-            honestly.
-          </p>
+            {/* Grid when anything matches; otherwise the empty state with a one-tap clear-all. */}
+            {filtered.length > 0 ? (
+              <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((trip) => (
+                  <ExploreTripCard
+                    key={trip.id}
+                    trip={trip}
+                    onPlan={() => navigate(planHref({ seed: trip.prompt, autostart: true }))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState onClear={filterControlProps.clearAll} />
+            )}
+
+            <p className="mt-8 max-w-prose text-sm text-ink-3">
+              Totals are illustrative “from” starting points for the whole trip and party shown —
+              every figure is a clearly-labelled estimate until live providers are connected. Tap
+              a trip to tailor it to your dates, origin and budget; we’ll price the real thing
+              honestly.
+            </p>
+          </div>
         </Section>
 
         <ExploreCTA />
