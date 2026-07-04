@@ -5,6 +5,7 @@ import { Section } from '@/components/landing/_shared';
 import { Button } from '@/components/Button';
 import { ExploreHero } from '@/components/explore/ExploreHero';
 import { ExploreStats } from '@/components/explore/ExploreStats';
+import { ExploreSpotlight } from '@/components/explore/ExploreSpotlight';
 import { ExploreVibeTiles } from '@/components/explore/ExploreVibeTiles';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
@@ -25,6 +26,11 @@ import { navigate, planHref } from '@/lib/router';
  */
 export function ExplorePage() {
   const { filtered, filterControlProps } = useExploreFilters(EXPLORE_TRIPS);
+
+  // The spotlight features the single most-planned trip this week (the top social-proof story).
+  const spotlight = EXPLORE_TRIPS.reduce((top, t) =>
+    t.plannedThisWeek > top.plannedThisWeek ? t : top,
+  );
 
   // "Browse by vibe" tiles drive the same vibe facet as the filter chips. Picking one toggles
   // the vibe and scrolls down to the (now-filtered) results so the interaction feels live.
@@ -53,7 +59,16 @@ export function ExplorePage() {
         <Section className="pt-0">
           <ExploreStats className="mb-12" />
 
-          <ExploreVibeTiles onPick={handleVibePick} />
+          {/* Editorial focal point: the hottest trip, blown up as a magazine-style feature so the
+              page leads with something rich instead of jumping straight to a uniform grid. */}
+          <ExploreSpotlight
+            trip={spotlight}
+            onPlan={() => navigate(planHref({ seed: spotlight.prompt, autostart: true }))}
+          />
+
+          <div className="mt-14">
+            <ExploreVibeTiles onPick={handleVibePick} />
+          </div>
 
           {/* Filters + results. scroll-mt-24 keeps the sticky nav from covering the top when a
               vibe tile scrolls us here. */}
