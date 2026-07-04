@@ -46,8 +46,18 @@ export function ExploreVibeTiles({ onPick }: { onPick: (vibe: TripVibe) => void 
                   : 'absolute inset-0 -z-10 h-full w-full transition-transform duration-300 group-hover:scale-[1.04]'
               }
             />
-            <span className="absolute inset-0 -z-10 bg-scrim" aria-hidden />
-            <span className="p-3">
+            {/*
+              Explicit transparent-at-top gradient rather than the shared `bg-scrim` utility:
+              `bg-scrim` currently also carries an OPAQUE background-color (Tailwind registers
+              `scrim` as a color, colliding with the gradient-only .bg-scrim in index.css), which
+              fully hides the photo behind it. This gradient keeps the label legible while letting
+              the photo show through.
+            */}
+            <span
+              className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/25 to-transparent"
+              aria-hidden
+            />
+            <span className="relative p-3">
               <span className="block text-sm font-semibold leading-tight text-white">{vibe}</span>
               <span className="mt-0.5 block text-xs text-white/80">
                 {count} {count === 1 ? 'trip' : 'trips'}
