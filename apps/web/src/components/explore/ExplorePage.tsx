@@ -108,8 +108,10 @@ export function ExplorePage() {
           </div>
         </Section>
 
-        {/* Another way in below the results: themed, data-derived collections. */}
-        <Section className="pt-0">
+        {/* Another way in below the results: themed, data-derived collections, set on a clean
+            white band (hairline top border) so the section reads as its own zone against the
+            off-white page base. */}
+        <Section className="border-t border-border bg-bg">
           <ExploreCollections />
         </Section>
 
