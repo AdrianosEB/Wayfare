@@ -3,6 +3,7 @@ import { TopNav } from '@/components/landing/TopNav';
 import { SiteFooter } from '@/components/landing/SiteFooter';
 import { Section } from '@/components/landing/_shared';
 import { Button } from '@/components/Button';
+import { ExploreBackdrop } from '@/components/explore/ExploreBackdrop';
 import { ExploreHero } from '@/components/explore/ExploreHero';
 import { ExploreStats } from '@/components/explore/ExploreStats';
 import { ExploreSpotlight } from '@/components/explore/ExploreSpotlight';
@@ -50,10 +51,15 @@ export function ExplorePage() {
       <main>
         {/* The hero gets its OWN <Section> so its centered max-w-site container aligns the
             copy/collage with the stats + grid below. ExploreHero renders no Section of its own
-            (it can't, or the widths wouldn't line up), so alignment is this wrapper's job. */}
-        <Section className="pb-8 pt-16 sm:pt-24">
-          <ExploreHero />
-        </Section>
+            (it can't, or the widths wouldn't line up), so alignment is this wrapper's job.
+            The relative/overflow-hidden wrapper hosts ExploreBackdrop — a soft azure wash +
+            blurred blobs behind the starting screen so the page doesn't open on stark white. */}
+        <div className="relative overflow-hidden">
+          <ExploreBackdrop />
+          <Section className="pb-8 pt-16 sm:pt-24">
+            <ExploreHero />
+          </Section>
+        </div>
 
         {/* Everything below the hero shares one Section (one aligned column): the derived stats
             band, the filter bar, and then the results. */}
