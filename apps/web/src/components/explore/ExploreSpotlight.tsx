@@ -29,7 +29,7 @@ export function ExploreSpotlight({
 }) {
   const reduce = useReducedMotion();
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-azure-50 shadow-card">
+    <article className="overflow-hidden rounded-xl border border-border bg-gradient-to-br from-azure-100/70 via-azure-50 to-bg shadow-card">
       <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-2 lg:gap-10 lg:p-8">
         {/* Large hero photo — a taller 3/2 ratio than the cards' 16/10 to read as a feature.
             group-hover scale mirrors ExploreTripCard, guarded by useReducedMotion. */}
