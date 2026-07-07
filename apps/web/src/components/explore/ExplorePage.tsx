@@ -11,6 +11,7 @@ import { ExploreVibeTiles } from '@/components/explore/ExploreVibeTiles';
 import { ExploreTripCard } from '@/components/explore/ExploreTripCard';
 import { ExploreFilters } from '@/components/explore/ExploreFilters';
 import { ExploreCollections } from '@/components/explore/ExploreCollections';
+import { ExploreRouteMotif } from '@/components/explore/ExploreRouteMotif';
 import { useExploreFilters } from '@/components/explore/useExploreFilters';
 import { EXPLORE_TRIPS, type TripVibe } from '@/lib/content';
 import { navigate, planHref } from '@/lib/router';
@@ -139,8 +140,11 @@ function EmptyState({ onClear }: { onClear: () => void }) {
 function ExploreCTA() {
   return (
     <Section className="pt-0">
-      <div className="flex flex-col items-start gap-5 rounded-xl bg-azure-50 px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-10">
-        <div>
+      <div className="relative flex flex-col items-start gap-5 overflow-hidden rounded-xl bg-azure-50 px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-10">
+        {/* Faint travel-route lines behind the closing CTA for a bit of on-brand character.
+            Purely decorative; content below carries `relative` so it stays above the motif. */}
+        <ExploreRouteMotif className="absolute inset-0 h-full w-full text-azure-200 opacity-70" />
+        <div className="relative">
           <h2 className="font-display text-2xl font-semibold text-ink">
             None of these quite it?
           </h2>
@@ -149,7 +153,7 @@ function ExploreCTA() {
             cheapest getaways on the board.
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-3">
+        <div className="relative flex shrink-0 flex-wrap gap-3">
           <Button size="lg" onClick={() => navigate(planHref())}>
             Plan my trip
           </Button>
