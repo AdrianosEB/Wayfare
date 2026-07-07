@@ -46,7 +46,9 @@ export function ExplorePage() {
 
   return (
     // Page composition, top to bottom: hero Section → stats → filters → grid → CTA.
-    <div className="min-h-full bg-bg">
+    // Base is `bg-surface` (a barely-cool off-white) rather than stark white, so the white
+    // cards/bands (bg-bg) lift off the page with their shadows instead of blending in.
+    <div className="min-h-full bg-surface">
       <TopNav alwaysSolid />
       <main>
         {/* The hero gets its OWN <Section> so its centered max-w-site container aligns the
