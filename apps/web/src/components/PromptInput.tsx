@@ -39,11 +39,25 @@ export function PromptInput({
   };
 
   // Auto-grow the textarea to fit content.
+  //
+  // Measured on a rAF as well as synchronously: on first mount the textarea can still be at its
+  // pre-layout width (the flex row hasn't sized it yet), which wraps the placeholder over many
+  // lines, inflates scrollHeight, and pins the box to its max height — an empty input rendering
+  // as a ~220px void. Re-measuring after layout settles (and on resize) keeps it honest.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, isHero ? 220 : 160)}px`;
+    const fit = () => {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, isHero ? 220 : 160)}px`;
+    };
+    fit();
+    const raf = requestAnimationFrame(fit);
+    window.addEventListener('resize', fit);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', fit);
+    };
   }, [text, isHero]);
 
   const canSend = text.trim().length > 0 && !busy && !disabled;
@@ -64,9 +78,16 @@ export function PromptInput({
   return (
     <div
       className={cn(
-        'group flex items-end gap-2 rounded-3xl border border-border bg-bg',
-        'shadow-card transition focus-within:border-azure-400 focus-within:shadow-float',
-        isHero ? 'p-2.5 pl-5' : 'p-2 pl-4',
+        'group relative flex items-end gap-2 rounded-3xl border border-border bg-bg',
+        // Resting: soft card lift, a transparent ring held in reserve so the focus
+        // transition animates the colour rather than snapping a new box into place.
+        'shadow-card ring-2 ring-transparent',
+        'transition-all duration-200 ease-out',
+        'hover:border-azure-200',
+        // Focus: calm azure halo + firmer border + a gentle lift. Never a hard outline.
+        'focus-within:border-azure-500 focus-within:ring-azure-500/25 focus-within:shadow-float',
+        'focus-within:hover:border-azure-500',
+        isHero ? 'p-3 pl-5' : 'p-2 pl-4',
         disabled && 'opacity-60',
       )}
     >
@@ -81,9 +102,11 @@ export function PromptInput({
         placeholder={placeholder ?? (isHero ? 'Where do you want to go?' : 'Refine your trip…')}
         aria-label={isHero ? 'Describe your trip' : 'Refine your trip'}
         className={cn(
-          'no-scrollbar w-full resize-none bg-transparent py-2 text-ink placeholder:text-ink-3',
-          'focus:outline-none',
-          isHero ? 'text-lg leading-relaxed' : 'text-[15px] leading-relaxed',
+          'no-scrollbar w-full min-w-0 resize-none bg-transparent text-ink',
+          'placeholder:text-ink-3 placeholder:font-normal',
+          // The wrapper owns the focus affordance, so the field itself stays chrome-free.
+          'focus:outline-none focus:ring-0',
+          isHero ? 'py-2.5 text-lg leading-relaxed' : 'py-2 text-[15px] leading-relaxed',
         )}
       />
       <button
@@ -93,8 +116,10 @@ export function PromptInput({
         aria-label="Send"
         className={cn(
           'flex shrink-0 items-center justify-center rounded-2xl bg-azure-500 text-white',
-          'transition enabled:hover:bg-azure-600 enabled:active:scale-95',
-          'disabled:cursor-not-allowed disabled:opacity-40',
+          'transition-all duration-150 ease-out',
+          'enabled:shadow-card enabled:hover:bg-azure-600 enabled:hover:shadow-float',
+          'enabled:active:scale-95 enabled:active:shadow-card',
+          'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 disabled:shadow-none',
           isHero ? 'h-12 w-12 text-xl' : 'h-10 w-10 text-lg',
         )}
       >
