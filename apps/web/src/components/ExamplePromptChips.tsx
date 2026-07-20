@@ -1,6 +1,28 @@
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { cn } from '@/lib/cn';
-import { staggerContainer, staggerIn } from '@/lib/motion';
+import { EASE } from '@/lib/motion';
+
+/**
+ * Transform-only stagger — deliberately NOT the shared `staggerContainer`/`staggerIn` pair.
+ *
+ * Those start children at `opacity: 0`, and lib/motion.ts warns that the stagger orchestration
+ * can stall (backgrounded tab, double-mount), freezing children invisible — the "disappearing
+ * UI" bug. The shared variants are only safe when driven by `whileInView`, which self-heals via
+ * IntersectionObserver; here they're driven by `animate`, which does not.
+ *
+ * These chips are the only alternative call-to-action on an otherwise empty planner screen, so
+ * they must never be able to vanish. Opacity is never touched: a stalled animation leaves them
+ * visible, merely un-nudged.
+ */
+const CHIPS_CONTAINER: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+};
+
+const CHIP_ITEM: Variants = {
+  hidden: { y: 12 },
+  show: { y: 0, transition: { duration: 0.28, ease: EASE } },
+};
 
 /**
  * Tappable starter prompts on the empty state (US-1.3). Three examples spanning the
@@ -37,13 +59,13 @@ export function ExamplePromptChips({ onPick, disabled }: ExamplePromptChipsProps
   const reduce = useReducedMotion();
   return (
     <motion.ul
-      variants={reduce ? undefined : staggerContainer}
+      variants={reduce ? undefined : CHIPS_CONTAINER}
       initial={reduce ? undefined : 'hidden'}
       animate={reduce ? undefined : 'show'}
       className="flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center"
     >
       {EXAMPLES.map((ex) => (
-        <motion.li key={ex.prompt} variants={reduce ? undefined : staggerIn} className="sm:max-w-[15rem] sm:flex-1">
+        <motion.li key={ex.prompt} variants={reduce ? undefined : CHIP_ITEM} className="sm:max-w-[15rem] sm:flex-1">
           <button
             type="button"
             disabled={disabled}
