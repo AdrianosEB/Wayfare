@@ -1,0 +1,35 @@
+{
+  "name": "@wayfare/orchestrator",
+  "version": "0.1.0",
+  "description": "Wayfare agent orchestration — independent agents that search in parallel, cross-check listings for authenticity + price honesty, match to a traveler's budget and personality, and self-verify before returning options at the low end of the market. The base for an AI-native travel agency.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "demo": "tsx src/demo.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@wayfare/shared": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.4"
+  }
+}
