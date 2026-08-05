@@ -13,6 +13,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.1
         version: 0.32.1
+      '@wayfare/orchestrator':
+        specifier: workspace:*
+        version: link:../../packages/orchestrator
       '@wayfare/shared':
         specifier: workspace:*
         version: link:../../packages/shared

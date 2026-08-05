@@ -19,6 +19,7 @@ import { mergeAnswers } from "../agent/merge.js";
 import { runPlan, type RunDeps } from "../agent/run.js";
 import { refine } from "../agent/refine.js";
 import type { PlanEmitter } from "../agent/planner.js";
+import type { OrchestrationJobStore } from "../orchestration/jobStore.js";
 
 export interface RouteDeps {
   store: SessionStore;
@@ -29,6 +30,8 @@ export interface RouteDeps {
   model: string;
   /** Optional auth wiring. When omitted, createApp builds a fresh in-memory instance. */
   auth?: AuthDeps;
+  /** Optional background-orchestration job store. When omitted, createApp builds a fresh one. */
+  orchestration?: OrchestrationJobStore;
 }
 
 function emitterFor(sse: SseStream): PlanEmitter {

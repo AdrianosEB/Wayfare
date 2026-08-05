@@ -3,6 +3,8 @@ import cookieParser from "cookie-parser";
 import { ZodError } from "zod";
 import { AppError } from "./errors.js";
 import { createSessionRouter, type RouteDeps } from "./routes/session.js";
+import { createOrchestrateRouter } from "./routes/orchestrate.js";
+import { InMemoryOrchestrationJobStore } from "./orchestration/jobStore.js";
 import { createAuthRouter, createInMemoryAuthDeps, type AuthDeps } from "./auth/index.js";
 
 /**
@@ -24,6 +26,12 @@ export function createApp(deps: RouteDeps): Application {
   app.use("/api", createAuthRouter(authDeps));
 
   app.use("/api", createSessionRouter(deps));
+
+  // Background agent orchestration (verify-and-book pipeline). Additive alongside the planner:
+  // kicks jobs off async and streams their trace over SSE. Falls back to a fresh in-memory job
+  // store when the caller didn't inject one (mirrors the auth wiring above).
+  const orchestration = deps.orchestration ?? new InMemoryOrchestrationJobStore(deps.now);
+  app.use("/api", createOrchestrateRouter({ store: orchestration, now: deps.now }));
 
   // uniform error shape (API_CONTRACT.md "Errors")
   app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
