@@ -1,10 +1,16 @@
-import type { ListingKind } from "@wayfare/shared";
+import type { ListingKind, Budget } from "@wayfare/shared";
 import type {
+  ItineraryCombination,
+  ItineraryConfirmation,
+  ItineraryLeg,
   PersonaWeights,
   PlanResult,
+  RankedOption,
+  SupervisorStats,
   TravelerProfile,
   TraceEvent,
   VerifiedOption,
+  CriticReport,
 } from "./types.js";
 import type { SearchProvider } from "./providers/types.js";
 import { Tracer } from "./trace.js";
@@ -12,33 +18,43 @@ import { intake } from "./agents/intake.js";
 import { derivePersona } from "./agents/persona.js";
 import { planQueries, runSearch } from "./agents/search.js";
 import { verify } from "./agents/verify.js";
-import { match } from "./agents/match.js";
+import { rankByKind, selectLeads, buildBudget } from "./agents/match.js";
+import { composeItineraries, itineraryLegs } from "./agents/supervisor.js";
+import { repriceItinerary } from "./agents/reprice.js";
 import { prepareBookings } from "./agents/booking.js";
 import { review } from "./agents/critic.js";
 
 /**
- * Orchestrator — the conductor. It runs the agents as an independent pipeline and, crucially,
- * closes the loop: intake → persona → (search → verify → match → critique)* → booking. When the
- * critic finds a blocker it doesn't ship the plan — it adjusts the search breadth or the
- * persona weights and runs the middle again, up to `maxPasses`. What comes out is a plan that
- * has already graded and corrected itself.
+ * Orchestrator — the conductor. It runs the agents as an independent pipeline and closes the
+ * loop: intake → persona → (search → verify → rank → supervise → critique)* → reprice → booking.
  *
- * Every priced thing stays a shared `Listing`, so provenance rides along end-to-end and the UI
- * can be honest about what's live, cached, estimated, or (here) sample data.
+ * The supervisor fans out across flight × stay × date combinations and prunes branches against
+ * budget before expanding; the reprice agent re-checks the winning itinerary at its sources
+ * before it is surfaced. When the critic finds a blocker the plan isn't shipped — the search
+ * broadens or the persona relaxes and the middle runs again, up to `maxPasses`. What comes out
+ * is a whole-trip plan that has graded, re-priced, and corrected itself.
  */
 
 export interface OrchestratorOptions {
-  /** how many self-correcting passes before shipping the best-so-far plan. */
   maxPasses?: number;
-  /** which listing kinds to shop for. */
   kinds?: ListingKind[];
-  /** stream trace events as they happen (e.g. to SSE). */
   onEvent?: (e: TraceEvent) => void;
 }
 
 export interface PlanOptions {
   maxPasses?: number;
   kinds?: ListingKind[];
+}
+
+interface PassResult {
+  rankedByKind: Record<string, RankedOption[]>;
+  selection: Record<string, RankedOption>;
+  itineraries: ItineraryCombination[];
+  chosen?: ItineraryCombination;
+  legs: ItineraryLeg[];
+  stats: SupervisorStats;
+  budget: Budget;
+  critic: CriticReport;
 }
 
 export class Orchestrator {
@@ -61,20 +77,17 @@ export class Orchestrator {
     const { request, destination } = intake(prompt, profile, tracer);
     const persona = derivePersona(profile, request, tracer);
 
-    // a mutable copy of the persona the loop is allowed to nudge (relax_quality remedy).
     let workingWeights: PersonaWeights = { ...persona.weights };
     let breadthMultiplier = 1;
 
-    let best: Awaited<ReturnType<typeof this.runPass>> | undefined;
+    let best: PassResult | undefined;
     let passes = 0;
 
     for (let pass = 1; pass <= maxPasses; pass++) {
       passes = pass;
       const result = await this.runPass({
-        pass,
-        prompt,
-        profile,
         request,
+        profile,
         persona: { ...persona, weights: workingWeights },
         destination,
         kinds,
@@ -86,7 +99,6 @@ export class Orchestrator {
       if (result.critic.passed) break;
       if (pass === maxPasses) break;
 
-      // act on the critic's remedies before the next pass.
       const remedies = new Set(result.critic.issues.map((i) => i.remedy).filter(Boolean));
       if (remedies.has("broaden_search")) breadthMultiplier += 0.6;
       if (remedies.has("relax_quality")) workingWeights = relaxQuality(workingWeights);
@@ -95,14 +107,40 @@ export class Orchestrator {
 
     if (!best) throw new Error("orchestrator produced no plan");
 
-    const bookingIntents = prepareBookings(best.selection, tracer);
-    tracer.emit("orchestrator", "done", { passes, status: best.budget.status, intents: bookingIntents.length });
+    // final gate: re-price the chosen itinerary at its sources before surfacing it.
+    const nights = request.durationDays?.value ?? 5;
+    const party = request.partySize?.value;
+    const travelers = (party?.adults ?? 1) + (party?.children ?? 0);
+    let confirmation: ItineraryConfirmation | undefined;
+    if (best.chosen) {
+      confirmation = await repriceItinerary({
+        combo: best.chosen,
+        providers: this.providers,
+        destination,
+        nights,
+        travelers,
+        now: new Date().toISOString(),
+        tracer,
+      });
+    }
+
+    const bookingIntents = prepareBookings(best.legs, tracer);
+    tracer.emit("orchestrator", "done", {
+      passes,
+      status: best.budget.status,
+      confirmed: confirmation?.confirmed ?? false,
+      intents: bookingIntents.length,
+    });
 
     return {
       request,
       persona,
-      options: mapValues(best.ranked, (arr) => arr),
+      options: best.rankedByKind,
       selection: best.selection,
+      itineraries: best.itineraries,
+      ...(best.chosen ? { itinerary: best.chosen } : {}),
+      ...(confirmation ? { confirmation } : {}),
+      supervisor: best.stats,
       budget: best.budget,
       bookingIntents,
       critic: best.critic,
@@ -112,16 +150,14 @@ export class Orchestrator {
   }
 
   private async runPass(args: {
-    pass: number;
-    prompt: string;
-    profile: TravelerProfile;
     request: PlanResult["request"];
+    profile: TravelerProfile;
     persona: PlanResult["persona"];
     destination: string;
     kinds: ListingKind[];
     breadthMultiplier: number;
     tracer: Tracer;
-  }) {
+  }): Promise<PassResult> {
     const { request, persona, destination, kinds, breadthMultiplier, tracer, profile } = args;
 
     const queries = planQueries(request, persona, { destination, kinds, breadthMultiplier });
@@ -129,13 +165,23 @@ export class Orchestrator {
     const verified = verify(candidates, this.aggregatorIds, tracer);
 
     const optionsByKind = groupByKind(verified);
-    const { ranked, selection, budget } = match(optionsByKind, persona, request, tracer);
+    const rankedByKind = rankByKind(optionsByKind, persona);
+
+    // supervisor composes whole itineraries with budget-pruned branch-and-bound.
+    const { itineraries, stats } = composeItineraries({ rankedByKind, persona, request, tracer });
+    const chosen = itineraries.find((i) => i.withinBudget) ?? itineraries[0];
+    const legs = chosen ? itineraryLegs(chosen) : [];
+
+    const budget = buildBudget(legs, request, tracer);
+    // per-kind leads for display; the itinerary is what gets booked.
+    const selection = chosen ? itinerarySelection(legs, rankedByKind) : selectLeads(rankedByKind);
+
     const critic = review(
       { selection, budget, request, profile, expectedKinds: kinds },
       tracer,
     );
 
-    return { ranked, selection, budget, critic };
+    return { rankedByKind, selection, itineraries, ...(chosen ? { chosen } : {}), legs, stats, budget, critic };
   }
 }
 
@@ -145,6 +191,26 @@ function groupByKind(options: VerifiedOption[]): Record<string, VerifiedOption[]
     (out[o.entity.kind] ??= []).push(o);
   }
   return out;
+}
+
+/** Map the chosen itinerary's legs back to their ranked entries (one per kind, for display). */
+function itinerarySelection(
+  legs: ItineraryLeg[],
+  rankedByKind: Record<string, RankedOption[]>,
+): Record<string, RankedOption> {
+  const sel: Record<string, RankedOption> = {};
+  for (const leg of legs) {
+    if (sel[leg.kind]) continue;
+    const ranked = (rankedByKind[leg.kind] ?? []).find(
+      (r) => r.option.entity.key === leg.option.entity.key,
+    );
+    sel[leg.kind] = ranked ?? {
+      option: leg.option,
+      score: 0,
+      breakdown: { price: 0, quality: 0, location: 0, vibe: 0, verification: 0 },
+    };
+  }
+  return sel;
 }
 
 function relaxQuality(w: PersonaWeights): PersonaWeights {
@@ -161,8 +227,4 @@ function relaxQuality(w: PersonaWeights): PersonaWeights {
     vibe: next.vibe / sum,
     flexibility: next.flexibility / sum,
   };
-}
-
-function mapValues<V, R>(obj: Record<string, V>, fn: (v: V) => R): Record<string, R> {
-  return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, fn(v)]));
 }

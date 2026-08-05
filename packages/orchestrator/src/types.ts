@@ -258,7 +258,97 @@ export const TraceEventSchema = z
   .strict();
 export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
-/** The whole deliverable: verified, ranked options per category + budget + staged bookings. */
+// ---------------------------------------------------------------------------
+// Supervisor: itinerary composition + full-itinerary reprice
+// ---------------------------------------------------------------------------
+
+/** A candidate travel window the supervisor branches over (dates move price). */
+export const DateWindowSchema = z
+  .object({
+    start: z.string(),
+    end: z.string(),
+    label: z.string(),
+    /** seasonal price factor vs the mid window (dates are a real cost lever). */
+    priceFactor: z.number(),
+  })
+  .strict();
+export type DateWindow = z.infer<typeof DateWindowSchema>;
+
+/**
+ * ItineraryCombination — one whole-trip branch the supervisor composed: a flight + a stay +
+ * activities under a date window, priced as a unit. Only branches that survived budget pruning
+ * and expansion appear here.
+ */
+export const ItineraryCombinationSchema = z
+  .object({
+    id: z.string(),
+    window: DateWindowSchema.optional(),
+    flight: VerifiedOptionSchema.optional(),
+    stay: VerifiedOptionSchema.optional(),
+    activities: z.array(VerifiedOptionSchema),
+    /** whole-itinerary total (flights × travelers + stay × nights + activities + window factor). */
+    total: z.number(),
+    currency: z.string(),
+    withinBudget: z.boolean(),
+    /** persona-weighted score of the whole combination. */
+    score: z.number(),
+  })
+  .strict();
+export type ItineraryCombination = z.infer<typeof ItineraryCombinationSchema>;
+
+/** What the supervisor's branch-and-bound actually did — the fan-out/prune accounting. */
+export const SupervisorStatsSchema = z
+  .object({
+    windows: z.number().int().min(0),
+    /** (flight × stay × window) branches generated. */
+    expanded: z.number().int().min(0),
+    /** branches dropped on the flight+stay partial cost BEFORE activities were added. */
+    prunedOnBudget: z.number().int().min(0),
+    /** survivors kept in the beam and fully expanded. */
+    kept: z.number().int().min(0),
+  })
+  .strict();
+export type SupervisorStats = z.infer<typeof SupervisorStatsSchema>;
+
+/** One leg's line in a reprice check. */
+export const RepriceLineSchema = z
+  .object({
+    entity: z.string(),
+    source: z.string(),
+    was: z.number(),
+    now: z.number(),
+    ok: z.boolean(),
+  })
+  .strict();
+export type RepriceLine = z.infer<typeof RepriceLineSchema>;
+
+/**
+ * ItineraryConfirmation — the last gate before an itinerary is surfaced. Every leg is re-priced
+ * at its source and the whole-itinerary total is recomputed; only if nothing drifted beyond
+ * tolerance is the itinerary `confirmed` (i.e. actually bookable at the quoted price).
+ */
+export const ItineraryConfirmationSchema = z
+  .object({
+    confirmed: z.boolean(),
+    originalTotal: z.number(),
+    repricedTotal: z.number(),
+    /** repricedTotal − originalTotal (signed). */
+    drift: z.number(),
+    currency: z.string(),
+    checkedAt: z.string(),
+    lines: z.array(RepriceLineSchema),
+    note: z.string(),
+  })
+  .strict();
+export type ItineraryConfirmation = z.infer<typeof ItineraryConfirmationSchema>;
+
+/** A single priced leg of an itinerary, used to build the budget + bookings. */
+export interface ItineraryLeg {
+  kind: string;
+  option: VerifiedOption;
+}
+
+/** The whole deliverable: verified options, the composed + reprice-confirmed itinerary, budget. */
 export const PlanResultSchema = z
   .object({
     request: TripRequestSchema,
@@ -267,10 +357,18 @@ export const PlanResultSchema = z
     options: z.record(z.array(RankedOptionSchema)),
     /** the single pick per kind the orchestrator would lead with. */
     selection: z.record(RankedOptionSchema),
+    /** every whole-trip combination the supervisor kept, best-first. */
+    itineraries: z.array(ItineraryCombinationSchema),
+    /** the chosen itinerary (confirmed-and-affordable first). */
+    itinerary: ItineraryCombinationSchema.optional(),
+    /** the reprice-at-source ruling on the chosen itinerary. */
+    confirmation: ItineraryConfirmationSchema.optional(),
+    /** the supervisor's fan-out/prune accounting. */
+    supervisor: SupervisorStatsSchema,
     budget: BudgetSchema,
     bookingIntents: z.array(BookingIntentSchema),
     critic: CriticReportSchema,
-    /** how many search→verify→match passes it took to satisfy the critic. */
+    /** how many search→verify→compose→critique passes it took to satisfy the critic. */
     passes: z.number().int().min(1),
     trace: z.array(TraceEventSchema),
   })

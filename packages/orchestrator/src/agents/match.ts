@@ -9,70 +9,64 @@ import type {
   SavingHint,
   TripRequest,
 } from "@wayfare/shared";
-import type { Persona, RankedOption, VerifiedOption } from "../types.js";
+import type { ItineraryLeg, Persona, RankedOption, VerifiedOption } from "../types.js";
 import type { Tracer } from "../trace.js";
 
 /**
- * MatchAgent — matches the verified market to the person and their money. It scores each
+ * MatchAgent — scores the verified market against the person and their money. It ranks each
  * option on the persona's own weights (a cost-led traveler ranks cheap-and-verified to the
- * top), keeps suspect options from leading, and rolls the leading picks into an honest
- * Budget whose total is the sum of what was actually chosen.
+ * top) and keeps suspect options from leading. Ranking is exposed on its own (`rankByKind`) so
+ * the supervisor can reuse the scores when it composes whole itineraries.
  *
  * "Low end of the market" isn't hardcoded: it falls out of the default price weight plus the
  * trust gate, so the cheapest *trustworthy* option wins, not the cheapest bait.
  */
 
-const KIND_TO_CATEGORY: Record<ListingKind, BudgetCategory> = {
+const KIND_TO_CATEGORY: Record<string, BudgetCategory> = {
   flight: "flights",
   stay: "stay",
   activity: "activities",
   transit: "transit",
 };
 
-const KIND_TO_SCOPE: Record<ListingKind, RefinementScope> = {
+const KIND_TO_SCOPE: Record<string, RefinementScope> = {
   flight: "flights",
   stay: "lodging",
   activity: "activity_day",
   transit: "lodging",
 };
 
-export interface MatchResult {
-  ranked: Record<string, RankedOption[]>;
-  selection: Record<string, RankedOption>;
-  budget: Budget;
+/** per-leg cost multiplier — a stay is per-night, a flight is per-traveler. */
+export function legMultiplier(kind: string, nights: number, travelers: number): number {
+  if (kind === "stay") return Math.max(1, nights);
+  if (kind === "flight") return travelers;
+  return 1;
 }
 
-export function match(
+export function rankByKind(
   optionsByKind: Record<string, VerifiedOption[]>,
   persona: Persona,
-  request: TripRequest,
-  tracer: Tracer,
-): MatchResult {
-  const ranked: Record<string, RankedOption[]> = {};
-  const selection: Record<string, RankedOption> = {};
-
+): Record<string, RankedOption[]> {
+  const out: Record<string, RankedOption[]> = {};
   for (const [kind, options] of Object.entries(optionsByKind)) {
-    if (!options.length) continue;
-    const scored = rankKind(options, persona);
-    ranked[kind] = scored;
-    // lead with the best non-suspect option; fall back to the best available only if forced.
+    if (options.length) out[kind] = rankKind(options, persona);
+  }
+  return out;
+}
+
+/** Lead pick per kind: best non-suspect option, falling back only if forced. */
+export function selectLeads(
+  ranked: Record<string, RankedOption[]>,
+): Record<string, RankedOption> {
+  const selection: Record<string, RankedOption> = {};
+  for (const [kind, scored] of Object.entries(ranked)) {
     const lead = scored.find((r) => r.option.verdict !== "suspect") ?? scored[0];
     if (lead) selection[kind] = lead;
   }
-
-  const budget = buildBudget(selection, request, tracer);
-  tracer.emit("match", "ranked", {
-    kinds: Object.keys(ranked),
-    selected: Object.fromEntries(
-      Object.entries(selection).map(([k, r]) => [k, r.option.entity.name]),
-    ),
-    total: budget.total,
-    status: budget.status,
-  });
-  return { ranked, selection, budget };
+  return selection;
 }
 
-function rankKind(options: VerifiedOption[], persona: Persona): RankedOption[] {
+export function rankKind(options: VerifiedOption[], persona: Persona): RankedOption[] {
   const w = persona.weights;
   // flexibility folds into price appetite: a flexible traveler leans harder on cheapness.
   const priceWeight = w.price + w.flexibility * 0.5;
@@ -128,38 +122,51 @@ function vibeMatch(tags: string[], interests: Set<string>): number {
   return Math.min(1, hits / Math.min(2, interests.size));
 }
 
-function buildBudget(
-  selection: Record<string, RankedOption>,
+/**
+ * Build an honest Budget from the chosen itinerary's legs. The total is the sum of the lines —
+ * this is the only place per-category amounts are summed — plus a buffer, and direct-vs-
+ * aggregator savings are surfaced as tradeoffs.
+ */
+export function buildBudget(
+  legs: ItineraryLeg[],
   request: TripRequest,
-  _tracer: Tracer,
+  tracer?: Tracer,
 ): Budget {
   const nights = request.durationDays?.value ?? 5;
   const party = request.partySize?.value;
   const travelers = (party?.adults ?? 1) + (party?.children ?? 0);
-  const currency = request.budget?.value?.currency ?? firstCurrency(selection) ?? "EUR";
+  const currency = request.budget?.value?.currency ?? legs[0]?.option.best.price.currency ?? "EUR";
 
-  const lines: BudgetLine[] = [];
+  // group legs by budget category so multiple activities roll into one line.
+  const byCategory = new Map<BudgetCategory, { amount: number; refs: string[]; freshness: Freshness }>();
   const savings: SavingHint[] = [];
 
-  for (const [kind, r] of Object.entries(selection)) {
-    const listing = r.option.best;
-    const category = KIND_TO_CATEGORY[kind as ListingKind];
-    const multiplier = kind === "stay" ? Math.max(1, nights) : kind === "flight" ? travelers : 1;
-    lines.push({
-      category,
-      amount: Math.round(listing.price.amount * multiplier),
-      itemRefs: [listing.id],
-      freshness: listing.freshness as Freshness,
-    });
-    if (r.option.directDeal) {
-      const d = r.option.directDeal;
+  for (const leg of legs) {
+    const listing = leg.option.best;
+    const category = KIND_TO_CATEGORY[leg.kind] ?? "activities";
+    const mult = legMultiplier(leg.kind, nights, travelers);
+    const amount = Math.round(listing.price.amount * mult);
+    const acc = byCategory.get(category) ?? { amount: 0, refs: [], freshness: listing.freshness as Freshness };
+    acc.amount += amount;
+    acc.refs.push(listing.id);
+    byCategory.set(category, acc);
+
+    if (leg.option.directDeal) {
+      const d = leg.option.directDeal;
       savings.push({
-        description: `Book ${r.option.entity.name} direct instead of via ${d.aggregatorSource} to save ${d.savings} ${d.currency}${kind === "stay" ? "/night" : ""}`,
-        delta: -Math.round(d.savings * multiplier),
-        appliesTo: KIND_TO_SCOPE[kind as ListingKind],
+        description: `Book ${leg.option.entity.name} direct instead of via ${d.aggregatorSource} to save ${d.savings} ${d.currency}${leg.kind === "stay" ? "/night" : ""}`,
+        delta: -Math.round(d.savings * mult),
+        appliesTo: KIND_TO_SCOPE[leg.kind] ?? "info",
       });
     }
   }
+
+  const lines: BudgetLine[] = [...byCategory.entries()].map(([category, v]) => ({
+    category,
+    amount: v.amount,
+    itemRefs: v.refs,
+    freshness: v.freshness,
+  }));
 
   const subtotal = lines.reduce((a, l) => a + l.amount, 0);
   const buffer = Math.round(subtotal * 0.12);
@@ -183,9 +190,6 @@ function buildBudget(
     }
   }
 
+  tracer?.emit("match", "budget", { total, status, lines: lines.length });
   return { currency, target, total, lines, status, overageNote, savings };
-}
-
-function firstCurrency(selection: Record<string, RankedOption>): string | undefined {
-  return Object.values(selection)[0]?.option.best.price.currency;
 }

@@ -26,8 +26,16 @@ export { planQueries, runSearch } from "./agents/search.js";
 export type { SearchPlanOptions } from "./agents/search.js";
 export { verify } from "./agents/verify.js";
 export type { VerifyOptions } from "./agents/verify.js";
-export { match } from "./agents/match.js";
-export type { MatchResult } from "./agents/match.js";
+export { rankByKind, rankKind, selectLeads, buildBudget, legMultiplier } from "./agents/match.js";
+export {
+  composeItineraries,
+  deriveWindows,
+  computeItineraryTotal,
+  itineraryLegs,
+} from "./agents/supervisor.js";
+export type { SupervisorOptions, ComposeArgs } from "./agents/supervisor.js";
+export { repriceItinerary } from "./agents/reprice.js";
+export type { RepriceArgs } from "./agents/reprice.js";
 export { prepareBookings } from "./agents/booking.js";
 export { review } from "./agents/critic.js";
 export type { CriticInput } from "./agents/critic.js";

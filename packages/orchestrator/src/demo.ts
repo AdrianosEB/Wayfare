@@ -35,8 +35,27 @@ async function main() {
   console.log("PERSONA :", plan.persona.summary);
   console.log("WEIGHTS :", fmtWeights(plan.persona.weights));
   console.log("PASSES  :", plan.passes, plan.critic.passed ? "(critic passed)" : "(shipped best-effort)");
-  line();
 
+  line();
+  const s = plan.supervisor;
+  console.log(
+    `SUPERVISOR: fanned out ${s.expanded} branch(es) over ${s.windows} date window(s), ` +
+      `pruned ${s.prunedOnBudget} on budget before expanding, kept ${s.kept}.`,
+  );
+  if (plan.itinerary) {
+    console.log(
+      `CHOSEN ITINERARY (${plan.itinerary.window?.label ?? "your dates"}): ` +
+        `${plan.itinerary.total} ${plan.itinerary.currency} — ${plan.itinerary.withinBudget ? "within budget" : "over budget"}`,
+    );
+  }
+  if (plan.confirmation) {
+    console.log(
+      `REPRICE  : ${plan.confirmation.confirmed ? "CONFIRMED bookable" : "unconfirmed"} — ` +
+        `re-checked ${plan.confirmation.lines.length} legs at source, drift ${plan.confirmation.drift} ${plan.confirmation.currency}`,
+    );
+  }
+
+  line();
   for (const [kind, r] of Object.entries(plan.selection)) {
     const o = r.option;
     console.log(`${kind.toUpperCase().padEnd(9)} ${o.entity.name}`);

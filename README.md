@@ -12,9 +12,10 @@ the price math always on the table. See [docs/VISION.md](docs/VISION.md).
 wayfare/
 ├── docs/               # authoritative specs (the frozen contract lives here)
 ├── packages/
-│   └── shared/         # @wayfare/shared — TS types + Zod schemas (the wire contract)
+│   ├── shared/         # @wayfare/shared — TS types + Zod schemas (the wire contract)
+│   └── orchestrator/   # @wayfare/orchestrator — self-verifying multi-agent travel engine
 └── apps/
-    ├── server/         # @wayfare/server — API + planning agent + mock integrations
+    ├── server/         # @wayfare/server — API + planning agent + background orchestration
     └── web/            # React client (frontend session's lane)
 ```
 
@@ -66,6 +67,14 @@ MVP is implemented end-to-end and wired together (`VITE_USE_MOCKS=0` talks to th
   never gated. See [docs/AUTH_CONTRACT.md](docs/AUTH_CONTRACT.md).
 - **Imagery** — frontend-supplied via `apps/web/src/lib/images.ts` (a swap-seam for a real
   provider `imageUrl` later); the wire carries no image fields.
+- **Agent orchestration** ([`packages/orchestrator`](packages/orchestrator/README.md)) — the
+  base for an AI-native travel agency: a supervisor fans async agents out across flight × stay
+  × date combinations and prunes branches against budget before expanding; a verification layer
+  cross-checks findings at the source and re-prices the full itinerary before surfacing
+  confirmed, bookable options at the low end of the range. It runs as a **background job over
+  SSE** in the server (`POST /api/orchestrate` → `GET /api/orchestrate/:id/events`). Bookings
+  and hotel calls are staged as approval-required intents — nothing is booked autonomously.
+  Implemented as a supervisor *pattern* in TypeScript (no LangGraph/Python).
 
 Next: real pricing providers behind the provider interface, then saved trips for logged-in
 users. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md),

@@ -1,10 +1,17 @@
 # @wayfare/orchestrator
 
-An orchestration of independent agents that plans travel end to end, and is the base for an
-AI-native travel agency. It searches many sources in parallel, **cross-checks the listings
-against each other** to confirm they are real and priced as listed, matches what survives to a
-traveler's budget and personality, and **grades its own plan and re-runs** before returning
-options at the low end of the market.
+An orchestration of independent agents that plans and books travel end to end, and is the base
+for an AI-native travel agency. A **supervisor fans async agents out across flight × stay ×
+date combinations and prunes branches against budget before expanding**; a **verification
+layer cross-checks findings at the source and re-prices the full itinerary before surfacing
+it**, returning confirmed, bookable options at the low end of the price range — matched to the
+traveler's budget and personality, and graded by a self-check that re-runs on failure.
+
+> **Stack note:** this is implemented as a supervisor *pattern* in **TypeScript/Node** (with a
+> React client elsewhere in the monorepo), not a third-party graph runtime — there is no
+> LangGraph or Python here. The behavior below (supervisor fan-out, budget-pruned
+> branch-and-bound, source re-pricing) is real and tested; the technology names are called out
+> honestly so the code and its description match.
 
 > **This package stages, it never executes.** No booking is completed, no form is submitted,
 > and no hotel is called autonomously. Bookings and calls come out as `BookingIntent`s with
@@ -14,26 +21,31 @@ options at the low end of the market.
 ## The pipeline
 
 ```
-                 ┌─────────┐   ┌──────────┐
-   one sentence  │ intake  │   │ persona  │   who is this traveler, and what do
-   + profile  ─► │ agent   ├──►│ agent    │   they actually weight? (price/quality/
-                 └─────────┘   └────┬─────┘   location/vibe/flexibility)
-                                    │
-        ┌───────────────────────────┼──────────────────────────────┐
-        │   self-correcting loop (up to maxPasses)                   │
-        │   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-        │   │ search   │  │ verify   │  │ match    │  │ critic   │   │
-        │   │ (parallel│─►│ (cross-  │─►│ (rank +  │─►│ (self-   │─┐ │
-        │   │  fan-out)│  │  check)  │  │  budget) │  │  check)  │ │ │
-        │   └──────────┘  └──────────┘  └──────────┘  └────┬─────┘ │ │
-        │        ▲                                          │ pass? │ │
-        │        └───────── broaden / relax on failure ◄────┘  no   │ │
-        └───────────────────────────────────────────────────yes────┘ │
-                                    │                                  │
-                              ┌─────▼─────┐                            │
-                              │ booking   │  stage web deep-links +    │
-                              │ agent     │  hotel-call scripts        │
-                              └───────────┘  (requires_approval)       │
+   one sentence   ┌─────────┐   ┌──────────┐  who is this traveler, and what do
+   + profile   ─► │ intake  ├──►│ persona  │  they actually weight? (price/quality/
+                  └─────────┘   └────┬─────┘  location/vibe/flexibility)
+                                     │
+   ┌─────────────────────────────────┼───────────────────────────────────────────┐
+   │  self-correcting loop (up to maxPasses)                                        │
+   │  ┌────────┐  ┌────────┐  ┌──────┐  ┌────────────┐  ┌────────┐                  │
+   │  │ search │─►│ verify │─►│ rank │─►│ supervisor │─►│ critic │─┐                │
+   │  │ (fan-  │  │(cross- │  │      │  │ (fan out    │  │ (self- │ │                │
+   │  │  out)  │  │ check) │  │      │  │  flight×stay│  │ check) │ │                │
+   │  │        │  │        │  │      │  │  ×date,     │  │        │ │                │
+   │  │        │  │        │  │      │  │  prune on   │  │        │ │                │
+   │  │        │  │        │  │      │  │  budget)    │  │        │ │                │
+   │  └────────┘  └────────┘  └──────┘  └────────────┘  └───┬────┘ │                │
+   │      ▲                                                  │ pass?│                │
+   │      └────────────── broaden / relax on failure ◄───────┘  no │                │
+   └───────────────────────────────────────────────────────yes────┘                │
+                                     │
+                          ┌──────────▼──────────┐   re-price every leg at its source;
+                          │ reprice (confirm at │   confirm the whole-itinerary total
+                          │ source)             │   holds → "bookable"
+                          └──────────┬──────────┘
+                          ┌──────────▼──────────┐   stage web deep-links + hotel-call
+                          │ booking             │   scripts for the confirmed itinerary
+                          └─────────────────────┘   (status: requires_approval)
 ```
 
 Every agent is independent and single-purpose, communicates only through typed shapes in
@@ -47,9 +59,25 @@ Every agent is independent and single-purpose, communicates only through typed s
 | **Persona** | [`agents/persona.ts`](src/agents/persona.ts) | Free-text signals → `PersonaWeights` + `Preferences`. Reads the *personality*. |
 | **Search** | [`agents/search.ts`](src/agents/search.ts) | Plans queries, fans them out to every provider **in parallel**. |
 | **Verify** | [`agents/verify.ts`](src/agents/verify.ts) | Cross-checks listings per real-world entity: corroboration, price agreement, direct-vs-aggregator deals. The trust boundary. |
-| **Match** | [`agents/match.ts`](src/agents/match.ts) | Ranks on the persona's weights within budget; builds an honest `Budget`. |
+| **Match** | [`agents/match.ts`](src/agents/match.ts) | Ranks on the persona's weights; builds an honest `Budget` from the chosen legs. |
+| **Supervisor** | [`agents/supervisor.ts`](src/agents/supervisor.ts) | Fans out flight × stay × date combinations, prunes branches on budget **before** expanding with activities, returns whole-trip combinations best-first. |
+| **Reprice** | [`agents/reprice.ts`](src/agents/reprice.ts) | Re-fetches every leg at its source and recomputes the total; only a no-drift itinerary is `confirmed` bookable. |
 | **Critic** | [`agents/critic.ts`](src/agents/critic.ts) | Self-checks the plan against invariants; returns remedies that drive a re-run. |
 | **Booking** | [`agents/booking.ts`](src/agents/booking.ts) | Stages bookings + hotel-call scripts as approval-required intents. |
+
+## Whole-trip composition & confirmation
+
+The supervisor is what makes this plan *trips*, not parts. It builds the cross-product of the
+top flight, stay, and date-window candidates, prices each branch on its flight+stay partial,
+and runs **branch-and-bound**: a branch over budget is pruned *before* it is expanded with
+activities, so the expensive expansion only runs for branches that can still land on budget.
+The survivors (a bounded beam) are expanded, scored on the persona's weights, and returned
+affordable-first (`SupervisorStats` reports `expanded` / `prunedOnBudget` / `kept`).
+
+Before anything is surfaced, the **reprice** agent goes back to each leg's *source*, re-fetches
+the current price for that exact entity, and recomputes the whole-itinerary total. Only if
+every leg is still there and nothing drifted past tolerance is the itinerary `confirmed` — i.e.
+actually bookable at the number quoted (`ItineraryConfirmation`).
 
 ## Verification — why this is an *agency*
 
@@ -96,6 +124,10 @@ const plan = await orchestrator.plan(
     mustHaves: [], avoid: [] },
 );
 
+plan.itinerary;      // the chosen whole-trip combination (flight + stay + activities + dates)
+plan.itineraries;    // every combination the supervisor kept, affordable-first
+plan.supervisor;     // { expanded, prunedOnBudget, kept } — the branch-and-bound accounting
+plan.confirmation;   // reprice-at-source ruling: confirmed?, drift, per-leg lines
 plan.selection;      // the leading verified pick per kind
 plan.options;        // full ranked lists, low-end-first
 plan.budget;         // total === sum of lines

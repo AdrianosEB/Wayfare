@@ -35,6 +35,26 @@ describe("Orchestrator.plan", () => {
     }
   });
 
+  it("composes a whole itinerary via budget-pruned branch-and-bound", async () => {
+    const plan = await new Orchestrator(mockProviderRegistry()).plan(prompt, traveler);
+    expect(plan.supervisor.expanded).toBeGreaterThan(0);
+    expect(plan.supervisor.kept).toBeGreaterThan(0);
+    expect(plan.itinerary).toBeDefined();
+    expect(plan.itinerary?.flight).toBeDefined();
+    expect(plan.itinerary?.stay).toBeDefined();
+    // the itinerary total is the sum of its legs, priced as a unit.
+    expect(plan.itinerary?.total).toBeGreaterThan(0);
+  });
+
+  it("re-prices the chosen itinerary at source and returns a confirmation", async () => {
+    const plan = await new Orchestrator(mockProviderRegistry()).plan(prompt, traveler);
+    expect(plan.confirmation).toBeDefined();
+    // deterministic mock: re-price at source matches, so the itinerary is confirmed bookable.
+    expect(plan.confirmation?.confirmed).toBe(true);
+    expect(plan.confirmation?.drift).toBe(0);
+    expect(plan.confirmation?.lines.length).toBeGreaterThan(0);
+  });
+
   it("keeps the budget total equal to the sum of its lines", async () => {
     const plan = await new Orchestrator(mockProviderRegistry()).plan(prompt, traveler);
     const sum = plan.budget.lines.reduce((a, l) => a + l.amount, 0);
