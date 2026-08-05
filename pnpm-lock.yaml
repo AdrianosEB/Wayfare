@@ -13,6 +13,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.32.1
         version: 0.32.1
+      '@wayfare/orchestrator':
+        specifier: workspace:*
+        version: link:../../packages/orchestrator
       '@wayfare/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -108,6 +111,28 @@ importers:
       vite:
         specifier: ^5.4.8
         version: 5.4.21(@types/node@20.19.43)
+
+  packages/orchestrator:
+    dependencies:
+      '@wayfare/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.16.11
+        version: 20.19.43
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@20.19.43)(msw@2.14.6(@types/node@20.19.43)(typescript@5.9.3))
 
   packages/shared:
     dependencies:
