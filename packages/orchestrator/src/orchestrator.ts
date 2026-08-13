@@ -1,5 +1,6 @@
 import type { ListingKind, Budget } from "@wayfare/shared";
 import type {
+  Candidate,
   ItineraryCombination,
   ItineraryConfirmation,
   ItineraryLeg,
@@ -13,6 +14,8 @@ import type {
   CriticReport,
 } from "./types.js";
 import type { SearchProvider } from "./providers/types.js";
+import type { SearchLimitsOptions } from "./limits.js";
+import { SearchLimits } from "./limits.js";
 import { Tracer } from "./trace.js";
 import { intake } from "./agents/intake.js";
 import { derivePersona } from "./agents/persona.js";
@@ -39,6 +42,8 @@ export interface OrchestratorOptions {
   maxPasses?: number;
   kinds?: ListingKind[];
   onEvent?: (e: TraceEvent) => void;
+  /** bounds the provider fan-out (concurrency cap, coalescing, TTL cache). */
+  limits?: SearchLimitsOptions;
 }
 
 export interface PlanOptions {
@@ -59,12 +64,16 @@ interface PassResult {
 
 export class Orchestrator {
   private readonly aggregatorIds: Set<string>;
+  // One limiter per Orchestrator instance so the cache + coalescing span supervisor passes and
+  // (on a long-lived server orchestrator) concurrent users.
+  private readonly searchLimits: SearchLimits<Candidate[]>;
 
   constructor(
     private readonly providers: SearchProvider[],
     private readonly options: OrchestratorOptions = {},
   ) {
     this.aggregatorIds = new Set(providers.filter((p) => p.aggregator).map((p) => p.id));
+    this.searchLimits = new SearchLimits<Candidate[]>(this.options.limits);
   }
 
   async plan(prompt: string, profile: TravelerProfile, opts: PlanOptions = {}): Promise<PlanResult> {
@@ -121,6 +130,7 @@ export class Orchestrator {
         travelers,
         now: new Date().toISOString(),
         tracer,
+        limits: this.searchLimits,
       });
     }
 
@@ -161,7 +171,7 @@ export class Orchestrator {
     const { request, persona, destination, kinds, breadthMultiplier, tracer, profile } = args;
 
     const queries = planQueries(request, persona, { destination, kinds, breadthMultiplier });
-    const candidates = await runSearch(this.providers, queries, tracer);
+    const candidates = await runSearch(this.providers, queries, tracer, this.searchLimits);
     const verified = verify(candidates, this.aggregatorIds, tracer);
 
     const optionsByKind = groupByKind(verified);
