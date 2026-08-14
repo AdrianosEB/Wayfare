@@ -2,6 +2,7 @@ import type { ListingKind, TripRequest } from "@wayfare/shared";
 import type { Candidate, Persona, SearchQuery } from "../types.js";
 import type { SearchProvider } from "../providers/types.js";
 import type { Tracer } from "../trace.js";
+import { SearchLimits, queryKey } from "../limits.js";
 
 /**
  * SearchAgent — two jobs: turn the request into concrete SearchQueries, then fan them out to
@@ -56,14 +57,17 @@ export async function runSearch(
   providers: SearchProvider[],
   queries: SearchQuery[],
   tracer: Tracer,
+  limits: SearchLimits<Candidate[]> = new SearchLimits(),
 ): Promise<Candidate[]> {
   const jobs: Promise<Candidate[]>[] = [];
   for (const query of queries) {
     for (const provider of providers) {
       if (!provider.kinds.includes(query.kind)) continue;
+      // Route every upstream call through the shared limiter: bounded per-provider concurrency,
+      // in-flight coalescing, and a short TTL cache. Cached/coalesced callers never take a slot.
       jobs.push(
-        provider
-          .search(query)
+        limits
+          .run(provider.id, queryKey(provider.id, query), () => provider.search(query))
           .catch((err) => {
             // a flaky source degrades the market, it doesn't fail the plan.
             tracer.emit("search", "provider_error", { provider: provider.id, kind: query.kind, error: String(err) });
@@ -75,10 +79,16 @@ export async function runSearch(
 
   const settled = await Promise.all(jobs);
   const candidates = settled.flat();
+  const s = limits.stats();
   tracer.emit("search", "fanned_out", {
     providers: providers.length,
     queries: queries.length,
     candidates: candidates.length,
+    upstreamCalls: s.upstreamCalls,
+    cacheHits: s.cacheHits,
+    coalesced: s.coalesced,
+    maxConcurrency: s.maxConcurrency,
+    queuedPeak: s.queuedPeak,
   });
   return candidates;
 }

@@ -39,3 +39,7 @@ export type { RepriceArgs } from "./agents/reprice.js";
 export { prepareBookings } from "./agents/booking.js";
 export { review } from "./agents/critic.js";
 export type { CriticInput } from "./agents/critic.js";
+
+// fan-out limiting primitives
+export { Limiter, SingleFlight, TTLCache, SearchLimits, queryKey } from "./limits.js";
+export type { SearchLimitsOptions, SearchStats } from "./limits.js";

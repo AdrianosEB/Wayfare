@@ -1,12 +1,16 @@
 import type { ListingKind } from "@wayfare/shared";
 import type {
+  Candidate,
   ItineraryCombination,
   ItineraryConfirmation,
   RepriceLine,
+  SearchQuery,
   VerifiedOption,
 } from "../types.js";
 import type { SearchProvider } from "../providers/types.js";
 import type { Tracer } from "../trace.js";
+import type { SearchLimits } from "../limits.js";
+import { queryKey } from "../limits.js";
 import { computeItineraryTotal, itineraryLegs } from "./supervisor.js";
 
 /**
@@ -28,6 +32,8 @@ export interface RepriceArgs {
   travelers: number;
   now: string;
   tracer: Tracer;
+  /** the shared fan-out limiter — reprice is the last gate and must respect the same cap. */
+  limits?: SearchLimits<Candidate[]>;
   /** allowed fractional drift per leg and on the total before we withhold "confirmed". */
   tolerance?: number;
 }
@@ -40,10 +46,11 @@ export async function repriceItinerary(args: RepriceArgs): Promise<ItineraryConf
   const lines: RepriceLine[] = [];
   const nowByKind: { flight?: number; stay?: number; activities: number[] } = { activities: [] };
 
-  // re-fetch every leg concurrently, at its source.
+  // re-fetch every leg concurrently, at its source — through the shared limiter so this last
+  // gate can't itself become an unbounded 429 storm.
   const fetched = await Promise.all(
     legs.map((leg) =>
-      currentPriceAtSource(providers, destination, leg.option).catch(() => undefined),
+      currentPriceAtSource(providers, destination, leg.option, args.limits).catch(() => undefined),
     ),
   );
 
@@ -99,12 +106,16 @@ async function currentPriceAtSource(
   providers: SearchProvider[],
   destination: string,
   option: VerifiedOption,
+  limits?: SearchLimits<Candidate[]>,
 ): Promise<number | undefined> {
   const kind = option.entity.kind as ListingKind;
   const sourceId = option.best.source.provider;
   const provider = providers.find((p) => p.id === sourceId && p.kinds.includes(kind));
   if (!provider) return undefined;
-  const candidates = await provider.search({ kind, where: destination, hints: [] });
+  const query: SearchQuery = { kind, where: destination, hints: [] };
+  const candidates = limits
+    ? await limits.run(sourceId, queryKey(sourceId, query), () => provider.search(query))
+    : await provider.search(query);
   const match = candidates.find(
     (c) => c.entity.key === option.entity.key && c.listing.source.provider === sourceId,
   );
