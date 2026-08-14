@@ -32,6 +32,11 @@ export interface RouteDeps {
   auth?: AuthDeps;
   /** Optional background-orchestration job store. When omitted, createApp builds a fresh one. */
   orchestration?: OrchestrationJobStore;
+  /**
+   * Optional path to the built web client. When omitted, createApp looks for apps/web/dist and
+   * serves it if present, so one process serves both the SPA and /api.
+   */
+  webDist?: string;
 }
 
 function emitterFor(sse: SseStream): PlanEmitter {

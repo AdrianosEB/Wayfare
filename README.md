@@ -33,6 +33,23 @@ pnpm -r build                   # build packages (shared first)
 pnpm --filter @wayfare/server dev   # API on http://localhost:3000  (no env required)
 ```
 
+### Run the whole app on one server
+
+For a production-shaped run — the built SPA and `/api` served by a **single** Node process on
+`:3000`, no Vite, no proxy, no CORS:
+
+```bash
+pnpm serve                      # builds everything, then serves it on http://localhost:3000
+```
+
+The production build turns the MSW fixture mocks off automatically, so the browser talks to the
+real API. Without `ANTHROPIC_API_KEY` this runs the **deterministic planner** — fully offline and
+free — which is the intended way to verify the app works before spending anything on the live
+agent loop. `GET /api/health` reports which planner is active.
+
+Two separate dev servers (`pnpm dev`) remain the nicer inner loop for frontend work, since Vite
+gives you HMR; the single-server mode is for verifying the real wiring and for deployment.
+
 The server runs the **deterministic mock planner** by default — no API key needed to boot or
 test. Set `ANTHROPIC_API_KEY` (and optionally `PLANNER_MODE`) to run the live
 `claude-opus-4-8` tool-use loop. Keys live only on the server (NFR-4); copy

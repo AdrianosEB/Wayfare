@@ -12,6 +12,9 @@
     "dev:web": "pnpm --filter web dev",
     "dev:server": "pnpm --filter server dev",
     "build": "pnpm -r build",
+    "build:single": "VITE_USE_MOCKS=0 pnpm -r build",
+    "start": "pnpm --filter @wayfare/server start",
+    "serve": "pnpm build:single && pnpm start",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint"
