@@ -42,6 +42,9 @@ For a production-shaped run — the built SPA and `/api` served by a **single** 
 pnpm serve                      # builds everything, then serves it on http://localhost:3000
 ```
 
+Override the port with `PORT=8080 pnpm serve`. `GET /api/health` returns `{ status, planner }`
+so you can confirm which planner is live before sending real traffic.
+
 The production build turns the MSW fixture mocks off automatically, so the browser talks to the
 real API. Without `ANTHROPIC_API_KEY` this runs the **deterministic planner** — fully offline and
 free — which is the intended way to verify the app works before spending anything on the live
