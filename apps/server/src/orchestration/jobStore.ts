@@ -1,11 +1,11 @@
 import {
-  Orchestrator,
   mockProviderRegistry,
   type PlanResult,
   type TraceEvent,
   type TravelerProfile,
   type SearchProvider,
 } from "@wayfare/orchestrator";
+import { createOrchestrator } from "@wayfare/orchestrator-llm";
 import { makeId } from "../ids.js";
 
 /**
@@ -73,7 +73,7 @@ export class InMemoryOrchestrationJobStore implements OrchestrationJobStore {
     this.jobs.set(id, job);
     this.listeners.set(id, new Set());
 
-    const orchestrator = new Orchestrator(this.providers, {
+    const orchestrator = createOrchestrator(this.providers, {
       onEvent: (event) => {
         job.events.push(event);
         this.emit(id, { type: "event", event });

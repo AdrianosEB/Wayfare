@@ -1,0 +1,37 @@
+{
+  "name": "@wayfare/orchestrator-llm",
+  "version": "0.1.0",
+  "description": "Wayfare LLM orchestration — the same nine-agent pipeline as @wayfare/orchestrator, but every agent is a real LLM agent wired as a LangGraph state graph. Opt-in, off by default, hard-capped, and emitting the identical PlanResult.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "^0.3.0",
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@wayfare/orchestrator": "workspace:*",
+    "@wayfare/shared": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.4"
+  }
+}
