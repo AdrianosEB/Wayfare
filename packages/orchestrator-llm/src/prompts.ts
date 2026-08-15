@@ -69,6 +69,9 @@ OUTPUT SHAPE
 - \`reasoning\` is a top-level key. It does NOT go inside \`preferences\`. \`preferences\` carries
   only pace / interests / lodgingStyle / flightPrefs / dietary — putting \`reasoning\` in there
   displaces the fields that belong there and the answer is rejected.
+- \`preferences.pace\` and \`preferences.interests\` are BOTH required, always. When the signals
+  imply no particular interests, give \`"interests": []\` — an empty array is a valid answer and
+  omitting the key is not.
 - The dimension named in a \`reasoning\` string must be one of: price, quality, location, vibe,
   flexibility. Those five are the WEIGHT axes. \`pace\`, \`interests\`, \`lodgingStyle\`, \`dietary\`
   and \`flightPrefs\` are preferences, NOT dimensions — a signal that only informs them needs no
