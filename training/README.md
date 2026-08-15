@@ -32,11 +32,27 @@ python3 -m venv .venv
 ./train.sh                    # env overrides: ITERS=1200 BASE_MODEL=... ./train.sh
 
 # 4. Merge adapters into a standalone model for serving
-./fuse.sh                     # → ./fused
+./fuse.sh                     # → ./fused   (CKPT=650 ./fuse.sh pins one checkpoint)
+./.venv/bin/python smoke_test.py --model ./fused    # ALWAYS verify — see the warning below
 
 # 5. Serve it (OpenAI-compatible endpoint the app's LocalOpenAiModel points at)
 ./.venv/bin/python -m mlx_lm server --model ./fused --port 8080
 ```
+
+## ⚠️ Fusing into a quantized base fails silently
+
+`mlx_lm fuse` on a 4-bit base (which `mlx-community/Qwen2.5-1.5B-Instruct-4bit` is) writes a
+model with **the adapters not applied** — no error, no warning. The result loads, answers, and
+behaves exactly like the untuned base. Verified 2026-08-15: the same checkpoint emitted
+schema-valid `PersonaSchema` JSON via base+adapter and degenerate prose via the fused model.
+
+`fuse.sh` now passes `--dequantize` automatically when the base is quantized (fp16 output,
+~2.9 GB instead of ~1 GB). Two consequences worth knowing:
+
+- **Always run `smoke_test.py` against `./fused`.** This failure is invisible from fuse's output
+  — the only signal is that the model stops emitting JSON.
+- To keep a 4-bit artifact, serve base+adapter instead (`mlx_lm.server --adapter-path ./adapters`)
+  or re-quantize the fused model; the fused fp16 directory is the simpler path on a 16 GB machine.
 
 ## Tuning `--iters`
 
