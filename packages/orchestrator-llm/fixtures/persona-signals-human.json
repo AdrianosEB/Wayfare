@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "description": "HAND-WRITTEN adversarial signal pool — fill this in yourself; do not let a model author it. The 400 signals in persona-signals.json were written by the same model family that labels them in the teacher pass, so there is no independence between input phrasing and teacher competence. This pool exists to break that: write 60-80 signals that are messy, terse, run-on, typo-ridden, contradictory, or non-native in phrasing — the way real people actually type. These feed ONLY the test-human split; the eval reports test and test-human separately, and a gap between them is a finding about distribution shift, not a failure.",
+  "instructions": "Add plain strings to `signals` below (no dimension/polarity tags — deliberate conflict construction only applies to the authored pools). The generator refuses to run the test-human split until this array has at least 40 entries, and skips it with a warning when it is empty and test-human was only implied by --split all. Examples of the register wanted: 'cheap but like not grim cheap', 'idk somewhere warm???', 'wife hates flying dont make it long', 'we is 4 person, one baby, hotel must have the lift'.",
+  "signals": []
+}

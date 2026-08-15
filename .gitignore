@@ -25,3 +25,14 @@ pnpm-debug.log*
 
 # Claude Code local workspace (worktrees, memory, local settings)
 .claude/
+
+# persona distillation (packages/orchestrator-llm + training/)
+# Generated datasets and model weights are large and reproducible — the signal-pool
+# fixture and the scripts are the committed artefacts, not their output.
+training/data/*.jsonl
+training/data/.*.progress.json
+training/adapters/
+training/fused/
+training/**/*.safetensors
+training/**/*.npz
+.venv/

@@ -1,0 +1,2034 @@
+{
+  "version": 2,
+  "description": "Pool of realistic free-text traveler signals used to synthesize persona-distillation training data. Sampled 1-5 per profile by scripts/gen-persona-data.ts. Each signal carries `d` (the PersonaWeights dimension it most moves: price|quality|location|vibe|flexibility) and `p` (a direction WITHIN that dimension, such that a +1 and a -1 on the same dimension contradict each other: price +1 frugal / -1 spends freely; quality +1 demands comfort / -1 happy roughing it; location +1 wants central-prime / -1 remote or indifferent; vibe +1 lively-characterful / -1 quiet-functional; flexibility +1 spontaneous-open / -1 fixed-planned). ~30% of generated profiles deliberately pair one +1 with one -1 on the same dimension and are tagged conflict:true in the dataset metadata so the eval can slice them separately.",
+  "split": "`train` feeds the train + valid splits; `test` is held back exclusively for the test split so the eval measures generalisation to unseen phrasings rather than memorisation. A separate hand-written pool lives in persona-signals-human.json and feeds only the test-human split.",
+  "train": [
+    {
+      "s": "counts every euro and it shows",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "would rather eat street food than pay for a tasting menu",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "hunting for the cheapest possible flights, doesn't care about the airline",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "happy to sleep in a hostel dorm if it means a longer trip",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "will splurge on one nice dinner but nothing else",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "treats the budget as a hard ceiling, not a suggestion",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "books whatever is on sale and plans around it",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "thinks paying for checked bags is a personal insult",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "only travels in shoulder season to save money",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants the trip to come in under budget so there's money left for the next one",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "will pay more to avoid a layover",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "quietly resents resort fees",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "brings a refillable bottle and refuses to buy water",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "compares prices across three sites before booking anything",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "would rather have five cheap days than three expensive ones",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "money is genuinely not the constraint here",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "wants a proper mattress, not a futon",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "has stayed in enough bad hotels to know the difference",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs a hotel with an actual gym",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "will not stay anywhere with shared bathrooms",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "cares more about the room than the location",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants a bathtub",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "expects daily housekeeping",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "flies business on anything over six hours",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "wants a spa on site",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "reads every review before booking a room",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "would rather one great hotel than three mediocre ones",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a balcony, non-negotiable",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "sleeps badly and needs a quiet room away from the lift",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "has a thing about thread count",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants air conditioning that actually works",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "prefers a small boutique place over a chain",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to be central",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "will walk anywhere for good food",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates taking taxis, wants to be within walking distance of everything",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "would rather be in a quiet neighbourhood than the tourist strip",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants to be near a metro stop",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "needs to be walking distance from the old town",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants a sea view even if the room is smaller",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "doesn't mind being twenty minutes out if it's cheaper",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants to stay where locals actually live",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "needs to be close to the airport for an early flight",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants to be able to walk home from dinner",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "picks the neighbourhood first and the hotel second",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "avoids anywhere that requires a car",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants to be near the water",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "would trade a nicer room for a better street",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "hates staying near a main road",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with character, not a business hotel",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "looking for somewhere romantic",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants the trip to feel unhurried",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "after somewhere lively with people around",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a place that feels like a home, not a hotel",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates anywhere that feels like a resort",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere photogenic",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "looking for a place with a good bar downstairs",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants design-led, not generic",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "prefers somewhere family-run",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to feel like they've actually left home",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "after somewhere calm and green",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "would rather be surprised than comfortable",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "wants the whole thing to feel a bit special",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "avoids anywhere too polished",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a story behind it",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "dates are completely flexible",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "can only travel over one specific weekend",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "will shift dates by a few days for a cheaper fare",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "needs free cancellation on everything",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "books late and hopes for the best",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "plans six months ahead",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "can leave on any day except Sunday",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "has a fixed return date they cannot move",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "happy to fly midweek",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants refundable options only",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "can extend the trip if something good comes up",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "school holidays lock the dates",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "will take a red-eye if it saves a day",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "needs to be back for a wedding",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "open to a different destination entirely if the price is right",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants the itinerary loose, not scheduled",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "foodie on a budget",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "will queue an hour for the right sandwich",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a kitchen so they can cook",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "vegetarian and tired of being an afterthought",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "books restaurants before flights",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a hotel breakfast included",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "would skip a museum for a market",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "coeliac, needs somewhere that takes it seriously",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to do a cooking class",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "cares about coffee more than is reasonable",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants at least one proper tasting menu",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "eats late and hates places that close at nine",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a good wine list nearby",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "allergic to shellfish",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "would rather eat where the locals eat",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants street food every night",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "needs a real desk to work from",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "taking calls in the morning, free after two",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs reliable wifi above everything else",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "working the whole trip, just wants a change of scenery",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs a quiet room for video calls",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to be in the same timezone as the office",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "will be offline entirely, no work",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "needs a second screen or a monitor",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a co-working space nearby",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "checking email at breakfast and then done",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "hotel wifi has burned them before",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs somewhere with a printer, oddly enough",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants weekdays quiet and weekends full",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "can't take a trip that requires early starts, calls run late",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to work mornings and explore afternoons",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs a power adapter situation that works",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "travelling with a toddler",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs a room that sleeps four",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "kids are seven and ten and get bored fast",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "needs a cot in the room",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a pool the kids can actually use",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "travelling with grandparents too",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs somewhere with a kitchen for the baby",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants family rooms, not two separate ones",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "kids won't sit through a long flight",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs a stroller-friendly neighbourhood",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants at least one thing a day the kids will love",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "teenagers who want their own space",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "travelling with a nervous flyer",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs early dinners because of bedtime",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants a beach the kids can swim at safely",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "one adult, two kids, no help",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "step-free access is essential",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "can't manage stairs with luggage",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs a ground floor room",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "walks with a stick, short distances only",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "needs a lift in the building",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wheelchair user, needs an accessible bathroom",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "gets motion sick on winding roads",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs somewhere near a pharmacy",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "can't be in the sun for long",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "recovering from surgery, taking it slow",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "needs a fridge in the room for medication",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "asthma, can't stay anywhere smoky",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs somewhere with reliable healthcare nearby",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "can't do long walks but wants to see things",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "hearing impaired, prefers written confirmations",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs a hotel with an accessible entrance, not a side door",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "hates 6am flights",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "will not fly with a stopover",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "prefers trains to planes wherever possible",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to hire a car",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "refuses to drive on holiday",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants an airline with decent legroom",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "carry-on only, always",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "hates connecting through Heathrow",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants a direct flight or nothing",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "happy with a long layover if it's cheaper",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants to arrive before dark",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs help with luggage on arrival",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "avoids budget airlines after one bad experience",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants an evening departure so they don't lose a work day",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "would rather take the ferry",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants airport transfers arranged in advance",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "travelling solo and wants to meet people",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "travelling solo and wants to be left alone",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "honeymoon, wants it to be just the two of them",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "group of six with very different budgets",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "meeting friends there halfway through",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere they can host a dinner",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "first trip together, wants it to go well",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "celebrating a fortieth",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a communal table",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "travelling with a friend who plans nothing",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "avoiding anywhere full of stag parties",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants to be around other travellers, not tourists",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "going with parents, needs to keep everyone happy",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere they can bring a plus one later",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "two couples sharing, needs two good rooms",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a quiet trip after a loud year",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants to do nothing at all",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants every day planned to the hour",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "hikes every morning before breakfast",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants one big activity and lots of lying down",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "gets restless if there's no plan",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to swim every day",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "runs, needs somewhere with a decent route",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants to be back at the hotel by six",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "would rather see three things properly than ten badly",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants a full itinerary they can ignore",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "cycles everywhere",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants a day trip or two but no more",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "surfs, everything else is secondary",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants to sleep in every single day",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "diving is the whole point of the trip",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants to walk fifteen thousand steps a day",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "museums are the whole reason for going",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to see one great building, not twenty",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "hates guided tours",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants a guided tour of everything",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "going for a specific exhibition",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to see live music",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "interested in architecture more than art",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to go to the opera at least once",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "reads about a place before they go",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to see ruins, not churches",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "going for a festival",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants a bookshop day",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "interested in the history, not the nightlife",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants to catch a football match",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "would rather wander than tick off sights",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a proper local market",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants mountains, not beaches",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants beaches, not mountains",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "birdwatcher",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with stars at night",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "hates crowds, wants space",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants to see something green every day",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "camping is fine, glamping is better",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "wants a lake to swim in",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "would drive an hour for a good view",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with proper walking trails",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "gets cold easily, needs somewhere warm",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "hates the heat, wants somewhere mild",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to be somewhere it might snow",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a garden to sit in",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "allergic to grass pollen in spring",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to be near a national park",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants a good night out at least once",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "in bed by ten every night",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with bars that stay open",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "doesn't drink, wants that to not be awkward",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants a rooftop bar",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates clubs",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants live music every night if possible",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere they can get a drink after midnight",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a cocktail bar worth the money",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "avoids anywhere loud after eleven",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with a beer garden",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "going out is the point",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a quiet pub, not a bar",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants one big night and six quiet ones",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "prefers wine bars to pubs",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere they can dance",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to shop but hates malls",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "looking for vintage",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to bring back something good",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates shopping entirely",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants a proper food market to bring things home from",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "needs luggage space for what they buy",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants independent shops, not chains",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "going specifically for the sales",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants to buy art",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "collects records",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a good bookshop",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "shopping is a rainy day activity only",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with local crafts",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates haggling",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a department store for practical things",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "buys nothing but photographs everything",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "first time travelling alone, wants to feel safe",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a 24 hour reception",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "nervous about pickpockets",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants a hotel safe",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere they can walk back at night",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "worried about the language barrier",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants everything booked before they leave",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants a plan B for bad weather",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants travel insurance sorted",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "doesn't want to change money, cards only",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a hotel with someone at the desk overnight",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "nervous about driving abroad",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants clear directions from the airport",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "has had a bad experience with a rental before",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a proper address, not a lockbox",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to know the cancellation terms upfront",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "avoids flying where a train works",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with decent environmental credentials",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "won't stay anywhere that changes towels daily",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "wants to offset the flights",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "prefers locally owned places",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "avoids all-inclusive resorts on principle",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to eat local and seasonal",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates single-use plastic",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "would take a slower route to fly less",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants to support small businesses",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "avoids destinations struggling with overtourism",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants public transport over taxis",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "cares where the money goes",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with a refill point for water",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "avoids cruise ports",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "would rather stay longer and travel less",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "bringing the dog",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs somewhere that takes pets without a fuss",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "allergic to cats, can't stay anywhere with one",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere the dog can walk off lead",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "leaving the dog behind and feeling guilty about it",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants a ground floor room because of the dog",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs a vet nearby just in case",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants a beach dogs are allowed on",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "smokes and wants somewhere they can",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "needs somewhere completely non-smoking",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants laundry facilities for a longer trip",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "packs light and hates checked bags",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants a hotel that will hold luggage after checkout",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "arriving very late and needs late check-in",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants a late checkout more than breakfast",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "travelling with a musical instrument",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "going in August and dreading the heat",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants sun, that's the whole brief",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "doesn't mind rain, packs for it",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with shade in the afternoon",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "burns easily",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants a pool for the hot afternoons",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "going in winter and wants somewhere cosy",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants long evenings, not early sunsets",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates humidity",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants to avoid hurricane season",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "going off-season and expects things to be closed",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere that works whatever the weather",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants a trip they don't have to think about",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "has been before and wants to see the other half",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere new, has done the obvious ones",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "planning this as a surprise",
+      "d": "flexibility",
+      "p": -1
+    }
+  ],
+  "test": [
+    {
+      "s": "watching the pennies but not miserable about it",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants value, not cheap",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "has saved for this and wants to feel it",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "would cut a night to afford a better room",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "wants a shower with actual pressure",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "has a low tolerance for tired furniture",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere they'd happily stay again",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "would pay extra for a bigger room",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "genuinely does not care where they sleep",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "a basic room is fine, they're never in it",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "wants to step out of the door into the action",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "happy to be on the edge of things",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants a short walk to the station",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "would rather look at rooftops than a car park",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "doesn't mind a trek into town if the place is right",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere with warmth to it",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "hates anywhere that feels corporate",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a place with a courtyard",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "looking for something a bit understated",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "chain hotels are fine, at least you know what you get",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "doesn't care about charm, wants clean and functional",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "can move things around at short notice",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "the dates are the one fixed thing",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to be able to change their mind",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "would rather book late than commit early",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "cares deeply about breakfast",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "dairy free and used to being difficult about it",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "wants one meal a day to be memorable",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "would plan the whole trip around a bakery",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "on call for two of the days",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs to join a standup at nine every morning",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to work from a cafe, not a room",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "needs the trip to not cost them any leave",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "three under six, be realistic",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere the kids can run around",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs adjoining rooms",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "travelling with a child who doesn't sleep well",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "uses a walker, needs level ground",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs somewhere with seating on the way to everything",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "can't stand for long in queues",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "needs an accessible taxi from the airport",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "will not get up before seven for a flight",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants the shortest total journey time",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "prefers to arrive by train",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to avoid changing terminals",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "going alone for the first time in years",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "anniversary trip, wants it quiet",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "eight people, one budget, many opinions",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere friends can join for a night",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants to move slowly and see less",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "gets twitchy sitting still",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "swims before breakfast every day",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants two things booked and the rest open",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "goes for the galleries and stays for the food",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants to hear music in the place it comes from",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "would rather read about it than queue for it",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants a proper walking tour on day one",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants to wake up looking at water",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "would trade a city for a valley",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants somewhere it's quiet enough to hear birds",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants a long coastal walk",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants dinner to run late",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "would rather a good bar than a good club",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants somewhere with no music in the restaurants",
+      "d": "vibe",
+      "p": -1
+    },
+    {
+      "s": "wants one late night and no hangovers",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "wants a market more than a mall",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "buys food, not souvenirs",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants half a day for browsing",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "would rather bring back nothing",
+      "d": "price",
+      "p": 1
+    },
+    {
+      "s": "wants to feel comfortable walking alone in the evening",
+      "d": "location",
+      "p": 1
+    },
+    {
+      "s": "wants a contact number that someone answers",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "prefers everywhere booked and confirmed",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants the route from the airport written down",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "would rather go once and stay longer",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants the money to reach the people who live there",
+      "d": "vibe",
+      "p": 1
+    },
+    {
+      "s": "avoids places that feel overrun",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants to travel overland where it's sensible",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "bringing a small dog who travels well",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "can't be around animals at all",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "needs a place that will store bags on the last day",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "arriving on a night flight and wants a bed early",
+      "d": "flexibility",
+      "p": -1
+    },
+    {
+      "s": "wants warm but not scorching",
+      "d": "quality",
+      "p": 1
+    },
+    {
+      "s": "would rather be cold than crowded",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "packs for rain and hopes for sun",
+      "d": "flexibility",
+      "p": 1
+    },
+    {
+      "s": "wants shade more than sunshine",
+      "d": "quality",
+      "p": 1
+    }
+  ]
+}
