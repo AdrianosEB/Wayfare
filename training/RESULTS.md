@@ -179,3 +179,112 @@ The six worst *scored* rows, for completeness — every one of them a case where
 | 177 | clean | 0.1267 | price | vibe |
 
 Full outputs and teacher labels for every row are in `results/student-test.json`.
+
+## Untuned baseline — context only, not the comparison
+
+0/248 schema-valid. Exactly zero: the untuned base answers the persona prompt with prose,
+markdown headers, and invented scoring dimensions, and there is no `{...}` anywhere in its
+output to extract. Its normalised MAE is **undefined**, not poor — there is nothing to score.
+
+This arm is reported here and never in the student's table. Against a floor of zero, any
+schema-valid rate looks like a triumph, and the meaningful comparison is student vs teacher.
+
+## Root cause: the labels, not the student
+
+The student was a faithful distillation of a degenerate teacher. `training/diagnose_labels.py`
+joins each row's signals back to the `d` dimension tags in
+`packages/orchestrator-llm/fixtures/persona-signals.json` and cross-tabulates the dominant input
+dimension against the teacher's argmax weight. On the original train split the diagonal is flat:
+
+| input \ label | price | quality | location | vibe | flexibility | n |
+|---|---|---|---|---|---|---|
+| price | **67%** | 24% | 5% | 2% | 1% | 82 |
+| quality | 83% | **12%** | 3% | 1% | 1% | 177 |
+| location | 85% | 5% | **7%** | 4% | 0% | 105 |
+| vibe | 82% | 13% | 3% | **2%** | 0% | 194 |
+| flexibility | 87% | 9% | 2% | 0% | **1%** | 135 |
+
+81.2% of labels are price-top; entropy is 0.936 of a possible 2.322 bits. The bias is not
+inherited from the inputs — price is only 41 of 356 train signals (11.5%).
+
+**The "noise floor" was chance agreement.** Sum of squares of that marginal is **0.678**; the
+recorded teacher-teacher agreement was 17/25 = **0.680**. Two labellers drawing independently
+from this prior would have agreed at exactly the observed rate, so measurement note 3's floor
+measures the shared prior, not labeller noise. It cannot bound student quality, and every
+citation of it in this document must be read with that correction.
+
+### The defect is the default, not input-insensitivity
+
+The teacher separates price correctly when told, and fails only in the absence of evidence:
+
+| price signal | n (train) | mean price weight | price-top |
+|---|---|---|---|
+| frugal (+1) | 100 | 0.391 | 95.0% |
+| mixed | 65 | 0.312 | 70.8% |
+| spends freely (−1) | 107 | 0.198 | 34.6% |
+| **none** | **723** | **0.344** | **87.1%** |
+
+With no price signal at all it behaves as if the traveller were explicitly frugal. The same
+prior sits in the deterministic fallback: `derivePersona`'s `BASE` is `price: 0.34`, and the
+teacher's no-signal default is `0.344`.
+
+## The prompt was the cause — before/after on the same 100 profiles
+
+Same seed, same profiles, revised prompt (`training/_gate3-round1/`, 81 rows, $0.28):
+
+| metric | original prompt | revised prompt |
+|---|---|---|
+| top-dimension entropy | 0.936 bits | **2.096** (of 2.322) |
+| chance agreement | 0.678 | **0.245** |
+| price-top marginal | 81.2% | **17.3%** |
+| no-price-signal rows price-top | 87.1% | **10.9%** |
+| mean max-weight | 0.361 | 0.298 |
+
+| input \ label | price | quality | location | vibe | flexibility | n |
+|---|---|---|---|---|---|---|
+| price | **80%** | 0% | 0% | 20% | 0% | 5 |
+| quality | 10% | **43%** | 5% | 33% | 10% | 21 |
+| location | 10% | 0% | **90%** | 0% | 0% | 10 |
+| vibe | 12% | 44% | 12% | **31%** | 0% | 16 |
+| flexibility | 29% | 7% | 21% | 43% | **0%** | 14 |
+
+Identical inputs and identical teacher model, so the prompt is the only variable that changed.
+This is the strongest causal evidence in the project and the artifacts are kept for it.
+
+Two regressions the same change introduced, both addressed in iteration 2: discards rose from
+the teacher's 0.5% to 19% (every failure nested the object inside `preferences`), and explicitly
+frugal rows fell from 95% to 45.5% price-top — a reversed prior rather than a symmetric response.
+
+## `flexibility` is excluded from the diagonal gate — do not re-add it
+
+`flexibility` is not a scoring axis. `packages/orchestrator/src/agents/match.ts` computes
+`price + quality + location + vibe + verification`, and the flexibility weight enters only as
+
+```ts
+const priceWeight = w.price + w.flexibility * 0.5;
+```
+
+A "flexibility-top" label is therefore not a meaningful target: a persona with flexibility 0.40
+and price 0.15 produces an effective price weight of 0.35, so gating on a flexibility diagonal
+would manufacture the price-led rankings this work exists to remove. The gate checks the four
+scored dimensions; the cross-tab still displays flexibility so the asymmetry stays visible.
+`match.ts` was deliberately not modified and the fixture was deliberately not retagged.
+
+A related ambiguity is left open: the fixture tags `dates are completely flexible` as
+flexibility +1 (spontaneous-open), while the model read the same signal as lowering the weight
+("this traveller does not need flexible options"). Both are defensible because no document
+defines what a dimension's weight means. The definitions were deliberately NOT copied into the
+prompt — doing so would make the diagonal partly circular, since prompt and tags would then
+encode the same assumption.
+
+## Future work
+
+- **Is five dimensions the right shape at all?** One of the five is not scored, and one
+  (`vibe`) is scored through a keyword-overlap proxy. A weight vector whose components are not
+  commensurable is hard to distil and harder to evaluate. Open question; not acted on.
+- **The training target, separately from the teacher.** The price polarity relationship is
+  present in 107 train rows and the student learned none of it — independent evidence for the
+  17:1 loss-dilution problem (`summary` is 80.9% of each label by characters, `weights` 4.7%).
+  Fixing the teacher does not fix this; both are required.
+- **`derivePersona`'s `BASE`** (`price: 0.34`) carries the same prior and is what production
+  runs when the LLM path is off. Left alone pending the rule-symmetry work.
