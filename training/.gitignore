@@ -7,3 +7,10 @@ _gate3-round2/
 _gate3-round3/
 _gate4/
 _data-round1/
+data-A/
+data-B/
+adapters-A/
+adapters-B/
+fused-A/
+fused-B/
+train-*.log
