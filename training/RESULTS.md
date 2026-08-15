@@ -288,3 +288,41 @@ encode the same assumption.
   Fixing the teacher does not fix this; both are required.
 - **`derivePersona`'s `BASE`** (`price: 0.34`) carries the same prior and is what production
   runs when the LLM path is off. Left alone pending the rule-symmetry work.
+
+## The heuristic fallback had the same defect, worse — and had never been measured
+
+`derivePersona` is what production runs when the LLM path is off. `training/heuristic_labels.mts`
+runs it over a split into the same format the teacher pass writes, so the same degeneracy test
+applies. On the 995-row train split it scored worse than the teacher it backs up, and its price
+axis pointed the wrong way:
+
+| price signal | n | mean price weight | price-top |
+|---|---|---|---|
+| frugal (+1) | 100 | 0.421 | 80.0% |
+| **spends freely (−1)** | 107 | **0.431** | **83.2%** |
+
+Two causes. The axis was one-way — one rule raised price (+0.4), only `/luxury/` lowered it
+(−0.2) — so price could not leave the top without the word "luxury". And two regexes fired on
+their own negation: `/budget/` matched *"treats the budget as a starting point, not a limit"*
+and `/save/` matched *"has saved for this and wants to feel it"*, both price −1 signals pushing
+price **up**. Separately, a hard budget added +0.2 to price, counting a constraint as a taste —
+removable because `supervisor.ts` already prunes each partial against `budgetCap` before
+expanding and bounds activities by what remains, so budget adherence never depended on it.
+
+| | original | symmetric rules | + hard-budget rule removed |
+|---|---|---|---|
+| top-dimension entropy | 0.770 | 1.519 | **1.820** |
+| chance agreement | 0.752 | 0.453 | **0.331** |
+| price-top marginal | 86.2% | 63.5% | — |
+| spends-freely mean price weight | 0.431 | 0.170 | **0.098** |
+| no-price-signal rows price-top | — | 69.0% | **50.8%** |
+
+`BASE` is deliberately unchanged. With the rules symmetric and the budget nudge gone, the
+residual is cleanly attributable to it: rows with no price signal at all are still 50.8%
+price-top, and `BASE.price` is 0.34 — the largest of the five. That is the next decision, and it
+is now isolated.
+
+**The bias was systemic, not one model's quirk.** The same price-first prior appears in three
+independent places: the teacher's labels (81.2% price-top), the prompt that produced them, and
+the deterministic fallback written long before any of this. Whatever produced it was a shared
+assumption about what travellers care about, not a model defect.
