@@ -87,6 +87,54 @@ def score_row(pred, teacher):
     }
 
 
+def build_records(rows, texts):
+    """Score each prediction against the teacher's stored label for the same row."""
+    records = []
+    for r, text in zip(rows, texts):
+        teacher = json.loads(r["messages"][2]["content"])
+        obj, mode = parse_output(text)
+        errs = validate_persona(obj) if obj is not None else ["output did not parse as JSON"]
+        rec = {
+            "index": r["meta"]["index"],
+            "slice": "conflict" if r["meta"].get("conflict") else "clean",
+            "parse_mode": mode,
+            "schema_valid": obj is not None and not errs,
+            "errors": errs[:5],
+            "output_chars": len(text),
+            "output": text,
+        }
+        if rec["schema_valid"]:
+            rec["scores"] = score_row(obj, teacher)
+        records.append(rec)
+    return records
+
+
+def write_out(args, records, wall, latencies):
+    out = {
+        "arm": args.arm,
+        "model": args.model or args.from_jsonl or "",
+        "split": args.split,
+        "n_rows": len(records),
+        "max_tokens": args.max_tokens,
+        "batch_size": args.batch_size,
+        "batched_wall_seconds": round(wall, 1),
+        "latency_sample_n": len(latencies),
+        "latency_p50_s": round(statistics.median(latencies), 2) if latencies else None,
+        "latency_p95_s": round(sorted(latencies)[min(len(latencies) - 1,
+                                                     math.ceil(0.95 * len(latencies)) - 1)], 2)
+        if latencies else None,
+        "records": records,
+    }
+    outdir = Path(args.out_dir)
+    outdir.mkdir(exist_ok=True)
+    path = outdir / f"{args.arm}-{args.split}.json"
+    path.write_text(json.dumps(out, indent=1))
+    valid = sum(1 for r in records if r["schema_valid"])
+    print(f"\nwrote {path}")
+    print(f"schema-valid: {valid}/{len(records)} ({100 * valid / len(records):.1f}%)")
+    return path
+
+
 def build_prompt(tok, system, user):
     return tok.apply_chat_template(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -95,8 +143,13 @@ def build_prompt(tok, system, user):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", required=True, choices=["baseline", "student"])
-    ap.add_argument("--model", required=True)
+    ap.add_argument("--arm", required=True, choices=["baseline", "student", "heuristic", "teacher"])
+    ap.add_argument("--model", default="")
+    ap.add_argument("--from-jsonl",
+                    help="score predictions already written to a dataset-format .jsonl instead "
+                         "of generating them. Used for the heuristic arm (derivePersona, via "
+                         "heuristic_labels.mts) and for any arm whose outputs were produced "
+                         "elsewhere. Rows are matched on meta.index, not position.")
     ap.add_argument("--split", default="test")
     ap.add_argument("--data-dir", default="./data")
     ap.add_argument("--out-dir", default="./results")
@@ -110,6 +163,24 @@ def main():
     rows = [json.loads(l) for l in open(Path(args.data_dir) / f"{args.split}.jsonl")]
     if args.limit:
         rows = rows[:args.limit]
+
+    if args.from_jsonl:
+        # No model, no latency: the predictions already exist. Matched on meta.index so a
+        # predictions file that is reordered or partial cannot silently misalign rows against
+        # the wrong teacher label.
+        preds = {}
+        for line in open(args.from_jsonl):
+            r = json.loads(line)
+            preds[r["meta"]["index"]] = r["messages"][2]["content"]
+        missing = [r["meta"]["index"] for r in rows if r["meta"]["index"] not in preds]
+        if missing:
+            print(f"WARNING: {len(missing)} row(s) have no prediction and are excluded: "
+                  f"{missing[:10]}{'…' if len(missing) > 10 else ''}")
+        rows = [r for r in rows if r["meta"]["index"] in preds]
+        texts = [preds[r["meta"]["index"]] for r in rows]
+        records = build_records(rows, texts)
+        write_out(args, records, wall=0.0, latencies=[])
+        return
 
     from mlx_lm import load, batch_generate, generate
 
