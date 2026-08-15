@@ -63,8 +63,39 @@ export const PersonaWeightsSchema = z
   .strict();
 export type PersonaWeights = z.infer<typeof PersonaWeightsSchema>;
 
+export const PersonaDimensionSchema = z.enum([
+  "price",
+  "quality",
+  "location",
+  "vibe",
+  "flexibility",
+]);
+export type PersonaDimension = z.infer<typeof PersonaDimensionSchema>;
+
+/**
+ * One signal, and the single axis it moves. Emitted BEFORE `weights` so the numbers have to
+ * follow stated evidence instead of being produced first and explained afterwards.
+ */
+export const PersonaReasoningSchema = z
+  .object({
+    /** the traveler's own words, quoted — not a paraphrase and not a rule name. */
+    signal: z.string(),
+    dimension: PersonaDimensionSchema,
+    /** whether this signal raises or lowers that dimension's weight. */
+    direction: z.enum(["up", "down"]),
+  })
+  .strict();
+export type PersonaReasoning = z.infer<typeof PersonaReasoningSchema>;
+
 export const PersonaSchema = z
   .object({
+    /**
+     * Field order is load-bearing: `reasoning` precedes `weights` so a model filling the schema
+     * in order must commit to which signals it read, and which axis each one moves, before it
+     * emits a single number. With weights first, the numbers came out of a prior and `summary`
+     * rationalized them after the fact — measured, not hypothesized (see training/RESULTS.md).
+     */
+    reasoning: z.array(PersonaReasoningSchema),
     weights: PersonaWeightsSchema,
     preferences: PreferencesSchema,
     /** one-line, human-readable read on the traveler ("cost-led foodie, hates early starts"). */

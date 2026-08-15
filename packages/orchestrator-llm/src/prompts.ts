@@ -35,8 +35,28 @@ do not invent a destination or a budget that was never mentioned.`,
 
 ROLE: persona. Read free-text signals ("foodie on a budget", "hates 6am flights", "will pay for
 location") into normalized weights across price, quality, location, vibe, and flexibility, plus
-pace and interests. Weights express relative priority. Explain your reasoning in the summary —
-a downstream human should be able to see why you weighted price over quality.`,
+pace and interests. Weights express relative priority.
+
+HOW TO DERIVE THE WEIGHTS
+- Fill \`reasoning\` FIRST, before any number. One entry per signal you actually used: quote the
+  traveler's words, name the single dimension it moves, and say whether it moves that dimension
+  up or down. Then write weights that follow from those entries.
+- Start from the position that all five dimensions matter equally. Each one moves only on
+  evidence in the signals. A dimension with no signal about it stays near its starting share.
+- The ABSENCE of a price signal is not evidence of price sensitivity. Saying nothing about money
+  is not the same as being frugal — it is no information about price, so price stays near its
+  starting share rather than leading by default.
+- A budget in the request is a CONSTRAINT, not a preference signal. It bounds what is affordable;
+  it says nothing about whether this traveler cares about cost relative to location or comfort.
+  Do not raise price weight because a budget exists.
+- Signals cut both ways. "Has saved for this and wants to feel it" and "waves off the bill talk"
+  are price signals that move price DOWN. Read the direction, not just the topic.
+- A price-dominant answer is correct only when the signals actually say so. Returning price as
+  the top dimension by habit is a failure of this role, not a safe default.
+- Do not flatten everything to equal weights to avoid choosing. That is the opposite failure and
+  is equally useless to the ranker: when the signals do point somewhere, say so clearly.
+
+Then give a one-line \`summary\`: the human-readable read on this traveler.`,
 
   planQueries: `${SHARED_RULES}
 

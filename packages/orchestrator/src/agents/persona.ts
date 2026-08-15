@@ -1,5 +1,5 @@
 import type { Preferences, TripRequest, Pace } from "@wayfare/shared";
-import type { Persona, PersonaWeights, TravelerProfile } from "../types.js";
+import type { Persona, PersonaReasoning, PersonaWeights, TravelerProfile } from "../types.js";
 import type { Tracer } from "../trace.js";
 
 /**
@@ -49,11 +49,19 @@ export function derivePersona(
 
   const haystack = [...profile.signals, ...(request.vibe?.value ?? [])].join(" ").toLowerCase();
   const matched: string[] = [];
+  const reasoning: PersonaReasoning[] = [];
   for (const rule of RULES) {
     if (!rule.match.test(haystack)) continue;
     matched.push(rule.match.source);
+    // The substring that actually matched, so the trace quotes the traveler rather than a regex.
+    const hit = haystack.match(rule.match)?.[0] ?? rule.match.source;
     for (const [k, v] of Object.entries(rule.nudge)) {
       weights[k as keyof PersonaWeights] += v as number;
+      reasoning.push({
+        signal: hit,
+        dimension: k as PersonaReasoning["dimension"],
+        direction: (v as number) >= 0 ? "up" : "down",
+      });
     }
     rule.interests?.forEach((i) => interests.add(i));
     rule.lodging?.forEach((l) => lodging.add(l));
@@ -61,7 +69,10 @@ export function derivePersona(
   }
 
   // a hard budget is itself a strong price signal.
-  if (request.budget?.value?.type === "hard") weights.price += 0.2;
+  if (request.budget?.value?.type === "hard") {
+    weights.price += 0.2;
+    reasoning.push({ signal: "hard budget ceiling", dimension: "price", direction: "up" });
+  }
 
   const normalized = normalize(weights);
   const preferences: Preferences = {
@@ -71,6 +82,7 @@ export function derivePersona(
   };
 
   const persona: Persona = {
+    reasoning,
     weights: normalized,
     preferences,
     summary: describe(normalized, preferences),
