@@ -166,8 +166,15 @@ export function intakeNode(deps: NodeDeps) {
  * knowing rather than silently absorbing.
  */
 export const PersonaWireSchema = PersonaSchema.extend({
+  // EVERY hoistable field is optional here, not just `reasoning`. The model does not misplace
+  // one key — it moves `weights` and `summary` down into `preferences` as well, so requiring
+  // any of them at the top level makes the wire parse fail before the repair can run. That was
+  // a real bug: a first version relaxed only `reasoning` and left the discard rate at 15.5%.
+  // Nothing is lost by relaxing them, because the strict schema still validates after repair.
   reasoning: z.array(z.string()).optional(),
-  preferences: PersonaSchema.shape.preferences.partial().passthrough(),
+  weights: PersonaSchema.shape.weights.optional(),
+  summary: z.string().optional(),
+  preferences: PersonaSchema.shape.preferences.partial().passthrough().optional(),
 });
 
 let personaHoists = 0;

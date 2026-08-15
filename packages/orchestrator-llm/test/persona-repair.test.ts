@@ -32,6 +32,25 @@ describe("repairPersonaShape", () => {
     expect((repaired as { preferences: Record<string, unknown> }).preferences.reasoning).toBeUndefined();
   });
 
+  it("accepts and repairs the whole persona nested inside preferences", () => {
+    // The failure actually observed in the wild: reasoning, weights AND summary all moved down
+    // into `preferences`, leaving nothing but `preferences` at the top level. A wire schema that
+    // relaxes only `reasoning` rejects this before the repair can run.
+    const wire = {
+      preferences: {
+        ...goodPreferences,
+        reasoning: ["will walk anywhere -> location up"],
+        weights: goodWeights,
+        summary: "location-led",
+      },
+    };
+    expect(PersonaWireSchema.safeParse(wire).success).toBe(true);
+    const parsed = PersonaSchema.safeParse(repairPersonaShape(wire));
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.weights).toEqual(goodWeights);
+    expect(parsed.success && parsed.data.summary).toBe("location-led");
+  });
+
   it("never overwrites a value the model put in the right place", () => {
     const wire = {
       reasoning: ["correct -> price up"],
