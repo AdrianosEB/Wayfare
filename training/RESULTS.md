@@ -66,19 +66,83 @@ checked with `smoke_test.py` before it is measured — otherwise Phase 4 risks s
 
 ## Slices
 
-Reported separately, never averaged: `test` (clean) · `test` (conflict rows) · `test-adversarial`
-(if completed — see note 2).
+Reported separately, never averaged: `test` (clean, 169 rows) · `test` (conflict, 79 rows).
 
-## Three-way comparison
+**`test-adversarial` is omitted from every table below.** It stood at 29/150 rows when the
+API credits ran out and could not be completed (no `ANTHROPIC_API_KEY` reachable at eval time).
+Measurement note 2 permits exactly two options — complete it to 150, or omit it with this as
+the stated reason — and never allows n=29 beside the 248-row `test` slice as a comparable
+number. This is the second option, taken because the first was unavailable.
 
-_(populated in Phase 4 by `training/eval.py`)_
+## Headline: the student learned the format, not the mapping
 
-| arm | slice | schema-valid (vs 99.5% teacher) | norm. MAE | rank agr. (floor: 17/25 t-t) | raw-sum drift | p50 | p95 | $/1k |
+**The distillation failed at the task, while succeeding at everything easy to measure.** The
+student emits well-formed `PersonaSchema` JSON at close to the teacher's own rate, and its
+`summary` prose is fluent and on-topic. Its *weights* — the only part the ranker consumes —
+carry no information about the input.
+
+Four independent lines of evidence, all on the 243 schema-valid rows of `test`:
+
+1. **Top-dimension agreement equals the majority-class prior exactly.** The student answers
+   `price` on 242 of 243 rows. It scores 175/243 = **72.0%** agreement; a predictor that
+   ignores the input and always answers `price` scores **175/243 = 72.0%** — the same rows,
+   not merely the same rate.
+2. **It is beaten by a constant.** Predicting the teacher's *mean* weight vector for every
+   row gives normalised MAE **0.0565**; the student gets **0.0587**. The student is slightly
+   worse than answering the same thing every time.
+3. **Its output is independent of the target.** Where the teacher chose `quality` (n=46) the
+   student said `price` 46/46; `vibe` (n=6) → `price` 6/6; `flexibility` (n=4) → `price` 4/4;
+   `location` (n=12) → `price` 11/12.
+4. **The output space collapsed.** 243 student outputs contain **24 distinct weight vectors**,
+   one of which covers 93 rows (38%); the teacher's 248 labels contain **157 distinct** vectors.
+
+Because of (1), **the 74.1% top-dimension agreement on the clean slice must not be read against
+the 17/25 (68%) teacher-teacher floor as if clearing it meant something.** It clears the floor
+the way a broken clock clears it. Rank agreement is uninterpretable for this student; the
+constant-predictor comparison in (2) replaces it as the meaningful reference.
+
+### Why the validation curve missed this
+
+The `summary` field is a median **80.9%** of the assistant label by characters; `weights` is
+**4.7%**. Token-level cross-entropy is therefore dominated roughly 17:1 by prose, and the model
+minimised it the cheap way — learning to write like a travel consultant, while leaving the
+weights at their marginal distribution. The validation curve (3.569 → 0.984, monotone in the
+large) was measuring mostly prose fidelity. **A healthy loss curve was never evidence the
+mapping was being learned, and HUMAN GATE 2 could not have caught this** — only a task metric
+on held-out inputs could, which is what Phase 4 is for.
+
+## Student vs teacher — `test` split
+
+Reference is the teacher's stored label for the same input. Teacher schema-valid rate
+**99.5%**; teacher-teacher top-dimension ceiling **17/25 (68%)**; teacher-teacher MAE envelope
+**0/25 pairs beyond 0.08**.
+
+| slice | n | schema-valid (teacher 99.5%) | norm. MAE | MAE p95 | rows beyond 0.08 MAE (t-t: 0/25) | top-dim agr. (= prior, see above) | pace agr. | raw-sum drift |
 |---|---|---|---|---|---|---|---|---|
-| baseline (untuned) | | | | | | | | |
-| student (LoRA) | | | | | | | | |
-| teacher (Sonnet 5) | | | | | | | | |
+| clean | 169 | 98.2% (166/169) | 0.0578 | 0.1105 | 31/166 (18.7%) | 74.1% | 66.9% | 0.0349 |
+| conflict | 79 | 97.5% (77/79) | 0.0606 | 0.1200 | 14/77 (18.2%) | 67.5% | 74.0% | 0.0364 |
 
-## Worst student outputs
+Reference points on the same axis: constant predictor (teacher mean) MAE **0.0565**; student
+modal vector MAE **0.0608**; student actual **0.0587**.
 
-_(six worst, each beside the teacher's label for the same input — populated in Phase 4)_
+Latency, student, sequential sample n=20: p50 **13.66 s**, p95 **16.09 s** (fp16 fused model,
+local, no API spend). Teacher: $7.28 / 1,429 rows = **$5.09 per 1k**.
+
+### Schema validity — the student did *not* inherit the teacher's failure
+
+5 of 248 rows failed. **None reproduced the teacher's stringified/over-nested `preferences`
+failure — 0/248.** Measurement note 1 asked whether the student inherits that specific defect
+at a higher rate than the teacher's 0.49%; it does not inherit it at all, so nested structure
+survived distillation intact. That is a real, if narrow, positive finding.
+
+The 5 failures are unrelated modes:
+
+| mode | n | detail |
+|---|---|---|
+| repetition loop → truncation | 2 | degenerates mid-`summary` ("overland overland …") until the 1200-token cap; string never closes |
+| unescaped `"` inside `summary` | 1 | wrote `preferredTimes=["any"]` as literal prose inside the string |
+| stray trailing characters | 2 | otherwise-complete JSON followed by `""}` or `"}"}`  |
+
+One of the trailing-character rows (index 129) is valid JSON *followed by* garbage and would be
+recoverable by a balanced-brace reader; under such a reader validity is 244/248 (98.4%). The
+98.0% figure is the strict bare-JSON rate, which is what the production path requires.
