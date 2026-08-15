@@ -3,7 +3,8 @@
 # (or let the script find ./.venv). Produces ./adapters (LoRA weights) — fuse.sh merges them.
 #
 # Flags, and why each value:
-#   --data ./data            expects train.jsonl + valid.jsonl in MLX chat format
+#   --data (DATA, ./data)    expects train.jsonl + valid.jsonl in MLX chat format;
+#                            DATA=./data-B ADAPTERS=./adapters-B ./train.sh for the ablation
 #   --iters (ITERS, 1500)    tune against the validation curve, not by faith — see README;
 #                            raised from 800 for the halved LR, stop early where it flattens
 #   --learning-rate 5e-6     halved from the 1e-5 default after loss diverged to NaN at iter
@@ -27,7 +28,7 @@ BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
 "$PY" -m mlx_lm lora \
   --model "$BASE_MODEL" \
   --train \
-  --data ./data \
+  --data "${DATA:-./data}" \
   --iters "${ITERS:-1500}" \
   --learning-rate 5e-6 \
   --batch-size 2 \
@@ -35,5 +36,5 @@ BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
   --num-layers 16 \
   --steps-per-eval 50 \
   --save-every 50 \
-  --adapter-path ./adapters \
+  --adapter-path "${ADAPTERS:-./adapters}" \
   --seed 20260814

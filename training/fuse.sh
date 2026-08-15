@@ -38,20 +38,20 @@ PY
   fi
 fi
 
-ADAPTER_PATH=./adapters
+ADAPTER_PATH=${ADAPTERS:-./adapters}
 if [ -n "$CKPT" ]; then
-  SRC=$(printf './adapters/%07d_adapters.safetensors' "$CKPT")
+  SRC=$(printf '%s/%07d_adapters.safetensors' "${ADAPTERS:-./adapters}" "$CKPT")
   if [ ! -f "$SRC" ]; then
     echo "fuse.sh: no checkpoint for iter $CKPT (looked for $SRC)" >&2
     echo "available:" >&2
-    ls ./adapters/[0-9]*_adapters.safetensors >&2 2>/dev/null || echo "  (none)" >&2
+    ls "${ADAPTERS:-./adapters}"/[0-9]*_adapters.safetensors >&2 2>/dev/null || echo "  (none)" >&2
     exit 1
   fi
   # Staged in a temp dir so ./adapters is never mutated — the numbered checkpoints stay
   # intact and re-fusing a different iteration costs nothing.
   ADAPTER_PATH=$(mktemp -d)
   trap 'rm -rf "$ADAPTER_PATH"' EXIT
-  cp ./adapters/adapter_config.json "$ADAPTER_PATH/"
+  cp "${ADAPTERS:-./adapters}/adapter_config.json" "$ADAPTER_PATH/"
   cp "$SRC" "$ADAPTER_PATH/adapters.safetensors"
   echo "fuse.sh: fusing iter-$CKPT checkpoint ($SRC)"
 fi
@@ -82,9 +82,9 @@ esac
 "$PY" -m mlx_lm fuse \
   --model "$BASE_MODEL" \
   --adapter-path "$ADAPTER_PATH" \
-  --save-path ./fused \
+  --save-path "${FUSED:-./fused}" \
   "${FUSE_ARGS[@]}"
 
 echo
-echo "fuse.sh: fused -> ./fused. VERIFY IT — a silently-unfused model is indistinguishable"
-echo "         from success here:  $PY smoke_test.py --model ./fused"
+echo "fuse.sh: fused -> ${FUSED:-./fused}. VERIFY IT — a silently-unfused model is indistinguishable"
+echo "         from success here:  $PY smoke_test.py --model ${FUSED:-./fused}"
