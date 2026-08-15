@@ -146,3 +146,36 @@ The 5 failures are unrelated modes:
 One of the trailing-character rows (index 129) is valid JSON *followed by* garbage and would be
 recoverable by a balanced-brace reader; under such a reader validity is 244/248 (98.4%). The
 98.0% figure is the strict bare-JSON rate, which is what the production path requires.
+
+## Worst student outputs
+
+Regenerate with `./.venv/bin/python report.py --worst 6`. Ranked schema-invalid first, then by
+normalised MAE descending. The five invalid rows are listed above by failure mode; the worst
+*scored* row is the one that shows the collapse most clearly:
+
+**row 128 · conflict · MAE 0.1495 · student top `price` vs teacher top `quality`**
+
+- signals: `has saved for this and wants to feel it` · `wants the shortest total journey time` ·
+  `would rather bring back nothing` · `waves off the bill talk, it's a holiday`
+- student: `price 0.40` quality 0.15 location 0.15 vibe 0.20 flexibility 0.15
+- teacher: `price 0.05` quality 0.35 location 0.20 vibe 0.30 flexibility 0.10
+
+Two of the four signals say plainly that this traveller is *not* price-led ("waves off the bill
+talk", "has saved for this and wants to feel it"). The teacher read them and put price **last**
+at 0.05. The student put price **first** at 0.40 — the exact inversion, and an unusually direct
+demonstration that the weights do not depend on the input. This row is the one to re-check
+first after any retraining: if price is still top here, nothing has changed.
+
+The six worst *scored* rows, for completeness — every one of them a case where the student said
+`price` and the teacher did not:
+
+| row | slice | norm. MAE | student top | teacher top |
+|---|---|---|---|---|
+| 128 | conflict | 0.1495 | price | quality |
+| 51 | clean | 0.1400 | price | quality |
+| 166 | conflict | 0.1305 | price | quality |
+| 141 | clean | 0.1295 | price | quality |
+| 3 | clean | 0.1267 | price | quality |
+| 177 | clean | 0.1267 | price | vibe |
+
+Full outputs and teacher labels for every row are in `results/student-test.json`.
