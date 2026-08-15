@@ -61,6 +61,7 @@ async function decide<T>(
   schema: z.ZodType<T, z.ZodTypeDef, unknown>,
   user: string,
   fallback: () => T,
+  wire?: { wireSchema: z.ZodType<unknown, z.ZodTypeDef, unknown>; repair: (raw: unknown) => unknown },
 ): Promise<T> {
   const started = Date.now();
   if (!deps.budget.allows(agent)) {
@@ -82,6 +83,7 @@ async function decide<T>(
       system: SYSTEM_PROMPTS[agent],
       user,
       schema,
+      ...(wire ?? {}),
     });
     deps.budget.record({
       agent,
@@ -148,6 +150,51 @@ export function intakeNode(deps: NodeDeps) {
 /* 2. persona                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Models put `reasoning` inside `preferences` on 13–19% of persona calls, across three prompt
+ * revisions that told them not to in increasingly explicit terms. That one misplacement fails
+ * the strict parse three ways at once: `reasoning` missing at the top level, an unrecognised key
+ * in a `.strict()` `preferences`, and `preferences`' own required fields displaced.
+ *
+ * So the model is handed a schema lenient enough to accept the misplacement, and the shape is
+ * repaired here before the STRICT `PersonaSchema` validates it. The strict schema is still the
+ * contract — nothing downstream sees an unrepaired object — but a recoverable formatting slip
+ * no longer costs an eighth of a paid teacher pass.
+ *
+ * Repaired rows are counted, not hidden: the hoist rate is a reported number (see
+ * training/RESULTS.md). If it climbs, the prompt or the schema is drifting and that is worth
+ * knowing rather than silently absorbing.
+ */
+export const PersonaWireSchema = PersonaSchema.extend({
+  reasoning: z.array(z.string()).optional(),
+  preferences: PersonaSchema.shape.preferences.partial().passthrough(),
+});
+
+let personaHoists = 0;
+/** How many persona objects needed the `preferences.reasoning` hoist this process. */
+export const personaHoistCount = (): number => personaHoists;
+
+export function repairPersonaShape(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const o = raw as Record<string, unknown>;
+  const prefs = o.preferences as Record<string, unknown> | undefined;
+  if (!prefs || typeof prefs !== "object") return raw;
+
+  // Only hoist keys that belong at the top level and are missing there — never overwrite a
+  // value the model put in the right place.
+  const misplaced = ["reasoning", "weights", "summary"] as const;
+  const moved: Record<string, unknown> = {};
+  for (const k of misplaced) {
+    if (k in prefs && o[k] === undefined) moved[k] = prefs[k];
+  }
+  if (!Object.keys(moved).length) return raw;
+
+  personaHoists++;
+  const cleanedPrefs = { ...prefs };
+  for (const k of Object.keys(moved)) delete cleanedPrefs[k];
+  return { ...o, ...moved, preferences: cleanedPrefs };
+}
+
 export function personaNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
     const request = s.request!;
@@ -158,6 +205,7 @@ export function personaNode(deps: NodeDeps) {
       `Signals: ${brief(s.profile.signals)}\nTrip vibe: ${brief(request.vibe?.value ?? [])}\n` +
         `Budget: ${brief(request.budget?.value)}`,
       () => derivePersona(s.profile, request, deps.tracer),
+      { wireSchema: PersonaWireSchema, repair: repairPersonaShape },
     );
     return { persona };
   };

@@ -72,21 +72,6 @@ export const PersonaDimensionSchema = z.enum([
 ]);
 export type PersonaDimension = z.infer<typeof PersonaDimensionSchema>;
 
-/**
- * One signal, and the single axis it moves. Emitted BEFORE `weights` so the numbers have to
- * follow stated evidence instead of being produced first and explained afterwards.
- */
-export const PersonaReasoningSchema = z
-  .object({
-    /** the traveler's own words, quoted — not a paraphrase and not a rule name. */
-    signal: z.string(),
-    dimension: PersonaDimensionSchema,
-    /** whether this signal raises or lowers that dimension's weight. */
-    direction: z.enum(["up", "down"]),
-  })
-  .strict();
-export type PersonaReasoning = z.infer<typeof PersonaReasoningSchema>;
-
 export const PersonaSchema = z
   .object({
     /**
@@ -94,8 +79,15 @@ export const PersonaSchema = z
      * in order must commit to which signals it read, and which axis each one moves, before it
      * emits a single number. With weights first, the numbers came out of a prior and `summary`
      * rationalized them after the fact — measured, not hypothesized (see training/RESULTS.md).
+     *
+     * Plain strings ("waves off the bill talk -> price down"), not objects. An earlier version
+     * used {signal, dimension, direction} with `dimension` as an enum; models put that array
+     * inside `preferences` on 13-19% of calls across three prompt revisions, which failed the
+     * strict parse three ways at once. Nothing measures the enum — the cross-tab reads the input
+     * dimension from the fixture tags and the output dimension from `weights` — so the structure
+     * bought no measurement and cost an eighth of every teacher pass.
      */
-    reasoning: z.array(PersonaReasoningSchema),
+    reasoning: z.array(z.string()),
     weights: PersonaWeightsSchema,
     preferences: PreferencesSchema,
     /** one-line, human-readable read on the traveler ("cost-led foodie, hates early starts"). */

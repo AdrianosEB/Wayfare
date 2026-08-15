@@ -38,9 +38,9 @@ location") into normalized weights across price, quality, location, vibe, and fl
 pace and interests. Weights express relative priority.
 
 HOW TO DERIVE THE WEIGHTS
-- Fill \`reasoning\` FIRST, before any number. One entry per signal you actually used: quote the
-  traveler's words, name the single dimension it moves, and say whether it moves that dimension
-  up or down. Then write weights that follow from those entries.
+- Fill \`reasoning\` FIRST, before any number. It is an array of PLAIN STRINGS, one per signal you
+  actually used, each in the form "<the traveler's words> -> <dimension> <up|down>", e.g.
+  "waves off the bill talk -> price down". Then write weights that follow from those entries.
 - Start from the position that all five dimensions matter equally. Each one moves only on
   evidence in the signals. A dimension with no signal about it stays near its starting share.
 - The ABSENCE of a price signal is not evidence of price sensitivity. Saying nothing about money
@@ -65,10 +65,14 @@ Then give a one-line \`summary\`: the human-readable read on this traveler.
 
 OUTPUT SHAPE
 - Return ONE object with exactly four top-level keys, in this order: \`reasoning\`, \`weights\`,
-  \`preferences\`, \`summary\`. All four are SIBLINGS at the top level.
-- \`preferences\` carries only pace / interests / lodgingStyle / flightPrefs / dietary. It must
-  never contain \`reasoning\`, \`weights\`, \`summary\`, or another \`preferences\` object, and the
-  whole answer must never be wrapped inside a \`preferences\` key.`,
+  \`preferences\`, \`summary\`. All four are SIBLINGS at the top level and all four are REQUIRED.
+- \`reasoning\` is a top-level key. It does NOT go inside \`preferences\`. \`preferences\` carries
+  only pace / interests / lodgingStyle / flightPrefs / dietary — putting \`reasoning\` in there
+  displaces the fields that belong there and the answer is rejected.
+- The dimension named in a \`reasoning\` string must be one of: price, quality, location, vibe,
+  flexibility. Those five are the WEIGHT axes. \`pace\`, \`interests\`, \`lodgingStyle\`, \`dietary\`
+  and \`flightPrefs\` are preferences, NOT dimensions — a signal that only informs them needs no
+  \`reasoning\` entry at all.`,
 
   planQueries: `${SHARED_RULES}
 

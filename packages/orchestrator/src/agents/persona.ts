@@ -1,5 +1,5 @@
 import type { Preferences, TripRequest, Pace } from "@wayfare/shared";
-import type { Persona, PersonaReasoning, PersonaWeights, TravelerProfile } from "../types.js";
+import type { Persona, PersonaWeights, TravelerProfile } from "../types.js";
 import type { Tracer } from "../trace.js";
 
 /**
@@ -68,7 +68,7 @@ export function derivePersona(
 
   const haystack = [...profile.signals, ...(request.vibe?.value ?? [])].join(" ").toLowerCase();
   const matched: string[] = [];
-  const reasoning: PersonaReasoning[] = [];
+  const reasoning: string[] = [];
   for (const rule of RULES) {
     if (!rule.match.test(haystack)) continue;
     matched.push(rule.match.source);
@@ -76,11 +76,7 @@ export function derivePersona(
     const hit = haystack.match(rule.match)?.[0] ?? rule.match.source;
     for (const [k, v] of Object.entries(rule.nudge)) {
       weights[k as keyof PersonaWeights] += v as number;
-      reasoning.push({
-        signal: hit,
-        dimension: k as PersonaReasoning["dimension"],
-        direction: (v as number) >= 0 ? "up" : "down",
-      });
+      reasoning.push(`${hit} -> ${k} ${(v as number) >= 0 ? "up" : "down"}`);
     }
     rule.interests?.forEach((i) => interests.add(i));
     rule.lodging?.forEach((l) => lodging.add(l));

@@ -50,7 +50,7 @@ import {
   type StructuredModel,
   type StructuredResult,
 } from "../src/model.js";
-import { personaNode } from "../src/nodes.js";
+import { personaNode, personaHoistCount } from "../src/nodes.js";
 import { ToolLedger, type ToolContext } from "../src/tools.js";
 import type { PlanStateType } from "../src/state.js";
 
@@ -700,7 +700,11 @@ async function main(): Promise<void> {
       // No record means decide() swallowed an error and used derivePersona. That output is the
       // heuristic, not the teacher — discard it rather than poison the training set.
       if (!rec) {
-        return { kind: "discard", reason: err ? `model-error: ${err.slice(0, 100)}` : "no-output" };
+        // 100 chars was too short to diagnose anything: a structured-output failure embeds the
+        // model's own text in the error, and the useful part (where the JSON actually goes
+        // wrong) is past the first line. GEN_ERR_CHARS widens it when investigating.
+        const cap = Number(process.env.GEN_ERR_CHARS ?? 100);
+        return { kind: "discard", reason: err ? `model-error: ${err.slice(0, cap)}` : "no-output" };
       }
 
       // Belt and braces: AnthropicStructuredModel already validates, but a dataset is forever.
@@ -829,6 +833,10 @@ async function main(): Promise<void> {
 
   if (!opts.dryRun) {
     console.log(`\nTotal spend this run: $${costSoFar.toFixed(4)} of $${opts.maxCostUsd.toFixed(2)} allowed.`);
+    // A repaired row is valid training data, but the rate is a finding: it says how often
+    // the model misplaced `reasoning` inside `preferences`. Reported, never buried.
+    const hoists = personaHoistCount();
+    if (hoists > 0) console.log(`Shape repairs (reasoning hoisted out of preferences): ${hoists}`);
   }
   console.log("Re-run the same command to continue; completed examples are skipped.");
 }

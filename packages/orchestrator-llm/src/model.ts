@@ -21,6 +21,15 @@ export interface StructuredCall<T> {
    * with the input side and hand every caller the pre-default shape.
    */
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
+  /**
+   * Optional laxer schema to hand the provider's structured-output binding, when the strict
+   * `schema` rejects a recoverable formatting slip the model reliably makes. The provider's own
+   * parser validates against this; `repair` then normalises the shape and `schema` remains the
+   * contract everything downstream sees.
+   */
+  wireSchema?: z.ZodType<unknown, z.ZodTypeDef, unknown>;
+  /** Normalise a wire-shaped object before strict validation. Must be pure and deterministic. */
+  repair?: (raw: unknown) => unknown;
 }
 
 export interface StructuredResult<T> {
@@ -131,15 +140,20 @@ export class AnthropicStructuredModel implements StructuredModel {
 
   async invoke<T>(call: StructuredCall<T>): Promise<StructuredResult<T>> {
     const chat = await this.#model();
-    const structured = chat.withStructuredOutput(call.schema, { name: call.agent });
+    // The wire schema, when a caller supplies one, is only what the provider's parser is given.
+    // The strict `call.schema` below is still the contract.
+    const structured = chat.withStructuredOutput(call.wireSchema ?? call.schema, {
+      name: call.agent,
+    });
     const raw = await structured.invoke([
       { role: "system", content: call.system },
       { role: "user", content: call.user },
     ]);
 
     // Validate against the shared schema ourselves too: an off-schema response must surface as
-    // a validation failure, never a silent coercion.
-    const parsed = call.schema.safeParse(raw);
+    // a validation failure, never a silent coercion. `repair` may only move a value that is in
+    // the wrong place — it can never invent one, so this stays a validation, not a coercion.
+    const parsed = call.schema.safeParse(call.repair ? call.repair(raw) : raw);
     if (!parsed.success) throw new SchemaValidationError(call.agent, parsed.error.issues);
 
     // LangChain's structured-output path does not surface usage on the parsed value; charge a

@@ -15,7 +15,7 @@ import type { Persona, RankedOption, VerifiedOption } from "../src/index.js";
  */
 
 const persona: Persona = {
-  reasoning: [{ signal: "test fixture", dimension: "price", direction: "up" }],
+  reasoning: ["test fixture -> price up"],
   weights: { price: 0.5, quality: 0.15, location: 0.15, vibe: 0.1, flexibility: 0.1 },
   preferences: { pace: "moderate", interests: [] },
   summary: "test",
