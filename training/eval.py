@@ -143,7 +143,8 @@ def build_prompt(tok, system, user):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", required=True, choices=["baseline", "student", "heuristic", "teacher"])
+    ap.add_argument("--arm", required=True,
+                    choices=["baseline", "student", "student-A", "student-B", "heuristic", "teacher"])
     ap.add_argument("--model", default="")
     ap.add_argument("--from-jsonl",
                     help="score predictions already written to a dataset-format .jsonl instead "
