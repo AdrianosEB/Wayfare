@@ -26,6 +26,24 @@ Two numbers matter most:
   the chance rate is not measuring labeller noise at all.
 
 `--gate` turns it into a pass/fail check (non-zero exit on failure) for use before a full pass.
+
+WHY THE DIAGONAL GATE EXCLUDES `flexibility` — do not re-add it
+---------------------------------------------------------------
+`flexibility` is not a scoring axis. In `packages/orchestrator/src/agents/match.ts` the ranked
+score is `price + quality + location + vibe + verification`; the flexibility weight appears
+nowhere in it except as a multiplier folded into price:
+
+    const priceWeight = w.price + w.flexibility * 0.5;
+
+So a "flexibility-top" label is not a meaningful target. A persona with flexibility 0.40 and
+price 0.15 yields an effective price weight of 0.35 — gating on a flexibility diagonal would
+manufacture price-led rankings, which is the exact bias this diagnostic exists to detect. The
+diagonal is therefore checked only for the four dimensions the ranker actually scores, while
+the cross-tab still *displays* flexibility so the asymmetry stays visible.
+
+This is a deliberate decision recorded in training/RESULTS.md, not an oversight. Whether a
+five-dimension PersonaWeights is the right shape at all is a separate open question; it is not
+resolved by narrowing this gate.
 """
 
 import argparse
@@ -36,6 +54,9 @@ import statistics
 from pathlib import Path
 
 DIMS = ["price", "quality", "location", "vibe", "flexibility"]
+# The four dimensions match.ts actually scores. See the module docstring: flexibility is a
+# multiplier on price, not an axis, so its diagonal is displayed but never gated.
+SCORED_DIMS = ["price", "quality", "location", "vibe"]
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "packages/orchestrator-llm/fixtures"
 
@@ -95,7 +116,7 @@ def polarity_report(rows, sigs):
     print("Price-polarity split — does the label move with explicit price evidence?\n")
     print("| price signal | n | mean price weight | price-top |")
     print("|---|---|---|---|")
-    none_pct = None
+    none_pct = frugal_pct = None
     for k in ("frugal", "mixed", "freely", "none"):
         g = groups.get(k)
         if not g:
@@ -103,6 +124,8 @@ def polarity_report(rows, sigs):
         pt = 100 * sum(1 for _, t in g if t == "price") / len(g)
         if k == "none":
             none_pct = pt
+        if k == "frugal":
+            frugal_pct = pt
         print(f"| {k} | {len(g)} | {statistics.mean(x for x, _ in g):.3f} | {pt:.1f}% |")
 
     mean_max = statistics.mean(maxw) if maxw else 0.0
@@ -114,8 +137,11 @@ def polarity_report(rows, sigs):
     if none_pct is not None:
         print(f"- **no-price-signal rows are price-top {none_pct:.1f}%** — the sharpest single "
               f"test of the default-to-price prior")
+    if frugal_pct is not None:
+        print(f"- **explicitly frugal rows are price-top {frugal_pct:.1f}%** — the response must "
+              f"stay symmetric; removing a prior must not become a reversed prior")
     print()
-    return none_pct, mean_max
+    return none_pct, mean_max, frugal_pct
 
 
 def dominant_dim(signals, sigdims):
@@ -195,8 +221,8 @@ def print_report(name, rows, sigdims, sigs=None):
                   ", ".join(f"`{d}` {100 * marg[d] / n:.1f}%" for d in DIMS))
         print(f"- **top-dimension entropy: {h:.3f} bits** of a possible {math.log2(len(DIMS)):.3f}")
         print(f"- **chance agreement: {ss:.3f}**\n")
-        none_pct, mean_max = polarity_report(rows, sigs) if sigs else (None, None)
-        return h, {}, none_pct, mean_max
+        none_pct, mean_max, frugal_pct = polarity_report(rows, sigs) if sigs else (None, None, None)
+        return h, {}, none_pct, mean_max, frugal_pct
 
     print("Cross-tab: dominant INPUT signal dimension (row) vs teacher's argmax WEIGHT (column).")
     print("Cells are row percentages; the diagonal is what a teacher reading its input would fill.\n")
@@ -236,8 +262,8 @@ def print_report(name, rows, sigdims, sigs=None):
         print(f"- excluded from the cross-tab: {dict(skipped)} "
               f"(ties are never broken silently — see `dominant_dim`)")
     print()
-    none_pct, mean_max = polarity_report(rows, sigs) if sigs else (None, None)
-    return h, diagonals, none_pct, mean_max
+    none_pct, mean_max, frugal_pct = polarity_report(rows, sigs) if sigs else (None, None, None)
+    return h, diagonals, none_pct, mean_max, frugal_pct
 
 
 def main():
@@ -251,6 +277,12 @@ def main():
                     help="ceiling on price-top%% among rows with NO price signal (was 87.1%%)")
     ap.add_argument("--min-mean-max-weight", type=float, default=0.28,
                     help="floor on mean max-weight; below this the vectors have gone flat")
+    ap.add_argument("--min-frugal-price-top", type=float, default=65.0,
+                    help="floor on price-top%% among explicitly frugal rows; removing a prior "
+                         "must not become a reversed prior")
+    ap.add_argument("--max-discard-pct", type=float, default=5.0,
+                    help="ceiling on the generator's discard rate, read from the split's "
+                         "sidecar progress file when present (teacher baseline: 0.5%%)")
     args = ap.parse_args()
 
     sigs = load_signals()
@@ -269,14 +301,36 @@ def main():
         if not rows:
             print(f"### {s} — empty, skipped\n")
             continue
-        h, diags, none_pct, mean_max = print_report(s, rows, sigdims, sigs)
+        h, diags, none_pct, mean_max, frugal_pct = print_report(s, rows, sigdims, sigs)
+
+        # Discards never reach the .jsonl, so the rate has to come from the sidecar the
+        # generator writes. A pass that silently drops a fifth of its rows is not a clean pass
+        # even when every row it kept looks good.
+        discard_pct = None
+        prog = Path(args.data_dir) / f".{s}.progress.json"
+        if prog.is_file():
+            st = json.loads(prog.read_text())
+            attempts = st.get("written", 0) + st.get("discarded", 0)
+            if attempts:
+                discard_pct = 100 * st["discarded"] / attempts
+                print(f"- generator discard rate: **{discard_pct:.1f}%** "
+                      f"({st['discarded']} of {attempts} attempts)\n")
+
         if args.gate:
             if h < args.min_entropy:
                 failures.append(f"{s}: entropy {h:.3f} < {args.min_entropy}")
-            weak = {d: v for d, v in diags.items() if v < args.min_diagonal}
+            # Only the dimensions match.ts scores — see the module docstring on flexibility.
+            weak = {d: v for d, v in diags.items() if d in SCORED_DIMS and v < args.min_diagonal}
             if weak:
                 failures.append(f"{s}: diagonal below {args.min_diagonal}% for " +
                                 ", ".join(f"{d} ({v:.0f}%)" for d, v in weak.items()))
+            if frugal_pct is not None and frugal_pct < args.min_frugal_price_top:
+                failures.append(f"{s}: explicitly frugal rows are price-top {frugal_pct:.1f}% "
+                                f"< {args.min_frugal_price_top}% — overcorrected into a "
+                                f"reversed prior")
+            if discard_pct is not None and discard_pct >= args.max_discard_pct:
+                failures.append(f"{s}: discard rate {discard_pct:.1f}% "
+                                f">= {args.max_discard_pct}%")
             if none_pct is not None and none_pct >= args.max_price_top_no_signal:
                 failures.append(f"{s}: no-price-signal rows are price-top {none_pct:.1f}% "
                                 f">= {args.max_price_top_no_signal}% — still defaulting to price")
@@ -293,8 +347,11 @@ def main():
             for f in failures:
                 print(f"- {f}")
             raise SystemExit(1)
-        print(f"**GATE PASSED** — entropy >= {args.min_entropy} bits and every diagonal "
-              f">= {args.min_diagonal}%.")
+        print(f"**GATE PASSED** — entropy >= {args.min_entropy} bits; diagonal >= "
+              f"{args.min_diagonal}% for {', '.join(SCORED_DIMS)} (flexibility excluded by "
+              f"design); no-price-signal price-top < {args.max_price_top_no_signal}%; frugal "
+              f"price-top >= {args.min_frugal_price_top}%; mean max-weight >= "
+              f"{args.min_mean_max_weight}; discards < {args.max_discard_pct}%.")
 
 
 if __name__ == "__main__":

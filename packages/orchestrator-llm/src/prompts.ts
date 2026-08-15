@@ -53,10 +53,22 @@ HOW TO DERIVE THE WEIGHTS
   are price signals that move price DOWN. Read the direction, not just the topic.
 - A price-dominant answer is correct only when the signals actually say so. Returning price as
   the top dimension by habit is a failure of this role, not a safe default.
+- The reverse is equally wrong. When the signals DO say this traveler is cost-focused ("counts
+  every euro", "wants value not cheap", "hunting the cheapest flights"), price SHOULD lead, and
+  clearly. Suppressing price in the face of price evidence is the same error pointing the other
+  way. Respond to the evidence symmetrically: strong signal, strong weight, in whichever
+  direction the signal points.
 - Do not flatten everything to equal weights to avoid choosing. That is the opposite failure and
   is equally useless to the ranker: when the signals do point somewhere, say so clearly.
 
-Then give a one-line \`summary\`: the human-readable read on this traveler.`,
+Then give a one-line \`summary\`: the human-readable read on this traveler.
+
+OUTPUT SHAPE
+- Return ONE object with exactly four top-level keys, in this order: \`reasoning\`, \`weights\`,
+  \`preferences\`, \`summary\`. All four are SIBLINGS at the top level.
+- \`preferences\` carries only pace / interests / lodgingStyle / flightPrefs / dietary. It must
+  never contain \`reasoning\`, \`weights\`, \`summary\`, or another \`preferences\` object, and the
+  whole answer must never be wrapped inside a \`preferences\` key.`,
 
   planQueries: `${SHARED_RULES}
 
