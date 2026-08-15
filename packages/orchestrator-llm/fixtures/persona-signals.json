@@ -1,7 +1,7 @@
 {
   "version": 2,
   "description": "Pool of realistic free-text traveler signals used to synthesize persona-distillation training data. Sampled 1-5 per profile by scripts/gen-persona-data.ts. Each signal carries `d` (the PersonaWeights dimension it most moves: price|quality|location|vibe|flexibility) and `p` (a direction WITHIN that dimension, such that a +1 and a -1 on the same dimension contradict each other: price +1 frugal / -1 spends freely; quality +1 demands comfort / -1 happy roughing it; location +1 wants central-prime / -1 remote or indifferent; vibe +1 lively-characterful / -1 quiet-functional; flexibility +1 spontaneous-open / -1 fixed-planned). ~30% of generated profiles deliberately pair one +1 with one -1 on the same dimension and are tagged conflict:true in the dataset metadata so the eval can slice them separately.",
-  "split": "`train` feeds the train + valid splits; `test` is held back exclusively for the test split so the eval measures generalisation to unseen phrasings rather than memorisation. A separate hand-written pool lives in persona-signals-human.json and feeds only the test-human split.",
+  "split": "`train` feeds the train + valid splits; `test` is held back exclusively for the test split so the eval measures generalisation to unseen phrasings rather than memorisation. A separate adversarially-phrased, model-authored pool lives in persona-signals-adversarial.json and feeds only the test-adversarial split.",
   "train": [
     {
       "s": "counts every euro and it shows",
@@ -1602,6 +1602,186 @@
       "s": "planning this as a surprise",
       "d": "flexibility",
       "p": -1
+    },
+    {
+      "s": "never looks at the price before booking",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "books the best seat on the train without checking the fare",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "tips generously and doesn't do the maths",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "would rather overpay than spend an evening comparing prices",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "orders the tasting menu without reading the right-hand column",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "upgrades at the desk if the option exists",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "this is the one trip a year where cost doesn't matter",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "pays for the private transfer without blinking",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "treats the budget as a starting point, not a limit",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "would drop two hundred on a once-in-a-lifetime tour without hesitating",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "books the helicopter ride because when else",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "happy to pay full fare for the direct flight",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "buys the good bottle at dinner, every dinner",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "cost is the last filter they apply, if at all",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "would pay double to skip every queue",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "splashes out on whatever makes the story better",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "a bunk bed and a locker is all they need",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "showered in campsites all summer and loved it",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "a cold shower is character building as far as they're concerned",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "happy on an overnight bus if it saves a day",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "will sleep on the ferry deck under the stars",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "thin mattress, thin walls, doesn't register either",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "hasn't noticed a hotel amenity in years",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "sleeps fine anywhere with a door that locks",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "would trade the pool and the gym for nothing at all",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "instant coffee in a tin mug is part of the trip",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "a squat toilet won't ruin their week",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "packs a sleeping bag liner and stops worrying",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "shared bathroom down the hall, no complaints",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "couch-surfed across two continents already",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "a room with a bed and a hook on the door will do",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "the further from the tour buses the better",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "wants a farm stay an hour from anywhere",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "happy at the end of the metro line",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "picks the village over the capital every time",
+      "d": "location",
+      "p": -1
+    },
+    {
+      "s": "doesn't care about the address, only the view",
+      "d": "location",
+      "p": -1
     }
   ],
   "test": [
@@ -2029,6 +2209,46 @@
       "s": "wants shade more than sunshine",
       "d": "quality",
       "p": 1
+    },
+    {
+      "s": "hasn't asked what anything costs yet",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "waves off the bill talk, it's a holiday",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "picks the experience first and finds the money after",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "pays the single supplement without a second thought",
+      "d": "price",
+      "p": -1
+    },
+    {
+      "s": "would take a tent over a tower hotel",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "roughing it is half the point for them",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "star ratings mean nothing to them",
+      "d": "quality",
+      "p": -1
+    },
+    {
+      "s": "fine with a fan instead of air conditioning",
+      "d": "quality",
+      "p": -1
     }
   ]
 }

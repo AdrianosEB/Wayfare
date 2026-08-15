@@ -61,15 +61,15 @@ const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
 /* Plan: 3,000 examples. Test draws from a disjoint signal pool.               */
 /* -------------------------------------------------------------------------- */
 
-type Split = "train" | "valid" | "test" | "test-human";
+type Split = "train" | "valid" | "test" | "test-adversarial";
 
-const SPLIT_SIZES: Record<Split, number> = { train: 2400, valid: 300, test: 300, "test-human": 150 };
+const SPLIT_SIZES: Record<Split, number> = { train: 2400, valid: 300, test: 300, "test-adversarial": 150 };
 /** Distinct seed offsets so no two splits ever draw the same profile. */
 const SPLIT_SEED_OFFSET: Record<Split, number> = {
   train: 0,
   valid: 1_000_000,
   test: 2_000_000,
-  "test-human": 3_000_000,
+  "test-adversarial": 3_000_000,
 };
 
 type Dimension = "price" | "quality" | "location" | "vibe" | "flexibility";
@@ -78,8 +78,8 @@ const DIMENSIONS: readonly Dimension[] = ["price", "quality", "location", "vibe"
 /**
  * A tagged signal from the authored pools. `p` is a direction WITHIN the dimension (see the
  * fixture description), so a (+1, -1) pair on one dimension is a genuine contradiction. The
- * hand-written pool is untagged (`d`/`p` absent) — no deliberate conflicts are constructed
- * there; its whole point is unfiltered human phrasing.
+ * adversarial pool is untagged (`d`/`p` absent) — no deliberate conflicts are constructed
+ * there; its whole point is messy, adversarially-phrased free text.
  */
 interface Signal {
   s: string;
@@ -131,10 +131,10 @@ function parseArgs(argv: string[]): Options {
   const splitRaw = get("--split") ?? "all";
   const splits: Split[] =
     splitRaw === "all"
-      ? ["train", "valid", "test", "test-human"]
+      ? ["train", "valid", "test", "test-adversarial"]
       : splitRaw.split(",").map((s) => {
           const t = s.trim();
-          if (t !== "train" && t !== "valid" && t !== "test" && t !== "test-human") {
+          if (t !== "train" && t !== "valid" && t !== "test" && t !== "test-adversarial") {
             die(`unknown split "${t}"`);
           }
           return t;
@@ -480,18 +480,19 @@ async function main(): Promise<void> {
     die(`signal pools overlap on ${overlap.length} entries (test must be disjoint): ${overlap[0]!.s}`);
   }
 
-  // Hand-written adversarial pool: user-authored, untagged, feeds ONLY test-human.
-  const humanPath = join(PKG_ROOT, "fixtures", "persona-signals-human.json");
-  const humanRaw = existsSync(humanPath)
-    ? (JSON.parse(readFileSync(humanPath, "utf8")) as { signals: string[] })
+  // Adversarial pool: model-authored, deliberately messy phrasing, untagged, feeds ONLY
+  // test-adversarial. It measures distribution shift, not a human baseline.
+  const adversarialPath = join(PKG_ROOT, "fixtures", "persona-signals-adversarial.json");
+  const adversarialRaw = existsSync(adversarialPath)
+    ? (JSON.parse(readFileSync(adversarialPath, "utf8")) as { signals: string[] })
     : { signals: [] };
-  const humanPool: Signal[] = (humanRaw.signals ?? []).map((s) => ({ s }));
+  const adversarialPool: Signal[] = (adversarialRaw.signals ?? []).map((s) => ({ s }));
   const authoredTexts = new Set([...pools.train, ...pools.test].map((x) => x.s));
-  const humanOverlap = humanPool.filter((x) => authoredTexts.has(x.s));
-  if (humanOverlap.length) {
+  const adversarialOverlap = adversarialPool.filter((x) => authoredTexts.has(x.s));
+  if (adversarialOverlap.length) {
     die(
-      `persona-signals-human.json duplicates ${humanOverlap.length} authored signal(s) — the ` +
-        `human pool must be independent: "${humanOverlap[0]!.s}"`,
+      `persona-signals-adversarial.json duplicates ${adversarialOverlap.length} authored signal(s) — the ` +
+        `adversarial pool must be disjoint from the authored pools: "${adversarialOverlap[0]!.s}"`,
     );
   }
 
@@ -512,7 +513,7 @@ async function main(): Promise<void> {
       `  out         ${opts.outDir}\n` +
       `  seed        ${opts.seed}\n` +
       `  pool        ${pools.train.length} train signals, ${pools.test.length} held-back test signals, ` +
-      `${humanPool.length} hand-written (test-human)\n` +
+      `${adversarialPool.length} adversarial (test-adversarial)\n` +
       `  conflicts   ~${Math.round(CONFLICT_RATE * 100)}% of authored-pool profiles get a deliberate ±pair\n`,
   );
 
@@ -523,19 +524,20 @@ async function main(): Promise<void> {
     if (aborted) break;
 
     // train+valid draw the authored `train` pool; test draws the held-back authored pool;
-    // test-human draws only the user's hand-written pool.
+    // test-adversarial draws only the adversarially-phrased pool.
     let pool: readonly Signal[];
-    if (split === "test-human") {
-      if (humanPool.length < 40) {
+    if (split === "test-adversarial") {
+      if (adversarialPool.length < 40) {
         const msg =
-          `test-human needs at least 40 hand-written signals in fixtures/persona-signals-human.json ` +
-          `(found ${humanPool.length}). Write them yourself — a model authoring them would defeat ` +
-          `the split's purpose.`;
+          `test-adversarial needs at least 40 signals in fixtures/persona-signals-adversarial.json ` +
+          `(found ${adversarialPool.length}). The pool is adversarially-phrased, model-authored ` +
+          `input — messy, typo-ridden, contradictory free text — used to measure how the student ` +
+          `holds up under distribution shift from the clean authored pools.`;
         if (opts.splitsExplicit) die(msg);
-        console.warn(`[test-human] skipped: ${msg}`);
+        console.warn(`[test-adversarial] skipped: ${msg}`);
         continue;
       }
-      pool = humanPool;
+      pool = adversarialPool;
     } else {
       pool = split === "test" ? pools.test : pools.train;
     }

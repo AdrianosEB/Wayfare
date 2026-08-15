@@ -36,3 +36,6 @@ training/fused/
 training/**/*.safetensors
 training/**/*.npz
 .venv/
+
+# temporary orchestration scaffolding for the persona-distillation run (deleted at finish)
+_distillation-run/
