@@ -32,6 +32,7 @@ import argparse
 import collections
 import json
 import math
+import statistics
 from pathlib import Path
 
 DIMS = ["price", "quality", "location", "vibe", "flexibility"]
@@ -39,8 +40,8 @@ REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "packages/orchestrator-llm/fixtures"
 
 
-def load_signal_dims():
-    """text -> dimension, across every authored pool (clean + adversarial)."""
+def load_signals():
+    """text -> (dimension, polarity), across every authored pool (clean + adversarial)."""
     m = {}
     for name in ("persona-signals.json", "persona-signals-adversarial.json"):
         p = FIXTURES / name
@@ -52,8 +53,69 @@ def load_signal_dims():
             if isinstance(pool, list):
                 for s in pool:
                     if isinstance(s, dict) and "s" in s and "d" in s:
-                        m[s["s"]] = s["d"]
+                        m[s["s"]] = (s["d"], s.get("p", 0))
     return m
+
+
+def load_signal_dims():
+    return {k: v[0] for k, v in load_signals().items()}
+
+
+def price_polarity(signals, sigs):
+    """How this row's signals talk about price: frugal / freely / mixed / none.
+
+    `none` is the interesting bucket. A teacher that reads its input should treat the absence
+    of any price signal as *no information about price* — not as evidence of frugality. If the
+    `none` bucket looks like the `frugal` bucket, the model is answering from a prior.
+    """
+    pol = [sigs[s][1] for s in signals if s in sigs and sigs[s][0] == "price"]
+    if not pol:
+        return "none"
+    total = sum(pol)
+    return "frugal" if total > 0 else "freely" if total < 0 else "mixed"
+
+
+def polarity_report(rows, sigs):
+    """Price-polarity split + weight-shape stats. Returns (price_top_pct_no_signal, mean_max_w)."""
+    groups = collections.defaultdict(list)
+    maxw, minw = [], []
+    for r in rows:
+        w = json.loads(r["messages"][2]["content"]).get("weights") or {}
+        try:
+            vals = {d: float(w[d]) for d in DIMS}
+        except (KeyError, TypeError, ValueError):
+            continue
+        total = sum(vals.values()) or 1.0
+        nvals = {d: v / total for d, v in vals.items()}
+        maxw.append(max(nvals.values()))
+        minw.append(min(nvals.values()))
+        top = max(DIMS, key=lambda d: nvals[d])
+        groups[price_polarity(r["meta"]["signals"], sigs)].append((nvals["price"], top))
+
+    print("Price-polarity split — does the label move with explicit price evidence?\n")
+    print("| price signal | n | mean price weight | price-top |")
+    print("|---|---|---|---|")
+    none_pct = None
+    for k in ("frugal", "mixed", "freely", "none"):
+        g = groups.get(k)
+        if not g:
+            continue
+        pt = 100 * sum(1 for _, t in g if t == "price") / len(g)
+        if k == "none":
+            none_pct = pt
+        print(f"| {k} | {len(g)} | {statistics.mean(x for x, _ in g):.3f} | {pt:.1f}% |")
+
+    mean_max = statistics.mean(maxw) if maxw else 0.0
+    mean_min = statistics.mean(minw) if minw else 0.0
+    print(f"\n- weight shape: mean max-weight **{mean_max:.3f}**, mean min-weight {mean_min:.3f}")
+    print(f"  (a fix that flattens every vector toward uniform 0.200 is not a fix — it would "
+          f"raise entropy while carrying just as little information. Mean max-weight below "
+          f"~0.28 means the vectors have gone flat.)")
+    if none_pct is not None:
+        print(f"- **no-price-signal rows are price-top {none_pct:.1f}%** — the sharpest single "
+              f"test of the default-to-price prior")
+    print()
+    return none_pct, mean_max
 
 
 def dominant_dim(signals, sigdims):
@@ -114,7 +176,7 @@ def analyse(rows, sigdims):
     return xtab, top_marginal, skipped, appears
 
 
-def print_report(name, rows, sigdims):
+def print_report(name, rows, sigdims, sigs=None):
     xtab, marg, skipped, appears = analyse(rows, sigdims)
     n = sum(marg.values())
     print(f"### {name} — {len(rows)} rows ({n} with usable weights)\n")
@@ -133,7 +195,8 @@ def print_report(name, rows, sigdims):
                   ", ".join(f"`{d}` {100 * marg[d] / n:.1f}%" for d in DIMS))
         print(f"- **top-dimension entropy: {h:.3f} bits** of a possible {math.log2(len(DIMS)):.3f}")
         print(f"- **chance agreement: {ss:.3f}**\n")
-        return h, {}
+        none_pct, mean_max = polarity_report(rows, sigs) if sigs else (None, None)
+        return h, {}, none_pct, mean_max
 
     print("Cross-tab: dominant INPUT signal dimension (row) vs teacher's argmax WEIGHT (column).")
     print("Cells are row percentages; the diagonal is what a teacher reading its input would fill.\n")
@@ -173,7 +236,8 @@ def print_report(name, rows, sigdims):
         print(f"- excluded from the cross-tab: {dict(skipped)} "
               f"(ties are never broken silently — see `dominant_dim`)")
     print()
-    return h, diagonals
+    none_pct, mean_max = polarity_report(rows, sigs) if sigs else (None, None)
+    return h, diagonals, none_pct, mean_max
 
 
 def main():
@@ -183,9 +247,14 @@ def main():
     ap.add_argument("--gate", action="store_true", help="exit non-zero unless thresholds are met")
     ap.add_argument("--min-entropy", type=float, default=1.5)
     ap.add_argument("--min-diagonal", type=float, default=35.0)
+    ap.add_argument("--max-price-top-no-signal", type=float, default=40.0,
+                    help="ceiling on price-top%% among rows with NO price signal (was 87.1%%)")
+    ap.add_argument("--min-mean-max-weight", type=float, default=0.28,
+                    help="floor on mean max-weight; below this the vectors have gone flat")
     args = ap.parse_args()
 
-    sigdims = load_signal_dims()
+    sigs = load_signals()
+    sigdims = {k: v[0] for k, v in sigs.items()}
     print(f"_{len(sigdims)} tagged signals loaded from fixtures._\n")
 
     splits = ([args.split] if args.split != "all"
@@ -200,7 +269,7 @@ def main():
         if not rows:
             print(f"### {s} — empty, skipped\n")
             continue
-        h, diags = print_report(s, rows, sigdims)
+        h, diags, none_pct, mean_max = print_report(s, rows, sigdims, sigs)
         if args.gate:
             if h < args.min_entropy:
                 failures.append(f"{s}: entropy {h:.3f} < {args.min_entropy}")
@@ -208,6 +277,14 @@ def main():
             if weak:
                 failures.append(f"{s}: diagonal below {args.min_diagonal}% for " +
                                 ", ".join(f"{d} ({v:.0f}%)" for d, v in weak.items()))
+            if none_pct is not None and none_pct >= args.max_price_top_no_signal:
+                failures.append(f"{s}: no-price-signal rows are price-top {none_pct:.1f}% "
+                                f">= {args.max_price_top_no_signal}% — still defaulting to price")
+            # Checked even when the others pass: flattening every vector toward uniform would
+            # satisfy entropy and the diagonal while destroying the signal it is meant to prove.
+            if mean_max is not None and mean_max < args.min_mean_max_weight:
+                failures.append(f"{s}: mean max-weight {mean_max:.3f} < "
+                                f"{args.min_mean_max_weight} — vectors collapsed toward uniform")
 
     if args.gate:
         print("---\n")
