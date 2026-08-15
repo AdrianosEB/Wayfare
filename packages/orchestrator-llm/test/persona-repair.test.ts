@@ -51,6 +51,24 @@ describe("repairPersonaShape", () => {
     expect(parsed.success && parsed.data.summary).toBe("location-led");
   });
 
+  it("unwraps preferences nested inside preferences", () => {
+    // Also observed live: {preferences: {preferences: {pace, interests}, weights, …}}. Hoisting
+    // the top-level keys alone leaves the inner object as an unrecognised key AND leaves the
+    // outer preferences without its required pace/interests.
+    const wire = {
+      preferences: {
+        preferences: goodPreferences,
+        reasoning: ["a -> price up"],
+        weights: goodWeights,
+        summary: "s",
+      },
+    };
+    expect(PersonaWireSchema.safeParse(wire).success).toBe(true);
+    const parsed = PersonaSchema.safeParse(repairPersonaShape(wire));
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.preferences.pace).toBe("relaxed");
+  });
+
   it("never overwrites a value the model put in the right place", () => {
     const wire = {
       reasoning: ["correct -> price up"],

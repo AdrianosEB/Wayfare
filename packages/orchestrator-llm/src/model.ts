@@ -88,7 +88,13 @@ export class SchemaValidationError extends Error {
     readonly agent: AgentName,
     readonly issues: unknown,
   ) {
-    super(`agent "${agent}" returned an off-schema response`);
+    // The issues are in the message, not just on the instance: callers log `String(err)`, and a
+    // bare "off-schema response" is unactionable — it cost a diagnostic round to learn which
+    // field was wrong.
+    super(
+      `agent "${agent}" returned an off-schema response: ` +
+        JSON.stringify(issues)?.slice(0, 600),
+    );
     this.name = "SchemaValidationError";
   }
 }

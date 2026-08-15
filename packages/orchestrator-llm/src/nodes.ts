@@ -194,12 +194,23 @@ export function repairPersonaShape(raw: unknown): unknown {
   for (const k of misplaced) {
     if (k in prefs && o[k] === undefined) moved[k] = prefs[k];
   }
-  if (!Object.keys(moved).length) return raw;
+
+  // The model also wraps the real preferences in a second `preferences` layer, giving
+  // {preferences: {preferences: {pace, interests…}, weights, …}}. Unwrapping the inner object is
+  // the only way the outer one can satisfy a strict PreferencesSchema, since pace/interests live
+  // down there. Inner wins on conflict: it is the one holding the actual preference fields.
+  const inner = prefs.preferences;
+  const hasInner = !!inner && typeof inner === "object" && !Array.isArray(inner);
+  if (!Object.keys(moved).length && !hasInner) return raw;
 
   personaHoists++;
-  const cleanedPrefs = { ...prefs };
+  const cleanedPrefs: Record<string, unknown> = { ...prefs };
   for (const k of Object.keys(moved)) delete cleanedPrefs[k];
-  return { ...o, ...moved, preferences: cleanedPrefs };
+  delete cleanedPrefs.preferences;
+  const finalPrefs = hasInner
+    ? { ...cleanedPrefs, ...(inner as Record<string, unknown>) }
+    : cleanedPrefs;
+  return { ...o, ...moved, preferences: finalPrefs };
 }
 
 export function personaNode(deps: NodeDeps) {
