@@ -59,9 +59,9 @@ def main():
     ap.add_argument("--splits", default="train,valid,test,test-adversarial")
     args = ap.parse_args()
 
-    from mlx_lm.tokenizer_utils import load_tokenizer
-    from mlx_lm.utils import get_model_path
-    tok = load_tokenizer(get_model_path(args.model)[0])
+    # Same loader mlx_lm.load uses, so the counts are the ones training will actually see.
+    from mlx_lm import load as load_model
+    _, tok = load_model(args.model)
 
     Path(args.out_a).mkdir(exist_ok=True)
     Path(args.out_b).mkdir(exist_ok=True)
