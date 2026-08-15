@@ -51,12 +51,18 @@ if (!process.env.ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-const events: { agent: string; event: string }[] = [];
+const events: { agent: string; event: string; detail?: unknown }[] = [];
 const started = Date.now();
 
 const planner = createOrchestrator(mockProviderRegistry(), {
-  onEvent: (e: { agent?: string; event?: string }) =>
-    events.push({ agent: String(e.agent ?? "?"), event: String(e.event ?? "?") }),
+  onEvent: (e: { agent?: string; event?: string; detail?: unknown }) =>
+    // The detail is the point: an `agent_error` with no payload says the LLM path failed but
+    // not why, which is the same blindness that let top_p:-1 survive.
+    events.push({
+      agent: String(e.agent ?? "?"),
+      event: String(e.event ?? "?"),
+      ...(e.detail ? { detail: e.detail } : {}),
+    }),
 });
 
 let result: LlmPlanResult | undefined;
@@ -129,7 +135,12 @@ lines.push("");
 lines.push("### Trace events");
 lines.push("");
 lines.push("```");
-lines.push(events.map((e) => `${e.agent}: ${e.event}`).join("\n").slice(0, 4000));
+lines.push(
+  events
+    .map((e) => `${e.agent}: ${e.event}${e.detail ? ` ${JSON.stringify(e.detail).slice(0, 300)}` : ""}`)
+    .join("\n")
+    .slice(0, 8000),
+);
 lines.push("```");
 lines.push("");
 
