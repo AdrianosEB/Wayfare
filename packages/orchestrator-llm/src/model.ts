@@ -85,6 +85,27 @@ export class SchemaValidationError extends Error {
 }
 
 /**
+ * Construction options for the underlying ChatAnthropic. Exported so the test suite can assert
+ * on the *request shape* these options produce without a network call.
+ *
+ * The invocationKwargs line is load-bearing: Claude Opus 4.7+ / Sonnet 5 reject sampling
+ * parameters, but @langchain/anthropic (0.3.x) still sends its defaults (temperature 1,
+ * top_k/top_p -1) for models it doesn't special-case by name — every request 400s
+ * ("`top_p` cannot be set to -1") and, because decide() degrades on model errors, the whole
+ * LLM path silently fell back to heuristics. Constructor nulls can't fix it
+ * (`fields?.topP ?? -1`); invocationKwargs spreads last into the request body, and explicit
+ * undefined removes the keys entirely. Covered by a regression test in test/model.test.ts.
+ */
+export function anthropicChatOptions(config: LlmConfig, apiKey: string) {
+  return {
+    model: config.model,
+    apiKey,
+    maxTokens: 4096,
+    invocationKwargs: { temperature: undefined, top_k: undefined, top_p: undefined },
+  };
+}
+
+/**
  * The real model. `ChatAnthropic` is imported dynamically so that merely importing this package
  * — which the tests and the deterministic path both do — never pulls the SDK or requires a key.
  */
@@ -103,11 +124,7 @@ export class AnthropicStructuredModel implements StructuredModel {
   }> {
     if (!this.#chat) {
       const { ChatAnthropic } = await import("@langchain/anthropic");
-      this.#chat = new ChatAnthropic({
-        model: this.config.model,
-        apiKey: this.apiKey,
-        maxTokens: 4096,
-      });
+      this.#chat = new ChatAnthropic(anthropicChatOptions(this.config, this.apiKey));
     }
     return this.#chat as never;
   }

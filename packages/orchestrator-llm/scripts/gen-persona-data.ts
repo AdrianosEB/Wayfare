@@ -30,6 +30,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  Limiter,
   Tracer,
   intake,
   mockProviderRegistry,
@@ -63,7 +64,10 @@ const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
 
 type Split = "train" | "valid" | "test" | "test-adversarial";
 
-const SPLIT_SIZES: Record<Split, number> = { train: 2400, valid: 300, test: 300, "test-adversarial": 150 };
+// 1,550 rows total. Cut from 2400/300/300 on the reasoning that this is a narrow task and 1,000
+// train rows may already be past convergence; the generator is resumable, so if the Phase 3
+// validation curve is still falling we extend train THEN instead of paying up front.
+const SPLIT_SIZES: Record<Split, number> = { train: 1000, valid: 150, test: 250, "test-adversarial": 150 };
 /** Distinct seed offsets so no two splits ever draw the same profile. */
 const SPLIT_SEED_OFFSET: Record<Split, number> = {
   train: 0,
@@ -90,9 +94,19 @@ interface Signal {
 /** Fraction of authored-pool profiles that get a deliberately contradictory pair. */
 const CONFLICT_RATE = 0.3;
 
-/** Claude API list price, USD per million tokens. Override with --price-in / --price-out. */
-const DEFAULT_PRICE_IN_PER_MTOK = 5;
-const DEFAULT_PRICE_OUT_PER_MTOK = 25;
+/**
+ * Per-model list price, USD per million tokens (in, out) — used by the --max-cost-usd counter.
+ * Verified against the Claude API reference, 2026-08. Sonnet 5 is at its introductory rate
+ * ($2/$10, sticker $3/$15) through 2026-08-31 — re-check after that date. Unknown models must
+ * pass --price-in/--price-out explicitly; guessing a price under a cost ceiling is how a budget
+ * quietly stops meaning anything.
+ */
+const MODEL_PRICES: Record<string, readonly [number, number]> = {
+  "claude-opus-4-8": [5, 25],
+  "claude-opus-5": [5, 25],
+  "claude-sonnet-5": [2, 10], // intro through 2026-08-31; $3/$15 after
+  "claude-haiku-4-5": [1, 5],
+};
 
 /* -------------------------------------------------------------------------- */
 /* CLI                                                                         */
@@ -107,6 +121,10 @@ interface Options {
   maxCostUsd: number;
   outDir: string;
   seed: number;
+  /** teacher model: --model > ANTHROPIC_MODEL > claude-opus-4-8. */
+  model: string;
+  /** parallel teacher calls (Limiter from @wayfare/orchestrator). Sequential = 1. */
+  concurrency: number;
   priceIn: number;
   priceOut: number;
   fresh: boolean;
@@ -140,6 +158,17 @@ function parseArgs(argv: string[]): Options {
           return t;
         });
 
+  const model = get("--model") ?? process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
+  const known = MODEL_PRICES[model];
+  const priceInRaw = get("--price-in");
+  const priceOutRaw = get("--price-out");
+  if (!known && (priceInRaw == null || priceOutRaw == null)) {
+    die(
+      `no known pricing for model "${model}" — pass --price-in and --price-out ($/MTok) so the ` +
+        `--max-cost-usd ceiling stays meaningful. Known models: ${Object.keys(MODEL_PRICES).join(", ")}`,
+    );
+  }
+
   return {
     splits,
     splitsExplicit: splitRaw !== "all",
@@ -149,8 +178,10 @@ function parseArgs(argv: string[]): Options {
     maxCostUsd: num("--max-cost-usd", 5),
     outDir: resolve(get("--out") ?? join(REPO_ROOT, "training", "data")),
     seed: num("--seed", 20260814),
-    priceIn: num("--price-in", DEFAULT_PRICE_IN_PER_MTOK),
-    priceOut: num("--price-out", DEFAULT_PRICE_OUT_PER_MTOK),
+    model,
+    concurrency: Math.max(1, Math.floor(num("--concurrency", 5))),
+    priceIn: num("--price-in", known?.[0] ?? 0),
+    priceOut: num("--price-out", known?.[1] ?? 0),
     fresh: argv.includes("--fresh"),
   };
 }
@@ -502,7 +533,7 @@ async function main(): Promise<void> {
     die("ANTHROPIC_API_KEY is not set. Set it, or pass --dry-run to inspect prompts for free.");
   }
 
-  const model = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
+  const model = opts.model;
   mkdirSync(opts.outDir, { recursive: true });
 
   console.log(
@@ -514,7 +545,8 @@ async function main(): Promise<void> {
       `  seed        ${opts.seed}\n` +
       `  pool        ${pools.train.length} train signals, ${pools.test.length} held-back test signals, ` +
       `${adversarialPool.length} adversarial (test-adversarial)\n` +
-      `  conflicts   ~${Math.round(CONFLICT_RATE * 100)}% of authored-pool profiles get a deliberate ±pair\n`,
+      `  conflicts   ~${Math.round(CONFLICT_RATE * 100)}% of authored-pool profiles get a deliberate ±pair\n` +
+      `  concurrency ${opts.dryRun ? 1 : opts.concurrency}\n`,
   );
 
   let costSoFar = 0;
@@ -572,90 +604,111 @@ async function main(): Promise<void> {
     };
 
     const inner = opts.dryRun ? null : new AnthropicStructuredModel(budgetCfg, apiKey!);
-    const recorder = new RecordingModel(inner);
 
     const doneThisRun = { count: 0 };
     const endIndex = Math.min(target, state.nextIndex + opts.limit);
 
-    for (let index = state.nextIndex; index < endIndex; index++) {
-      if (!opts.dryRun && costSoFar >= opts.maxCostUsd) {
-        console.log(
-          `\n[${split}] cost ceiling reached ($${costSoFar.toFixed(4)} >= $${opts.maxCostUsd.toFixed(2)}). ` +
-            `Stopping cleanly at index ${index}.`,
-        );
-        aborted = true;
-        break;
-      }
+    /*
+     * Concurrent scheduling. The Limiter (from @wayfare/orchestrator) caps in-flight teacher
+     * calls; completions land out of order, so correctness under crash/resume comes from one
+     * rule: `state.nextIndex` only ever advances past a CONTIGUOUS prefix of finished indices.
+     * Outcomes buffer in a map (bounded by the concurrency window) and a single synchronous
+     * flusher applies them in index order — which also means the jsonl is append-only in index
+     * order, lines can never interleave, and a crash merely re-runs the in-flight window.
+     */
+    type Outcome =
+      | { kind: "written"; line: string; inputTokens: number; outputTokens: number }
+      | { kind: "discard"; reason: string }
+      | { kind: "dry"; text: string };
 
-      const r = rng(opts.seed + SPLIT_SEED_OFFSET[split] + index);
-      const { prompt, profile, meta } = synthesize(r, pool, index);
+    const outcomes = new Map<number, Outcome>();
+    const discardCauses: Record<string, number> = {};
+    const RATE_LIMIT_RE = /429|rate[ _-]?limit|overloaded|529/i;
+    // Terminal account states: retrying or continuing is pure waste, and worse — each further
+    // index gets marked processed-and-discarded, so a later resume would silently skip real
+    // rows. (Exactly this happened once: credit exhaustion burned 121 adversarial rows.)
+    const FATAL_RE = /credit balance|authentication_error|invalid x-api-key|billing/i;
+    const BACKOFF_MS = 20_000;
+    let backoffUntil = 0;
+    let rateLimitHits = 0;
+    let fatal: string | undefined;
+    const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
-      const tracer = new Tracer();
+    /** One full attempt: fresh tracer + recorder per attempt so concurrency shares nothing. */
+    const attempt = async (
+      prompt: string,
+      profile: TravelerProfile,
+    ): Promise<{ rec: Recorded | undefined; err: string | undefined }> => {
+      const errs: string[] = [];
+      const tracer = new Tracer((e) => {
+        if (e.event === "agent_error") errs.push(String((e.detail as { error?: unknown })?.error ?? ""));
+      });
       const { request, destination } = intake(prompt, profile, tracer);
-
-      recorder.last = undefined;
-
+      const recorder = new RecordingModel(inner);
       const deps = {
         model: recorder,
         budget: new LlmBudget(budgetCfg, tracer),
         ctx: toolContext(tracer),
         tracer,
       };
-
       // personaNode reads only `profile` and `request`; the rest of PlanState is irrelevant here.
-      // Building the full Annotation-derived state would be noise, so assert the slice it uses.
       const state0 = { prompt, profile, request, destination } as unknown as PlanStateType;
-
       try {
         await personaNode(deps)(state0);
       } catch (err) {
-        console.warn(`[${split}] index ${index}: ${(err as Error).message}`);
+        errs.push((err as Error).message);
       }
+      return { rec: recorder.last, err: errs[0] };
+    };
 
-      // Cast, not annotation: TS narrows `recorder.last` to undefined from the reset above and
-      // can't see the mutation inside invoke(); an annotation alone doesn't defeat that.
-      const rec = recorder.last as Recorded | undefined;
+    const processExample = async (index: number): Promise<Outcome> => {
+      const r = rng(opts.seed + SPLIT_SEED_OFFSET[split] + index);
+      const { prompt, profile, meta } = synthesize(r, pool, index);
+
+      let { rec, err } = await attempt(prompt, profile);
+
+      // Rate-limited? Back off globally (launches wait too) and retry this row ONCE rather than
+      // discarding it. Backing off — not raising the cap — is the correct response to 429s.
+      if (!opts.dryRun && !rec && err && RATE_LIMIT_RE.test(err)) {
+        rateLimitHits++;
+        backoffUntil = Math.max(backoffUntil, Date.now() + BACKOFF_MS);
+        console.warn(`[${split}] index ${index}: rate-limited — backing off ${BACKOFF_MS / 1000}s and retrying once`);
+        await sleep(Math.max(0, backoffUntil - Date.now()));
+        ({ rec, err } = await attempt(prompt, profile));
+      }
 
       if (opts.dryRun) {
-        console.log(`\n─── [${split}] index ${index} ${"─".repeat(40)}`);
-        console.log(`PROMPT   ${prompt}`);
-        console.log(`SIGNALS  ${JSON.stringify(profile.signals)}`);
-        if (meta.conflict) console.log(`CONFLICT deliberate, on "${meta.dimension}"`);
-        console.log(`SYSTEM   ${rec ? `${rec.system.slice(0, 200)}…` : "(node did not call the model)"}`);
-        console.log(`USER     ${rec?.user ?? "(none)"}`);
-        state.nextIndex = index + 1;
-        doneThisRun.count++;
-        continue;
+        return {
+          kind: "dry",
+          text:
+            `\n─── [${split}] index ${index} ${"─".repeat(40)}\n` +
+            `PROMPT   ${prompt}\n` +
+            `SIGNALS  ${JSON.stringify(profile.signals)}\n` +
+            (meta.conflict ? `CONFLICT deliberate, on "${meta.dimension}"\n` : "") +
+            `SYSTEM   ${rec ? `${rec.system.slice(0, 200)}…` : "(node did not call the model)"}\n` +
+            `USER     ${rec?.user ?? "(none)"}`,
+        };
       }
 
-      state.nextIndex = index + 1;
-      doneThisRun.count++;
+      // Terminal account errors poison every subsequent index — flag and let the scheduler stop.
+      // The outcome is still "discard" for THIS row, but flush() will not advance past it.
+      if (!rec && err && FATAL_RE.test(err)) {
+        fatal = err.slice(0, 160);
+        return { kind: "discard", reason: `fatal: ${fatal}` };
+      }
 
       // No record means decide() swallowed an error and used derivePersona. That output is the
       // heuristic, not the teacher — discard it rather than poison the training set.
       if (!rec) {
-        state.discarded++;
-        console.warn(`[${split}] index ${index}: no model output (fell back to heuristic) — discarded`);
-        saveState(opts.outDir, split, state);
-        continue;
+        return { kind: "discard", reason: err ? `model-error: ${err.slice(0, 100)}` : "no-output" };
       }
-
-      state.inputTokens += rec.inputTokens;
-      state.outputTokens += rec.outputTokens;
-      costSoFar += (rec.inputTokens / 1e6) * opts.priceIn + (rec.outputTokens / 1e6) * opts.priceOut;
 
       // Belt and braces: AnthropicStructuredModel already validates, but a dataset is forever.
       const parsed = PersonaSchema.safeParse(rec.value);
-      if (!parsed.success) {
-        state.discarded++;
-        console.warn(`[${split}] index ${index}: output failed PersonaSchema — discarded`);
-        saveState(opts.outDir, split, state);
-        continue;
-      }
+      if (!parsed.success) return { kind: "discard", reason: "schema-invalid" };
 
-      // `meta` rides alongside `messages` so the Phase 3 eval can slice conflict vs clean
-      // profiles (and recover the raw inputs) without re-deriving them. mlx_lm's chat loader
-      // reads only the `messages` key and ignores unknown siblings.
+      // `meta` rides alongside `messages` so the eval can slice conflict vs clean profiles
+      // without re-deriving them. mlx_lm's chat loader reads only `messages`.
       const line = JSON.stringify({
         messages: [
           { role: "system", content: rec.system },
@@ -670,17 +723,100 @@ async function main(): Promise<void> {
           signals: profile.signals,
         },
       });
-      appendFileSync(outFile, `${line}\n`);
-      state.written++;
-      saveState(opts.outDir, split, state);
+      return { kind: "written", line, inputTokens: rec.inputTokens, outputTokens: rec.outputTokens };
+    };
 
-      if (state.written % 50 === 0) {
-        console.log(
-          `[${split}] ${state.written} written / ${state.discarded} discarded — ` +
-            `${state.inputTokens.toLocaleString()} in + ${state.outputTokens.toLocaleString()} out tokens, ` +
-            `$${costSoFar.toFixed(4)} spent`,
-        );
+    /** Apply completed outcomes in index order; the only place state/file/cost mutate. */
+    const flush = () => {
+      while (outcomes.has(state.nextIndex)) {
+        const index = state.nextIndex;
+        const o = outcomes.get(index)!;
+        // A fatal-account outcome must NOT advance progress: the row wasn't labelled, it was
+        // unreachable. Leave nextIndex pointing at it so resume retries it once the account works.
+        if (o.kind === "discard" && o.reason.startsWith("fatal:")) {
+          outcomes.delete(index);
+          break;
+        }
+        outcomes.delete(index);
+        state.nextIndex = index + 1;
+        doneThisRun.count++;
+
+        if (o.kind === "dry") {
+          console.log(o.text);
+          continue;
+        }
+        if (o.kind === "discard") {
+          state.discarded++;
+          discardCauses[o.reason] = (discardCauses[o.reason] ?? 0) + 1;
+          console.warn(`[${split}] index ${index}: discarded (${o.reason})`);
+        } else {
+          state.inputTokens += o.inputTokens;
+          state.outputTokens += o.outputTokens;
+          costSoFar += (o.inputTokens / 1e6) * opts.priceIn + (o.outputTokens / 1e6) * opts.priceOut;
+          appendFileSync(outFile, `${o.line}\n`);
+          state.written++;
+          if (state.written % 50 === 0) {
+            console.log(
+              `[${split}] ${state.written} written / ${state.discarded} discarded — ` +
+                `${state.inputTokens.toLocaleString()} in + ${state.outputTokens.toLocaleString()} out tokens, ` +
+                `$${costSoFar.toFixed(4)} spent`,
+            );
+          }
+        }
+        saveState(opts.outDir, split, state);
       }
+    };
+
+    const limiter = new Limiter(opts.dryRun ? 1 : opts.concurrency);
+    const pending = new Set<Promise<void>>();
+
+    for (let index = state.nextIndex; index < endIndex; index++) {
+      if (fatal) {
+        console.error(`\n[${split}] FATAL account error — stopping launches: ${fatal}`);
+        aborted = true;
+        break;
+      }
+      // The launch window stays small so this check sees near-current cost; the overshoot is
+      // bounded by the in-flight window, i.e. a few cents at these prices.
+      if (!opts.dryRun && costSoFar >= opts.maxCostUsd) {
+        console.log(
+          `\n[${split}] cost ceiling reached ($${costSoFar.toFixed(4)} >= $${opts.maxCostUsd.toFixed(2)}). ` +
+            `Stopping cleanly at index ${index}.`,
+        );
+        aborted = true;
+        break;
+      }
+      while (pending.size >= limiter.max * 2) await Promise.race(pending);
+      if (Date.now() < backoffUntil) await sleep(backoffUntil - Date.now());
+
+      const task = limiter
+        .run(() => processExample(index))
+        .then((o) => {
+          outcomes.set(index, o);
+          flush();
+        });
+      const tracked: Promise<void> = task.finally(() => {
+        pending.delete(tracked);
+      });
+      pending.add(tracked);
+    }
+    await Promise.all([...pending]);
+    flush();
+
+    if (fatal) {
+      aborted = true;
+      console.error(
+        `\n[${split}] stopped on a fatal account error (progress preserved at index ` +
+          `${state.nextIndex}; re-run to resume once the account is fixed): ${fatal}`,
+      );
+    }
+    if (rateLimitHits > 0) {
+      console.warn(
+        `[${split}] ${rateLimitHits} rate-limit hit(s) — if these recur, LOWER --concurrency; do not raise it.`,
+      );
+    }
+    if (Object.keys(discardCauses).length > 0) {
+      console.log(`[${split}] discard causes: ${JSON.stringify(discardCauses)}`);
     }
 
     if (!opts.dryRun) saveState(opts.outDir, split, state);
