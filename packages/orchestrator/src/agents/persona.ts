@@ -87,11 +87,12 @@ export function derivePersona(
     if (rule.pace) pace = rule.pace;
   }
 
-  // a hard budget is itself a strong price signal.
-  if (request.budget?.value?.type === "hard") {
-    weights.price += 0.2;
-    reasoning.push({ signal: "hard budget ceiling", dimension: "price", direction: "up" });
-  }
+  // A budget is NOT a price preference, and is deliberately not nudged here. It is a constraint,
+  // and the supervisor already enforces it structurally: `runSupervisor` prunes each flight+stay
+  // partial against `budgetCap` before expanding it with activities, then bounds activity
+  // selection by what remains. Adding price weight on top made the traveller's stated priorities
+  // shift because of a number they were merely spending under — the same constraint counted
+  // twice, once as a filter and once as a taste.
 
   const normalized = normalize(weights);
   const preferences: Preferences = {
