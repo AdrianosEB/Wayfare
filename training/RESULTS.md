@@ -326,3 +326,87 @@ is now isolated.
 independent places: the teacher's labels (81.2% price-top), the prompt that produced them, and
 the deterministic fallback written long before any of this. Whatever produced it was a shared
 assumption about what travellers care about, not a model defect.
+
+---
+
+# Round 2 — the fix, and what it cost to find
+
+## The causal chain, end to end
+
+One prompt defect produced everything else. It is worth stating as a chain because each link was
+measured, not inferred:
+
+1. **The prompt primed the answer.** It carried a worked example — *"a downstream human should be
+   able to see why you weighted price over quality"* — and asked for the reasoning to be written
+   into `summary`.
+2. **The labels degenerated.** 81.2% of them came back price-top, entropy 0.936 of 2.322 bits.
+   The teacher was not input-blind: it separated price correctly when told (0.391 frugal vs 0.198
+   spends-freely). It defaulted. In the 723 rows with no price signal at all it answered as if
+   the traveller were frugal (0.344, 87.1% price-top).
+3. **The "noise floor" hid it.** Chance agreement under that marginal is 0.678; the recorded
+   teacher-teacher agreement was 17/25 = 0.680. The floor was measuring the shared prior, so
+   nothing about student rank agreement was interpretable against it.
+4. **The loss diluted the part that mattered.** Because the reasoning went into `summary`, the
+   labels were a median 385 tokens of which 79.8% was prose and 12.3% was `weights` — the only
+   field the ranker consumes.
+5. **The student collapsed.** It answered `price` on 242 of 243 rows, scored exactly the
+   majority-class prior (175/243 = 72.0%, the same rows), and was beaten by a constant predictor
+   (0.0587 vs 0.0565 MAE).
+
+Links 2 and 4 are independent causes with a common origin, which is why they were fixed in
+separate commits and why two students were trained.
+
+## Gate rounds
+
+Each round is 100–150 rows against the same profiles and seed, so only the prompt changes.
+
+| | original | r1 | r2 | r3 | gate 4 | full pass |
+|---|---|---|---|---|---|---|
+| rows | 995 | 81 | 131 | 126 | 135 | **998** |
+| top-dimension entropy (of 2.322) | 0.936 | 2.096 | 2.038 | 2.089 | 2.079 | **2.085** |
+| chance agreement | 0.678 | 0.245 | 0.250 | 0.254 | 0.250 | **0.247** |
+| price-top marginal | 81.2% | 17.3% | 26.0% | 19.8% | 20.0% | **18.7%** |
+| no-price-signal price-top | 87.1% | 10.9% | 16.3% | 14.4% | 12.8% | **12.8%** |
+| frugal price-top | 95.0% | 45.5% | 75.0% | 66.7% | 62.5% | **68.0%** |
+| mean max-weight | 0.361 | 0.298 | 0.294 | 0.289 | 0.282 | **0.282** |
+| discard rate | 0.5% | 19.0% | 12.7% | 16.0% | 10.2% | **0.2%** |
+| diagonal: price | 67% | 80% | 80% | 57% | 78% | **41%** |
+| quality | 12% | 43% | 33% | 43% | 36% | **39%** |
+| location | 7% | 90% | 65% | 60% | 41% | **62%** |
+| vibe | 2% | 31% | 48% | 32% | 36% | **45%** |
+
+Two gate criteria were judged at small n and turned out to be noise, exactly as suspected:
+`frugal price-top` read 45.5 → 75.0 → 66.7 → 62.5% at n≈12–16 and settled at **68.0%** at n=100;
+`vibe` read 31 → 48 → 32 → 36% at n≈16–25 and settled at **45%** at n=195. Neither justified
+another paid round.
+
+The discard spike from 0.5% to 19% was self-inflicted: adding a `reasoning` array of
+`{signal, dimension, direction}` objects gave models something to misplace. Three prompt
+revisions telling them not to moved it 19.0 → 12.7 → 16.0% — flat. It was fixed structurally
+instead (plain strings, a lenient wire schema, a deterministic hoist, and one required-field
+instruction), ending at **0.2%** — better than the original teacher's 0.5%.
+
+## The training target — and why the ablation narrowed
+
+`summary` is prose the ranker never reads. Under token-level cross-entropy the weights receive a
+share of the gradient proportional to their share of the label, so the round-1 target gave them
+about an eighth of it.
+
+Measured per-field share of assistant-label tokens (`make_variants.py`, base-model tokenizer):
+
+| field | round-1 labels | round-2 (A) | round-2 (B) |
+|---|---|---|---|
+| `reasoning` | — (field did not exist) | 34.3% | 36.7% |
+| `weights` | **12.3%** | **29.9%** | **32.2%** |
+| `preferences` | 19.5% | 28.5% | 30.6% |
+| `summary` | **79.8%** | 23.2% | 0% |
+| median label length | 385 tokens | 160 | 149 |
+
+**The prompt fix largely fixed the dilution too, unintentionally.** The old prompt asked for the
+reasoning to be written into `summary`, which produced 385-token essays; the new one gives
+reasoning its own field and asks for a one-line summary. `weights` went from 12.3% to 29.9% of
+the target without touching the training target at all.
+
+That narrows the A/B ablation: B's labels are only 7% shorter than A's, not 68%. The ablation is
+still run and reported, but it is now a test of a small residual difference, and a null result
+would mean the dilution was already fixed upstream — not that dilution never mattered.
