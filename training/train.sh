@@ -4,10 +4,16 @@
 #
 # Flags, and why each value:
 #   --data ./data            expects train.jsonl + valid.jsonl in MLX chat format
-#   --iters (ITERS, 800)     tune against the validation curve, not by faith — see README
-#   --batch-size 4           16GB unified memory: 4 fits; raise only if memory allows
+#   --iters (ITERS, 1500)    tune against the validation curve, not by faith — see README;
+#                            raised from 800 for the halved LR, stop early where it flattens
+#   --learning-rate 5e-6     halved from the 1e-5 default after loss diverged to NaN at iter
+#                            101-110 (2026-08-15 run; see RESULTS.md methods note)
+#   --batch-size 2           batch 4 peaked at 14.8GB of 16GB unified memory — no headroom
+#                            with macOS competing; 2 + grad-checkpoint buys margin
+#   --grad-checkpoint        trades recompute for memory, same motivation as batch 2
 #   --num-layers 16          LoRA on the top 16 transformer layers
 #   --steps-per-eval 50      validation-loss cadence; this is the curve HUMAN GATE 2 reviews
+#   --save-every 50          checkpoint adapters every 50 iters — a crash costs ≤50 iters
 #   --seed 20260814          matches the dataset generator's seed for reproducibility
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -22,9 +28,12 @@ BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
   --model "$BASE_MODEL" \
   --train \
   --data ./data \
-  --iters "${ITERS:-800}" \
-  --batch-size 4 \
+  --iters "${ITERS:-1500}" \
+  --learning-rate 5e-6 \
+  --batch-size 2 \
+  --grad-checkpoint \
   --num-layers 16 \
   --steps-per-eval 50 \
+  --save-every 50 \
   --adapter-path ./adapters \
   --seed 20260814

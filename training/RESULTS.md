@@ -31,6 +31,16 @@
    `packages/orchestrator-llm/fixtures/persona-signals-adversarial.json`), not a human baseline.
    Every score reported for that slice carries this caveat inline.
 
+## Methods note: training divergence (2026-08-15)
+
+The first completed training run diverged: loss went NaN at iters 101–110 with lr 1e-5 /
+batch 4 / bf16 compute (the base checkpoint stores bf16; `mlx_lm lora` exposes no compute-dtype
+flag), after a healthy curve to iter 100 (val 3.580 → 2.128 → 1.851) and a peak-memory jump to
+14.8 GB of 16 GB. Data was ruled out (995 rows, uniform 2.6–4.7k chars, under the 2048-token
+cap). The reported student was trained fresh at lr 5e-6 / batch 2 / `--grad-checkpoint` /
+1500 max iters, stopped where the validation curve flattened. _(Stability at the new config:
+to be confirmed at HUMAN GATE 2.)_
+
 ## Slices
 
 Reported separately, never averaged: `test` (clean) · `test` (conflict rows) · `test-adversarial`
