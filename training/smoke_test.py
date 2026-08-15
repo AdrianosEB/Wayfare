@@ -32,9 +32,17 @@ def validate_persona(obj):
     if not isinstance(obj, dict):
         return [f"top level is {type(obj).__name__}, expected object"]
 
-    unknown = set(obj) - {"weights", "preferences", "summary"}
+    unknown = set(obj) - {"reasoning", "weights", "preferences", "summary"}
     if unknown:
         errs.append(f"unknown top-level keys (schema is strict): {sorted(unknown)}")
+
+    # `reasoning` precedes `weights` in PersonaSchema and is required: an array of plain strings
+    # ("waves off the bill talk -> price down").
+    r = obj.get("reasoning")
+    if r is None:
+        errs.append("missing `reasoning`")
+    else:
+        errs += _str_array(r, "reasoning")
 
     # --- weights -----------------------------------------------------------
     w = obj.get("weights")
