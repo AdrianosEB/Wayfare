@@ -9,7 +9,10 @@ comes from a measurement note in RESULTS.md, and each is easy to violate by acci
 
 * Slices are never merged. `clean` and `conflict` are reported as separate rows, always.
 * Student schema-validity is stated against the teacher's own **99.5%**, not against 100%.
-* Rank agreement is stated against the measured teacher-teacher floor of **17/25 (68%)**.
+* Rank agreement is stated against the **majority-class predictor**, not against the
+  teacher-teacher 17/25. That figure was retracted in round 1: chance agreement under the
+  round-1 marginal is 0.678 and 17/25 is 0.680, so it measured the shared prior and bounded
+  nothing (RESULTS.md measurement note 3). `report_arms.py` computes the round-2 references.
 * The untuned baseline is printed in its own block, never as a row beside the student. It emits
   no JSON at all, so a near-zero denominator would otherwise make any student number look
   spectacular by comparison — the headline comparison is student vs teacher.
@@ -24,7 +27,11 @@ from pathlib import Path
 
 # From RESULTS.md measurement notes / STATE.md — measured, not assumed.
 TEACHER_SCHEMA_VALID = 99.5      # 7 discards in 1,429 attempts, single cause
-NOISE_FLOOR_TOP_AGREE = 17 / 25  # Opus 4.8 vs Sonnet 5 on the same 25 profiles
+# Opus 4.8 vs Sonnet 5 on the same 25 profiles. RETAINED AS A FACT, NOT USED AS A FLOOR: it
+# equals chance agreement under the round-1 marginal (0.680 vs 0.678). Kept so the retraction
+# stays legible next to the number that caused it.
+TEACHER_TEACHER_AGREE = 17 / 25
+ROUND1_CHANCE_AGREEMENT = 0.678
 TEACHER_TOKENS_IN, TEACHER_TOKENS_OUT, TEACHER_ROWS = 464_683, 634_764, 1_429
 TEACHER_COST_USD = 7.28          # Sonnet 5 intro pricing, $2/$10 per M
 
@@ -80,9 +87,11 @@ def main():
     st = arms["student"]
     print(f"## Student vs teacher — `{args.split}` split, {st['n_rows']} rows\n")
     print(f"Student = LoRA iter-800, fused. Reference = the teacher's stored label for the same "
-          f"input. Teacher's own schema-valid rate is **{TEACHER_SCHEMA_VALID}%**; the "
-          f"teacher-teacher top-dimension ceiling is **17/25 ({100*NOISE_FLOOR_TOP_AGREE:.0f}%)**.\n")
-    print("| slice | n | schema-valid (teacher 99.5%) | norm. MAE | MAE p95 | top-dim agr. (floor 68%) | pace agr. | raw-sum drift |")
+          f"input. Teacher's own schema-valid rate is **{TEACHER_SCHEMA_VALID}%**. The "
+          f"teacher-teacher figure of 17/25 ({100*TEACHER_TEACHER_AGREE:.0f}%) is NOT a floor "
+          f"here — it equals chance agreement under this marginal "
+          f"({ROUND1_CHANCE_AGREEMENT}), so it bounds nothing.\n")
+    print("| slice | n | schema-valid (teacher 99.5%) | norm. MAE | MAE p95 | top-dim agr. (vs prior, not a floor) | pace agr. | raw-sum drift |")
     print("|---|---|---|---|---|---|---|---|")
     for sl in ("clean", "conflict"):
         a = agg(st["records"], sl)

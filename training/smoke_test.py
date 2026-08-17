@@ -23,10 +23,16 @@ PACE_VALUES = {"relaxed", "moderate", "packed"}
 WEIGHT_KEYS = {"price", "quality", "location", "vibe", "flexibility"}
 
 
-def validate_persona(obj):
+def validate_persona(obj, require_summary=True):
     """Return a list of schema violations; empty list means valid.
 
     Mirrors PersonaSchema/PreferencesSchema including their .strict() unknown-key rejection.
+
+    `require_summary=False` validates against the round-2 arm-B target instead — the same schema
+    with `summary` dropped, which is what `make_variants.py` trains student-B to emit. It is a
+    *different* schema from the one production enforces, never a relaxation of it: an arm scored
+    this way has not been shown to satisfy `PersonaSchema`, and `eval.py` records the strict
+    verdict alongside it so the distinction cannot be lost between here and the tables.
     """
     errs = []
     if not isinstance(obj, dict):
@@ -81,6 +87,13 @@ def validate_persona(obj):
 
         if "pace" not in p:
             errs.append("`preferences.pace` missing (required)")
+        elif not isinstance(p["pace"], str):
+            # `not in` on a set raises TypeError for an unhashable value, so the type check has
+            # to come first. The untuned base emits `"pace": ["relaxed"]`, which crashed the
+            # whole eval run rather than being recorded as the schema violation it is — the
+            # arm that produces the most malformed output is exactly the one that must not be
+            # able to take the scorer down with it.
+            errs.append(f"`preferences.pace` is {type(p['pace']).__name__}, expected string")
         elif p["pace"] not in PACE_VALUES:
             errs.append(f"`preferences.pace` is {p['pace']!r}, expected one of {sorted(PACE_VALUES)}")
 
@@ -112,7 +125,8 @@ def validate_persona(obj):
     # --- summary -----------------------------------------------------------
     s = obj.get("summary")
     if s is None:
-        errs.append("missing `summary`")
+        if require_summary:
+            errs.append("missing `summary`")
     elif not isinstance(s, str):
         errs.append(f"`summary` is {type(s).__name__}, expected string")
 
@@ -132,6 +146,10 @@ def main():
     ap.add_argument("--data", default="./data/test.jsonl", help="held-out split; row is unseen in training")
     ap.add_argument("--row", type=int, default=0)
     ap.add_argument("--max-tokens", type=int, default=1200)
+    ap.add_argument("--no-require-summary", action="store_true",
+                    help="validate against the arm-B target (PersonaSchema minus `summary`). "
+                         "Required to gate student-B, which is trained not to emit it; a pass "
+                         "under this flag is NOT a pass against production PersonaSchema.")
     args = ap.parse_args()
 
     with open(args.data) as f:
@@ -175,7 +193,10 @@ def main():
             print(f"FAIL — not valid JSON and no {{...}} found: {e}")
             sys.exit(1)
 
-    errs = validate_persona(parsed)
+    errs = validate_persona(parsed, require_summary=not args.no_require_summary)
+    if args.no_require_summary:
+        print("NOTE: validating against the arm-B target (PersonaSchema minus `summary`). "
+              "This does not certify the model against production PersonaSchema.\n")
     print("--- TEACHER LABEL (same input, for eyeball comparison only) ---")
     print(teacher[:400] + ("..." if len(teacher) > 400 else "") + "\n")
 

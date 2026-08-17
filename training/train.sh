@@ -16,6 +16,13 @@
 #   --steps-per-eval 50      validation-loss cadence; this is the curve HUMAN GATE 2 reviews
 #   --save-every 50          checkpoint adapters every 50 iters — a crash costs ≤50 iters
 #   --seed 20260814          matches the dataset generator's seed for reproducibility
+#
+# Resuming after a crash: set RESUME to a checkpoint and ITERS to the REMAINING count, and
+# point ADAPTERS at a fresh directory so the pre-crash checkpoints are not renumbered over:
+#   DATA=./data-B ADAPTERS=./adapters-B-cont ITERS=750 \
+#     RESUME=./adapters-B/0000250_adapters.safetensors ./train.sh
+# mlx-lm restores adapter weights but not optimizer or data-loader state, so the resumed run
+# replays the same shuffle from batch 0 — note it wherever the curve is reported.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -37,4 +44,5 @@ BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
   --steps-per-eval 50 \
   --save-every 50 \
   --adapter-path "${ADAPTERS:-./adapters}" \
-  --seed 20260814
+  --seed 20260814 \
+  ${RESUME:+--resume-adapter-file "$RESUME"}
