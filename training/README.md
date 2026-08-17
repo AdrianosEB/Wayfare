@@ -49,8 +49,18 @@ schema-valid `PersonaSchema` JSON via base+adapter and degenerate prose via the 
 `fuse.sh` now passes `--dequantize` automatically when the base is quantized (fp16 output,
 ~2.9 GB instead of ~1 GB). Two consequences worth knowing:
 
-- **Always run `smoke_test.py` against `./fused`.** This failure is invisible from fuse's output
-  — the only signal is that the model stops emitting JSON.
+- **Always run `verify_fuse.py` against a fused model, then `smoke_test.py`.** `smoke_test.py`
+  alone catches only the loud version of this failure, where the unfused model emits prose. Once
+  a base is capable enough to emit plausible JSON on its own — which the round-2 prompt showed
+  this one is, at 185/250 parseable outputs — "it produced JSON" stops being evidence that
+  anything was fused. `verify_fuse.py` checks the weights instead: it dequantizes the base and
+  diffs it against the fused model per tensor, using the layers below the LoRA window as a
+  roundoff control.
+
+  ```bash
+  ./.venv/bin/python verify_fuse.py --fused ./fused-A --adapters ./adapters-A   # weights
+  ./.venv/bin/python smoke_test.py  --model ./fused-A                            # behaviour
+  ```
 - To keep a 4-bit artifact, serve base+adapter instead (`mlx_lm.server --adapter-path ./adapters`)
   or re-quantize the fused model; the fused fp16 directory is the simpler path on a 16 GB machine.
 
@@ -71,7 +81,21 @@ schema-valid `PersonaSchema` JSON via base+adapter and degenerate prose via the 
 
 | committed | gitignored |
 |---|---|
-| this README, `requirements.txt`, `train.sh`, `fuse.sh`, `eval.py`, `RESULTS.md` | `data/*.jsonl`, `.venv/`, `adapters/`, `fused/`, all weights |
+| this README, `requirements.txt`, `RESULTS.md`, and every script: `train.sh`, `fuse.sh`, `eval.py`, `eval-round2.sh`, `smoke_test.py`, `verify_fuse.py`, `make_variants.py`, `diagnose_labels.py`, `predictions_to_jsonl.py`, `report.py`, `report_arms.py`, `arm_stats.py`, `curve.py`, `heuristic_labels.mts` | `data*/`, `.venv/`, `adapters*/`, `fused*/`, `results/`, `preds/`, `heuristic-preds/`, `*.log`, all weights |
+
+### What each analysis script is for
+
+| script | question it answers |
+|---|---|
+| `eval.py` | how does one arm score against the teacher's labels, per row |
+| `eval-round2.sh` | runs every model arm over both held-out splits, sequentially |
+| `report.py` | round-1 single-student tables |
+| `report_arms.py` | the round-2 five-arm comparison, sliced |
+| `arm_stats.py` | did an arm beat the constant / majority-class predictors, with CIs — and the paired A-vs-B ablation test |
+| `diagnose_labels.py` | is a set of weight vectors actually a function of its input |
+| `predictions_to_jsonl.py` | rewrites an arm's predictions so `diagnose_labels.py` can be pointed at **the model's own output**, not just the labels |
+| `verify_fuse.py` | are the adapters really in this fused model |
+| `make_variants.py` | builds the A/B training targets and measures per-field token share |
 
 The dataset regenerates deterministically from the committed signal pools + seed (modulo the
 teacher's own nondeterminism), so the `.jsonl` files are build artifacts, not sources.
