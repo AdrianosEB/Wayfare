@@ -4,8 +4,9 @@
 #   ./eval-round2.sh            # writes results/{arm}-{split}.json, logs to eval-round2.log
 #
 # Runs strictly SEQUENTIALLY. Each arm loads a ~2.9 GB fp16 model and generates at batch 8; two
-# at once on a 16 GB machine is how this project lost a whole login session to a WindowServer
-# watchdog kill (see _distillation-run/STATE.md). The wall-clock saving is not worth it.
+# at once on a 16 GB machine is how this project lost a whole login session during training — a
+# jetsam event at ~134 MB free, then WindowServer killed by its watchdog, which tears down the
+# terminal and every child process with it. The wall-clock saving is not worth it.
 #
 # The heuristic arm is not here: it needs no model and is scored from `heuristic-preds/` via
 # `eval.py --from-jsonl`. The teacher arm is reference-only this round — a genuine second

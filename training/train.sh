@@ -29,7 +29,8 @@ cd "$(dirname "$0")"
 PY=${PY:-./.venv/bin/python}
 [ -x "$PY" ] || PY=python3   # fall back to system python if no venv here
 
-# The 16GB-unified-memory pick for this Mac (see _distillation-run/RUNBOOK.md).
+# The 16GB-unified-memory pick for this Mac: small enough to train at batch 2 with grad
+# checkpointing in ~4.3 GB peak, leaving macOS enough headroom not to start killing processes.
 BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
 
 "$PY" -m mlx_lm lora \
