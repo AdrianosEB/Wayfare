@@ -93,6 +93,28 @@ An off-schema response surfaces as a `SchemaValidationError` — **never a silen
 Both ceilings **degrade rather than throw**: a half-finished trip is a worse outcome than a fully
 deterministic one, and an exception mid-graph produces exactly that.
 
+## Proving the path actually runs
+
+Every test in this package drives a stub model. That is right for CI — the suite runs offline
+with no key — but it means the *real request shape* is never exercised, and that is precisely how
+the `top_p: -1` bug survived: every live call 400'd, `decide()` swallowed the error, the
+deterministic fallback answered, and the plans looked fine. No stub can catch that.
+
+So the live path is exercised deliberately, once, by hand:
+
+```bash
+ANTHROPIC_API_KEY=... WAYFARE_LLM_ORCHESTRATOR=true \
+  pnpm --dir packages/orchestrator-llm exec tsx scripts/live-run.mts
+```
+
+It runs one end-to-end plan under the normal ceilings and writes the full transcript — per-agent
+tokens, tool calls, latency, total cost, and the final `PlanResult` — to
+[`docs/live-run.md`](./docs/live-run.md).
+
+**This is a command, not a configuration.** `WAYFARE_LLM_ORCHESTRATOR` stays unset by default,
+no key is written to any `.env`, and `apps/web` is not wired to the LLM path: loading the site
+still costs zero tokens.
+
 ## Cost accounting
 
 Every agent emits `{ agent, inputTokens, outputTokens, toolCalls, ms }` through the existing

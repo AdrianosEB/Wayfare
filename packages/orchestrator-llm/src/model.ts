@@ -21,6 +21,15 @@ export interface StructuredCall<T> {
    * with the input side and hand every caller the pre-default shape.
    */
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
+  /**
+   * Optional laxer schema to hand the provider's structured-output binding, when the strict
+   * `schema` rejects a recoverable formatting slip the model reliably makes. The provider's own
+   * parser validates against this; `repair` then normalises the shape and `schema` remains the
+   * contract everything downstream sees.
+   */
+  wireSchema?: z.ZodType<unknown, z.ZodTypeDef, unknown>;
+  /** Normalise a wire-shaped object before strict validation. Must be pure and deterministic. */
+  repair?: (raw: unknown) => unknown;
 }
 
 export interface StructuredResult<T> {
@@ -79,9 +88,36 @@ export class SchemaValidationError extends Error {
     readonly agent: AgentName,
     readonly issues: unknown,
   ) {
-    super(`agent "${agent}" returned an off-schema response`);
+    // The issues are in the message, not just on the instance: callers log `String(err)`, and a
+    // bare "off-schema response" is unactionable — it cost a diagnostic round to learn which
+    // field was wrong.
+    super(
+      `agent "${agent}" returned an off-schema response: ` +
+        JSON.stringify(issues)?.slice(0, 600),
+    );
     this.name = "SchemaValidationError";
   }
+}
+
+/**
+ * Construction options for the underlying ChatAnthropic. Exported so the test suite can assert
+ * on the *request shape* these options produce without a network call.
+ *
+ * The invocationKwargs line is load-bearing: Claude Opus 4.7+ / Sonnet 5 reject sampling
+ * parameters, but @langchain/anthropic (0.3.x) still sends its defaults (temperature 1,
+ * top_k/top_p -1) for models it doesn't special-case by name — every request 400s
+ * ("`top_p` cannot be set to -1") and, because decide() degrades on model errors, the whole
+ * LLM path silently fell back to heuristics. Constructor nulls can't fix it
+ * (`fields?.topP ?? -1`); invocationKwargs spreads last into the request body, and explicit
+ * undefined removes the keys entirely. Covered by a regression test in test/model.test.ts.
+ */
+export function anthropicChatOptions(config: LlmConfig, apiKey: string) {
+  return {
+    model: config.model,
+    apiKey,
+    maxTokens: 4096,
+    invocationKwargs: { temperature: undefined, top_k: undefined, top_p: undefined },
+  };
 }
 
 /**
@@ -103,26 +139,27 @@ export class AnthropicStructuredModel implements StructuredModel {
   }> {
     if (!this.#chat) {
       const { ChatAnthropic } = await import("@langchain/anthropic");
-      this.#chat = new ChatAnthropic({
-        model: this.config.model,
-        apiKey: this.apiKey,
-        maxTokens: 4096,
-      });
+      this.#chat = new ChatAnthropic(anthropicChatOptions(this.config, this.apiKey));
     }
     return this.#chat as never;
   }
 
   async invoke<T>(call: StructuredCall<T>): Promise<StructuredResult<T>> {
     const chat = await this.#model();
-    const structured = chat.withStructuredOutput(call.schema, { name: call.agent });
+    // The wire schema, when a caller supplies one, is only what the provider's parser is given.
+    // The strict `call.schema` below is still the contract.
+    const structured = chat.withStructuredOutput(call.wireSchema ?? call.schema, {
+      name: call.agent,
+    });
     const raw = await structured.invoke([
       { role: "system", content: call.system },
       { role: "user", content: call.user },
     ]);
 
     // Validate against the shared schema ourselves too: an off-schema response must surface as
-    // a validation failure, never a silent coercion.
-    const parsed = call.schema.safeParse(raw);
+    // a validation failure, never a silent coercion. `repair` may only move a value that is in
+    // the wrong place — it can never invent one, so this stays a validation, not a coercion.
+    const parsed = call.schema.safeParse(call.repair ? call.repair(raw) : raw);
     if (!parsed.success) throw new SchemaValidationError(call.agent, parsed.error.issues);
 
     // LangChain's structured-output path does not surface usage on the parsed value; charge a

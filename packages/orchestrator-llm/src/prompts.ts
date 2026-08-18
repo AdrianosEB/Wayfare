@@ -35,8 +35,47 @@ do not invent a destination or a budget that was never mentioned.`,
 
 ROLE: persona. Read free-text signals ("foodie on a budget", "hates 6am flights", "will pay for
 location") into normalized weights across price, quality, location, vibe, and flexibility, plus
-pace and interests. Weights express relative priority. Explain your reasoning in the summary —
-a downstream human should be able to see why you weighted price over quality.`,
+pace and interests. Weights express relative priority.
+
+HOW TO DERIVE THE WEIGHTS
+- Fill \`reasoning\` FIRST, before any number. It is an array of PLAIN STRINGS, one per signal you
+  actually used, each in the form "<the traveler's words> -> <dimension> <up|down>", e.g.
+  "waves off the bill talk -> price down". Then write weights that follow from those entries.
+- Start from the position that all five dimensions matter equally. Each one moves only on
+  evidence in the signals. A dimension with no signal about it stays near its starting share.
+- The ABSENCE of a price signal is not evidence of price sensitivity. Saying nothing about money
+  is not the same as being frugal — it is no information about price, so price stays near its
+  starting share rather than leading by default.
+- A budget in the request is a CONSTRAINT, not a preference signal. It bounds what is affordable;
+  it says nothing about whether this traveler cares about cost relative to location or comfort.
+  Do not raise price weight because a budget exists.
+- Signals cut both ways. "Has saved for this and wants to feel it" and "waves off the bill talk"
+  are price signals that move price DOWN. Read the direction, not just the topic.
+- A price-dominant answer is correct only when the signals actually say so. Returning price as
+  the top dimension by habit is a failure of this role, not a safe default.
+- The reverse is equally wrong. When the signals DO say this traveler is cost-focused ("counts
+  every euro", "wants value not cheap", "hunting the cheapest flights"), price SHOULD lead, and
+  clearly. Suppressing price in the face of price evidence is the same error pointing the other
+  way. Respond to the evidence symmetrically: strong signal, strong weight, in whichever
+  direction the signal points.
+- Do not flatten everything to equal weights to avoid choosing. That is the opposite failure and
+  is equally useless to the ranker: when the signals do point somewhere, say so clearly.
+
+Then give a one-line \`summary\`: the human-readable read on this traveler.
+
+OUTPUT SHAPE
+- Return ONE object with exactly four top-level keys, in this order: \`reasoning\`, \`weights\`,
+  \`preferences\`, \`summary\`. All four are SIBLINGS at the top level and all four are REQUIRED.
+- \`reasoning\` is a top-level key. It does NOT go inside \`preferences\`. \`preferences\` carries
+  only pace / interests / lodgingStyle / flightPrefs / dietary — putting \`reasoning\` in there
+  displaces the fields that belong there and the answer is rejected.
+- \`preferences.pace\` and \`preferences.interests\` are BOTH required, always. When the signals
+  imply no particular interests, give \`"interests": []\` — an empty array is a valid answer and
+  omitting the key is not.
+- The dimension named in a \`reasoning\` string must be one of: price, quality, location, vibe,
+  flexibility. Those five are the WEIGHT axes. \`pace\`, \`interests\`, \`lodgingStyle\`, \`dietary\`
+  and \`flightPrefs\` are preferences, NOT dimensions — a signal that only informs them needs no
+  \`reasoning\` entry at all.`,
 
   planQueries: `${SHARED_RULES}
 

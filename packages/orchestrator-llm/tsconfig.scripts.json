@@ -1,0 +1,13 @@
+{
+  // The build tsconfig pins rootDir to ./src so dist/ stays flat. Scripts are run through tsx and
+  // never emitted, so they get their own no-emit project — otherwise they'd sit outside every
+  // tsconfig and go silently untypechecked, which is how a data-generation script rots.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*", "src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}
