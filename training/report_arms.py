@@ -21,6 +21,13 @@ established it equalled chance agreement under the round-1 marginal (0.680 vs 0.
 bounded nothing; re-measuring it under the round-2 prompt needs API credits and has not been
 done. Reporting it here would reintroduce the error the round-1 analysis exists to correct.
 
+**Two agreement columns, two claims.** `top-dim agr.` is argmax match: did the arm name the same
+single highest dimension. `rank agr.` is Spearman's rho and Kendall's tau-b over the full
+five-dimension ordering, mean and median, with `n ranked` as its own denominator (rows where
+either vector is entirely flat have no ordering and are excluded, not scored as zero). The
+constant predictor's rank agreement is printed beside the arms for the same reason its MAE is:
+one fixed ordering already correlates with the teacher's, and an arm has to clear that.
+
 `schema-valid` is against each arm's target schema; `production` is against `PersonaSchema` as
 the orchestrator enforces it. They differ only for student-B, which is trained without
 `summary` — see `eval.py:build_records`.
@@ -31,6 +38,7 @@ import json
 import statistics
 from pathlib import Path
 
+from eval import kendall_tau, spearman_rho
 from report import agg, fmt, pct
 
 DIMS = ["price", "quality", "location", "vibe", "flexibility"]
@@ -75,9 +83,18 @@ def teacher_refs(data_dir, split, records_by_index):
     const_mae = statistics.mean(
         sum(abs(a - b) for a, b in zip(mean_vec, v)) / len(DIMS) for _, v in subset)
     subset_tops = [DIMS[max(range(len(DIMS)), key=lambda i: v[i])] for _, v in subset]
+    # Rank agreement needs a reference for the same reason MAE did. The constant predictor emits
+    # one ordering for every row, so its rho against the teacher is not zero — it is whatever the
+    # teacher's own ordering-vs-mean-ordering happens to be, and an arm that does not clear it
+    # has learned nothing about ordering either.
+    const_rhos = [r for r in (spearman_rho(mean_vec, v) for _, v in subset) if r is not None]
+    const_taus = [t for t in (kendall_tau(mean_vec, v) for _, v in subset) if t is not None]
     return {
         "n": len(subset),
         "const_mae": const_mae,
+        "const_rho": statistics.mean(const_rhos) if const_rhos else None,
+        "const_rho_median": statistics.median(const_rhos) if const_rhos else None,
+        "const_tau": statistics.mean(const_taus) if const_taus else None,
         "majority_dim": modal,
         "majority_agree_pct": pct(sum(1 for t in subset_tops if t == modal), len(subset_tops)),
         "mean_vec": dict(zip(DIMS, (round(x, 4) for x in mean_vec))),
@@ -92,13 +109,17 @@ def row(name, a, arm_blob):
     return (f"| {ARM_LABEL.get(name, name)} | {a['n']} | "
             f"{fmt(a['schema_valid_pct'], '.1f')}% ({a['n_valid']}/{a['n']}) | {prod_cell} | "
             f"{a['n_scored']} | {fmt(a['norm_mae'], '.4f')} | {fmt(a['norm_mae_p95'], '.4f')} | "
-            f"{fmt(a['top_agree_pct'], '.1f')}% | {fmt(a['pace_agree_pct'], '.1f')}% | "
+            f"{fmt(a['top_agree_pct'], '.1f')}% | "
+            f"{fmt(a['rho_mean'], '.3f')} / {fmt(a['rho_median'], '.3f')} | "
+            f"{fmt(a['tau_mean'], '.3f')} / {fmt(a['tau_median'], '.3f')} | {a['n_rank']} | "
+            f"{fmt(a['pace_agree_pct'], '.1f')}% | "
             f"{fmt(a['raw_sum_drift'], '.4f')} |")
 
 
 HEADER = ("| arm | n | schema-valid | production schema | n scored | norm. MAE | MAE p95 | "
-          "top-dim agr. | pace agr. | raw-sum drift |")
-RULE = "|---|---|---|---|---|---|---|---|---|---|"
+          "top-dim agr. (argmax) | rank agr. ρ mean/med | rank agr. τ mean/med | n ranked | "
+          "pace agr. | raw-sum drift |")
+RULE = "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
 
 
 def table(title, blobs, slice_name, data_dir, split, note=""):
@@ -122,7 +143,9 @@ def table(title, blobs, slice_name, data_dir, split, note=""):
             ref_seen = teacher_refs(data_dir, split, idxs)
     if ref_seen:
         print(f"\nReferences over the same {ref_seen['n']} rows — constant predictor (teacher "
-              f"mean vector) MAE **{ref_seen['const_mae']:.4f}**; majority-class predictor "
+              f"mean vector) MAE **{ref_seen['const_mae']:.4f}**, its rank agreement ρ "
+              f"**{fmt(ref_seen['const_rho'], '.3f')}** / τ "
+              f"**{fmt(ref_seen['const_tau'], '.3f')}**; majority-class predictor "
               f"(always `{ref_seen['majority_dim']}`) top-dim agreement "
               f"**{ref_seen['majority_agree_pct']:.1f}%**. An arm at or below the first, or at "
               f"the second, has not learned a mapping.")

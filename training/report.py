@@ -9,7 +9,11 @@ comes from a measurement note in RESULTS.md, and each is easy to violate by acci
 
 * Slices are never merged. `clean` and `conflict` are reported as separate rows, always.
 * Student schema-validity is stated against the teacher's own **99.5%**, not against 100%.
-* Rank agreement is stated against the **majority-class predictor**, not against the
+* **Top-dimension agreement and rank agreement are different claims and are never used as
+  synonyms.** Top-dimension agreement is argmax match — one dimension, right or wrong. Rank
+  agreement (Spearman's rho, Kendall's tau-b) is ordinal correlation over all five dimensions.
+  Both are printed; a sentence about one is not evidence about the other.
+* Top-dimension agreement is stated against the **majority-class predictor**, not against the
   teacher-teacher 17/25. That figure was retracted in round 1: chance agreement under the
   round-1 marginal is 0.678 and 17/25 is 0.680, so it measured the shared prior and bounded
   nothing (RESULTS.md measurement note 3). `report_arms.py` computes the round-2 references.
@@ -47,6 +51,12 @@ def agg(records, slice_name=None):
     valid = [r for r in rs if r["schema_valid"]]
     scored = [r["scores"] for r in valid if r.get("scores")]
     extracted = sum(1 for r in rs if r["parse_mode"] == "extracted")
+    # Rank agreement carries its own denominator, always. A row is undefined here when either
+    # weight vector is entirely flat — five equal weights have no ordering — and those rows are
+    # dropped from the mean rather than counted as agreement or disagreement. `n_rank` below is
+    # therefore <= `n_scored`, and the gap is a real property of the arm's output.
+    rhos = [s["spearman_rho"] for s in scored if s.get("spearman_rho") is not None]
+    taus = [s["kendall_tau"] for s in scored if s.get("kendall_tau") is not None]
     return {
         "n": len(rs),
         "n_valid": len(valid),
@@ -55,6 +65,11 @@ def agg(records, slice_name=None):
         "norm_mae": statistics.mean(s["norm_mae"] for s in scored) if scored else None,
         "norm_mae_p95": sorted(s["norm_mae"] for s in scored)[int(0.95 * len(scored))] if len(scored) > 2 else None,
         "top_agree_pct": pct(sum(1 for s in scored if s["top_match"]), len(scored)) if scored else None,
+        "n_rank": len(rhos),
+        "rho_mean": statistics.mean(rhos) if rhos else None,
+        "rho_median": statistics.median(rhos) if rhos else None,
+        "tau_mean": statistics.mean(taus) if taus else None,
+        "tau_median": statistics.median(taus) if taus else None,
         "raw_sum_drift": statistics.mean(s["raw_sum_drift"] for s in scored) if scored else None,
         "pace_agree_pct": pct(sum(1 for s in scored if s["pace_pred"] == s["pace_teacher"]), len(scored)) if scored else None,
         "extracted_from_prose": extracted,
@@ -91,15 +106,21 @@ def main():
           f"teacher-teacher figure of 17/25 ({100*TEACHER_TEACHER_AGREE:.0f}%) is NOT a floor "
           f"here — it equals chance agreement under this marginal "
           f"({ROUND1_CHANCE_AGREEMENT}), so it bounds nothing.\n")
-    print("| slice | n | schema-valid (teacher 99.5%) | norm. MAE | MAE p95 | top-dim agr. (vs prior, not a floor) | pace agr. | raw-sum drift |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("Two agreement columns, two different claims: **top-dim** is argmax match (one "
+          "dimension); **rank agr.** is Spearman's rho / Kendall's tau-b over all five, as "
+          "mean/median with its own n.\n")
+    print("| slice | n | schema-valid (teacher 99.5%) | norm. MAE | MAE p95 | top-dim agr. (argmax; vs prior, not a floor) | rank agr. ρ mean/med | rank agr. τ mean/med | n ranked | pace agr. | raw-sum drift |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
     for sl in ("clean", "conflict"):
         a = agg(st["records"], sl)
         if not a:
             continue
         print(f"| {sl} | {a['n']} | {fmt(a['schema_valid_pct'], '.1f')}% ({a['n_valid']}/{a['n']}) | "
               f"{fmt(a['norm_mae'], '.4f')} | {fmt(a['norm_mae_p95'], '.4f')} | "
-              f"{fmt(a['top_agree_pct'], '.1f')}% | {fmt(a['pace_agree_pct'], '.1f')}% | "
+              f"{fmt(a['top_agree_pct'], '.1f')}% | "
+              f"{fmt(a['rho_mean'], '.3f')} / {fmt(a['rho_median'], '.3f')} | "
+              f"{fmt(a['tau_mean'], '.3f')} / {fmt(a['tau_median'], '.3f')} | {a['n_rank']} | "
+              f"{fmt(a['pace_agree_pct'], '.1f')}% | "
               f"{fmt(a['raw_sum_drift'], '.4f')} |")
     print(f"\nLatency (sequential sample, n={st['latency_sample_n']}): "
           f"p50 {fmt(st['latency_p50_s'], '.2f')}s · p95 {fmt(st['latency_p95_s'], '.2f')}s. "
