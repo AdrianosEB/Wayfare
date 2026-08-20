@@ -21,8 +21,10 @@ students to test whether the training target mattered too. **The collapse is gon
 students now beat the majority-class predictor on `test` with confidence intervals excluding
 zero, emit 106–110 distinct weight vectors against round 1's 24, and carry 96–98% of the labels'
 output entropy. **The regression problem is not solved** — neither student's weight vector is
-more accurate than predicting the teacher's mean, neither reproduces the teacher's price-polarity
-response, and neither advantage survives the adversarial split. The A/B token-share ablation is a
+more accurate than predicting the teacher's mean, neither is better *ordered* than it (rank
+agreement ρ 0.453 and 0.466 against the constant predictor's 0.484, CIs spanning zero), neither
+reproduces the teacher's price-polarity response, and neither advantage survives the adversarial
+split. The A/B token-share ablation is a
 **null result**, for the reason the setup predicted: the prompt fix had already removed most of
 the dilution. Practical upshot: **student-A should replace the heuristic fallback, which it beats
 decisively; it should not be presented as teacher-equivalent.** Details in
@@ -45,8 +47,11 @@ decisively; it should not be presented as teacher-equivalent.** Details in
    is reported in full below and the omission caveat is gone. The ±18pp caution that applied at
    n=29 no longer applies at n=150 and must not be carried forward.
 
-3. ~~**Noise floor for rank agreement: 17/25 top-dimension agreement.**~~ — **RETRACTED.** Opus
-   4.8 and Sonnet 5 did agree 17/25 on the same 25 profiles, but round 1 showed that number was
+3. ~~**Noise floor for rank agreement: 17/25 top-dimension agreement.**~~ — **RETRACTED**, and
+   its wording was loose in a second way that outlived the retraction: "rank agreement" there
+   meant *top-dimension* agreement — argmax match — not an ordinal correlation over the five
+   dimensions. The struck title is left as recorded; the distinction is defined in *Two
+   agreement metrics* below. Opus 4.8 and Sonnet 5 did agree 17/25 on the same 25 profiles, but round 1 showed that number was
    chance: the sum of squares of the round-1 top-dimension marginal is **0.678**, and 17/25 =
    **0.680**. Two labellers drawing independently from that prior would have agreed at exactly
    the observed rate, so the figure measured the shared prior, not labeller noise, and bounded
@@ -59,6 +64,56 @@ decisively; it should not be presented as teacher-equivalent.** Details in
 4. **Provenance caveat:** the `test-adversarial` pool is **model-authored** (see
    `packages/orchestrator-llm/fixtures/persona-signals-adversarial.json`), not a human baseline.
    Every score reported for that slice carries this caveat inline.
+
+## Two agreement metrics — what each one measures
+
+The weight vector is five numbers, and this document reports agreement with the teacher on it in
+two different ways. **They are different claims, and neither implies the other.**
+
+* **Top-dimension agreement** — *argmax match*. Did the arm put the same single dimension on top
+  as the teacher? One binary comparison per row. It says nothing about the other four
+  dimensions, and nothing about how close the call was.
+* **Rank agreement** — *ordinal correlation over all five dimensions*, computed per row and
+  reported as **Spearman's rho** (Pearson correlation of the averaged ranks) and **Kendall's
+  tau-b** (concordant minus discordant dimension pairs, tie-corrected), each as a **mean and a
+  median** across rows. It asks whether the arm reproduced the teacher's whole ordering.
+
+An arm can score 100% top-dimension agreement while ordering the remaining four dimensions at
+random, and can miss the top dimension by 0.001 on every row while reproducing the ordering
+almost exactly. Round 1's collapsed student is the cautionary case in the first direction: it
+answered `price` on 242 of 243 rows and still scored 72.0% top-dimension agreement.
+
+Both metrics are computed only over schema-valid rows, and both carry their own denominator.
+Rank agreement carries a second one, **`n ranked`**: a row is *undefined* when either weight
+vector is entirely flat — five equal weights express no ordering, so there is nothing to
+correlate — and those rows are dropped rather than counted as zero agreement. On `test`, 5 of
+the 250 teacher labels are uniform 0.200 vectors; student-B emits a flat vector on 9 further
+rows, which is why its `n ranked` is the lowest of the arms (236 of 250).
+
+Both are tie-corrected — averaged ranks for rho, tau-b for tau — because ties are routine here:
+five weights summing to 1 land on equal values often, and breaking ties by position would
+manufacture agreement or disagreement out of the order the dimensions happen to be listed in.
+
+**Provenance of the rank-agreement numbers.** The metric was added on 2026-08-20 and backfilled
+by re-scoring the stored prediction files in `training/results/` (`eval.py --rescore-from`).
+Nothing was regenerated: no model was loaded, no API was called, and every pre-existing number
+in this document — schema validity, MAE, top-dimension agreement, pace agreement, latency — is
+unchanged after the re-score, row for row. That is asserted rather than assumed: the re-score
+path refuses to write a file whose schema verdicts differ from the stored ones.
+
+**The round-1 arms are deliberately not backfilled.** Their predictions predate the `reasoning`
+field, so today's `validate_persona` rejects all 248 rows; re-scoring them would restate their
+schema validity from 98.0% to 0% rather than add a metric to it. `eval.py` refused the run
+(exit 3) and the round-1 files were left as recorded, so the round-1 tables below carry no
+rank-agreement column. Measuring it would need the round-1 validator restored alongside the
+round-1 data, which is a separate job from adding a metric.
+
+**A wording correction.** Earlier revisions of this document — and the résumé line drawn from it
+— described this eval as measuring "rank agreement" when the only ordering metric implemented
+was argmax match. That was the wrong claim: `eval.py` computed `top_match` and nothing else. The
+metric now exists and is measured; every remaining use of "rank agreement" in this document
+means the ordinal correlation defined here, and uses of argmax match are labelled as
+top-dimension agreement.
 
 ## Methods note: training divergence (2026-08-15)
 
@@ -133,8 +188,10 @@ Four independent lines of evidence, all on the 243 schema-valid rows of `test`:
 
 Because of (1), **the 74.1% top-dimension agreement on the clean slice must not be read against
 the 17/25 (68%) teacher-teacher floor as if clearing it meant something.** It clears the floor
-the way a broken clock clears it. Rank agreement is uninterpretable for this student; the
-constant-predictor comparison in (2) replaces it as the meaningful reference.
+the way a broken clock clears it. Top-dimension agreement is uninterpretable for this student;
+the constant-predictor comparison in (2) replaces it as the meaningful reference. (Rank
+agreement over the full ordering would be the sharper test and was not implemented at the time —
+see *Two agreement metrics*; round 1's predictions cannot be re-scored for it now.)
 
 ### Why the validation curve missed this
 
@@ -159,6 +216,12 @@ Reference is the teacher's stored label for the same input. Teacher schema-valid
 
 Reference points on the same axis: constant predictor (teacher mean) MAE **0.0565**; student
 modal vector MAE **0.0608**; student actual **0.0587**.
+
+**No rank-agreement column here, and it cannot be backfilled.** The metric postdates round 1, and
+round 1's stored predictions predate the `reasoning` field, so re-scoring them under today's
+validator restates their schema validity instead of adding a metric — `eval.py --rescore-from`
+refuses the run. See *Two agreement metrics → Provenance*. The `top-dim agr.` column above is
+argmax match, as it always was.
 
 Latency, student, sequential sample n=20: p50 **13.66 s**, p95 **16.09 s** (fp16 fused model,
 local, no API spend). Teacher: $7.28 / 1,429 rows = **$5.09 per 1k**.
@@ -336,8 +399,10 @@ encode the same assumption.
   runs when the LLM path is off. Left alone pending the rule-symmetry work.
   → **Now the strongest argument for shipping the student.** Measured on the round-2 test split,
   the heuristic is the only arm that is *worse than always guessing* on top-dimension agreement
-  (−11.2pp vs the majority-class predictor, CI excluding zero), reads 1.327 bits of output
-  entropy against labels of 2.011, and never once picks `location` or `flexibility` in 250 rows.
+  (−11.2pp vs the majority-class predictor, CI excluding zero) and the only one measurably worse
+  than a fixed ordering on rank agreement (Δρ −0.310, CI excluding zero), reads 1.327 bits of
+  output entropy against labels of 2.011, and never once picks `location` or `flexibility` in
+  250 rows.
   `BASE` is still unchanged; the recommendation is now to replace the path rather than tune it.
 
 ## The heuristic fallback had the same defect, worse — and had never been measured
@@ -396,7 +461,7 @@ measured, not inferred:
    the traveller were frugal (0.344, 87.1% price-top).
 3. **The "noise floor" hid it.** Chance agreement under that marginal is 0.678; the recorded
    teacher-teacher agreement was 17/25 = 0.680. The floor was measuring the shared prior, so
-   nothing about student rank agreement was interpretable against it.
+   nothing about the student's top-dimension agreement was interpretable against it.
 4. **The loss diluted the part that mattered.** Because the reasoning went into `summary`, the
    labels were a median 385 tokens of which 79.8% was prose and 12.3% was `weights` — the only
    field the ranker consumes.
@@ -624,13 +689,19 @@ Per-field share of assistant-label tokens (`make_variants.py`, base-model tokeni
 | split | measure | A | B | Δ (A − B) | 95% CI | reading |
 |---|---|---|---|---|---|---|
 | `test` (n=250) | norm. MAE | 0.0490 | 0.0459 | +0.0031 | (+0.0003, +0.0061) | B better, marginally |
-| `test` (n=250) | top-dim agr. | 40.4% | 42.0% | −1.6pp | (−8.0, +4.8) | null |
+| `test` (n=250) | top-dim agr. (argmax) | 40.4% | 42.0% | −1.6pp | (−8.0, +4.8) | null |
+| `test` (n=233 ranked) | rank agr. ρ | 0.462 | 0.464 | −0.003 | (−0.061, +0.056) | null |
 | `test-adversarial` (n=142) | norm. MAE | 0.0432 | 0.0443 | −0.0011 | (−0.0048, +0.0026) | null |
-| `test-adversarial` (n=142) | top-dim agr. | 57.0% | 53.5% | +3.5pp | (−4.9, +12.7) | null |
+| `test-adversarial` (n=142) | top-dim agr. (argmax) | 57.0% | 53.5% | +3.5pp | (−4.9, +12.7) | null |
+| `test-adversarial` (n=138 ranked) | rank agr. ρ | 0.574 | 0.543 | +0.031 | (−0.029, +0.091) | null |
 
-One of the four comparisons reaches significance, its lower bound sits at +0.0003, and **its sign
+One of the six comparisons reaches significance, its lower bound sits at +0.0003, and **its sign
 reverses on the second split**. That is not a replicated effect. Removing `summary` from the
-target did not measurably improve the field the ranker consumes.
+target did not measurably improve the field the ranker consumes, on argmax match or on the full
+ordering. Rank agreement was added after the ablation was run and had the standing to overturn
+the null — it did not: Δρ is −0.003 and +0.031 with CIs spanning zero on both splits, and the two
+rank rows are paired on the subset of shared rows where both arms expressed an ordering (233 and
+138 of the 250 and 142 shared rows).
 
 **This is the outcome the setup predicted, and it does not mean dilution never mattered.** The
 prompt fix had already moved `weights` from 12.3% to 29.9% of the label, so arm B was only ever
@@ -661,26 +732,42 @@ rather than filled with round 1's retracted 17/25 (measurement note 3).
 
 ### `test` — 250 rows
 
-| arm | n | schema-valid | production schema | scored | norm. MAE | MAE p95 | top-dim agr. | pace agr. | raw-sum drift |
-|---|---|---|---|---|---|---|---|---|---|
-| heuristic (`derivePersona`) | 250 | 100.0% | same | 250 | 0.0854 | 0.1338 | 21.2% | 55.2% | 0.0000 |
-| untuned base | 250 | **0.0%** | same | 0 | undefined | — | — | — | — |
-| student-A (full label) | 250 | 100.0% | same | 250 | 0.0490 | 0.1000 | **40.4%** | 54.4% | 0.0098 |
-| student-B (no `summary`) | 250 | 100.0% | **0.0%** | 250 | 0.0459 | 0.0907 | **42.0%** | 64.4% | 0.0182 |
-| teacher (reference) | 250 | 100.0% (0 discards) | same | — | 0 by construction | — | — | — | — |
+Two agreement columns, two different claims — **top-dim** is argmax match, **rank agr.** is
+ordinal correlation over all five dimensions (*Two agreement metrics*, above).
+
+| arm | n | schema-valid | production schema | scored | norm. MAE | MAE p95 | top-dim agr. (argmax) | rank agr. ρ mean/med | rank agr. τ mean/med | n ranked | pace agr. | raw-sum drift |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| heuristic (`derivePersona`) | 250 | 100.0% | same | 250 | 0.0854 | 0.1338 | 21.2% | 0.174 / 0.200 | 0.146 / 0.120 | 245 | 55.2% | 0.0000 |
+| untuned base | 250 | **0.0%** | same | 0 | undefined | — | — | undefined | undefined | 0 | — | — |
+| student-A (full label) | 250 | 100.0% | same | 250 | 0.0490 | 0.1000 | **40.4%** | **0.453** / 0.640 | 0.415 / 0.535 | 242 | 54.4% | 0.0098 |
+| student-B (no `summary`) | 250 | 100.0% | **0.0%** | 250 | 0.0459 | 0.0907 | **42.0%** | **0.466** / 0.632 | 0.429 / 0.527 | 236 | 64.4% | 0.0182 |
+| teacher (reference) | 250 | 100.0% (0 discards) | same | — | 0 by construction | — | — | 1.000 by construction | — | — | — | — |
+
+References over the same rows: constant predictor (teacher mean vector) MAE **0.0444**, rank
+agreement ρ **0.484** / τ **0.407**; majority-class predictor (always `location`) top-dimension
+agreement **32.4%**. Both students clear the second and neither clears the first — on *either*
+metric. The paired comparison with intervals is in *Against the reference predictors* below.
 
 Slices, never averaged:
 
-| slice | arm | n | schema-valid | norm. MAE | top-dim agr. | majority-class ref. |
-|---|---|---|---|---|---|---|
-| clean | heuristic | 169 | 100.0% | 0.0839 | 21.9% | 34.3% |
-| clean | student-A | 169 | 100.0% | 0.0474 | 42.6% | 34.3% |
-| clean | student-B | 169 | 100.0% | 0.0461 | 39.1% | 34.3% |
-| conflict | heuristic | 81 | 100.0% | 0.0885 | 19.8% | 28.4% |
-| conflict | student-A | 81 | 100.0% | 0.0525 | 35.8% | 28.4% |
-| conflict | student-B | 81 | 100.0% | 0.0456 | 48.1% | 28.4% |
+| slice | arm | n | schema-valid | norm. MAE | top-dim agr. (argmax) | majority-class ref. | rank agr. ρ mean/med | n ranked | constant-pred. ρ |
+|---|---|---|---|---|---|---|---|---|---|
+| clean | heuristic | 169 | 100.0% | 0.0839 | 21.9% | 34.3% | 0.179 / 0.211 | 165 | 0.471 |
+| clean | student-A | 169 | 100.0% | 0.0474 | 42.6% | 34.3% | 0.454 / 0.640 | 164 | 0.471 |
+| clean | student-B | 169 | 100.0% | 0.0461 | 39.1% | 34.3% | 0.435 / 0.612 | 156 | 0.471 |
+| conflict | heuristic | 81 | 100.0% | 0.0885 | 19.8% | 28.4% | 0.163 / 0.179 | 80 | 0.511 |
+| conflict | student-A | 81 | 100.0% | 0.0525 | 35.8% | 28.4% | 0.451 / 0.651 | 78 | 0.511 |
+| conflict | student-B | 81 | 100.0% | 0.0456 | 48.1% | 28.4% | 0.526 / 0.649 | 80 | 0.511 |
 
 The untuned base is 0/169 and 0/81 on both slices.
+
+The two metrics agree on direction in every cell above — where an arm leads on argmax match it
+also leads on ordering — so the new metric overturns no slice-level reading. What it adds is a
+size: student-B on `conflict` is the only cell in this table that clears the constant
+predictor's ρ for its own slice (0.526 vs 0.511), and the same arm sits below both A and the
+constant on `clean` (0.435 vs 0.471). Slice n is 81 and 169 and neither gap carries an interval,
+so this is a pattern to check rather than a result — the paired A-vs-B test over the whole split
+is null on both metrics.
 
 ### `test-adversarial` — 150 rows, reported in full
 
@@ -688,45 +775,64 @@ The round-1 omission is discharged: this split is complete at 150/150. Measureme
 applies — the pool is **model-authored**, so this is robustness to unfamiliar phrasing, not a
 human baseline.
 
-| arm | n | schema-valid | production schema | scored | norm. MAE | MAE p95 | top-dim agr. | pace agr. |
-|---|---|---|---|---|---|---|---|---|
-| heuristic | 150 | 100.0% | same | 150 | 0.0727 | 0.1133 | 38.0% | 38.7% |
-| untuned base | 150 | **0.0%** | same | 0 | undefined | — | — | — |
-| student-A | 150 | 96.7% (145/150) | same | 145 | 0.0435 | 0.0800 | 56.6% | 46.2% |
-| student-B | 150 | 98.0% (147/150) | **0.0%** | 147 | 0.0446 | 0.0960 | 53.7% | 64.6% |
-| teacher (reference) | 150 | 100.0% (0 discards) | same | — | 0 by construction | — | — |
+| arm | n | schema-valid | production schema | scored | norm. MAE | MAE p95 | top-dim agr. (argmax) | rank agr. ρ mean/med | rank agr. τ mean/med | n ranked | pace agr. |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| heuristic | 150 | 100.0% | same | 150 | 0.0727 | 0.1133 | 38.0% | 0.438 / 0.474 | 0.365 / 0.400 | 147 | 38.7% |
+| untuned base | 150 | **0.0%** | same | 0 | undefined | — | — | undefined | undefined | 0 | — |
+| student-A | 150 | 96.7% (145/150) | same | 145 | 0.0435 | 0.0800 | 56.6% | **0.567** / 0.707 | 0.511 / 0.632 | 141 | 46.2% |
+| student-B | 150 | 98.0% (147/150) | **0.0%** | 147 | 0.0446 | 0.0960 | 53.7% | 0.539 / 0.632 | 0.490 / 0.535 | 144 | 64.6% |
+| teacher (reference) | 150 | 100.0% (0 discards) | same | — | 0 by construction | — | — | 1.000 by construction | — | — | — |
+
+Constant-predictor references on this split: MAE **0.0406**, ρ **0.549** / τ **0.471**;
+majority-class (always `quality`) top-dimension agreement **53.3%**. Every arm's rank agreement
+is higher here than on `test` — so is the constant predictor's, by about the same amount, which
+is what makes the paired comparison below the one to read.
 
 ### Against the reference predictors — the comparison that decides it
 
-Paired per row, bootstrap 95% CIs (`arm_stats.py`). Δ MAE negative is better; Δ top-dim positive
-is better.
+Paired per row, bootstrap 95% CIs (`arm_stats.py`). Δ MAE negative is better; Δ top-dim and Δ ρ
+positive are better. Δ top-dim is argmax match against the majority-class predictor; Δ ρ is
+Spearman's rho over all five dimensions against the constant predictor, paired on the rows where
+both sides have an ordering (`n ρ`).
 
-| split | arm | Δ MAE vs constant | Δ top-dim vs majority | distinct vectors | modal share |
-|---|---|---|---|---|---|
-| `test` | heuristic | +0.0410 (+0.0381, +0.0438) | −11.2pp (−20.0, −2.0) | 26 | 38.0% |
-| `test` | student-A | **+0.0046 (+0.0020, +0.0073)** | **+8.0pp (+0.4, +15.6)** | 106 | 10.0% |
-| `test` | student-B | +0.0015 (−0.0013, +0.0043) | **+9.6pp (+2.0, +17.6)** | 110 | 4.4% |
-| `test-adv` | heuristic | +0.0321 (+0.0281, +0.0360) | −15.3pp (−26.7, −3.3) | 37 | 20.0% |
-| `test-adv` | student-A | +0.0030 (−0.0008, +0.0067) | +3.4pp (−6.2, +13.1) | 70 | 26.2% |
-| `test-adv` | student-B | +0.0037 (+0.0001, +0.0073) | +1.4pp (−8.8, +11.6) | 71 | 9.5% |
+| split | arm | Δ MAE vs constant | Δ top-dim vs majority | Δ ρ vs constant | n ρ | distinct vectors | modal share |
+|---|---|---|---|---|---|---|---|
+| `test` | heuristic | +0.0410 (+0.0381, +0.0438) | −11.2pp (−20.0, −2.0) | **−0.310 (−0.372, −0.246)** | 245 | 26 | 38.0% |
+| `test` | student-A | **+0.0046 (+0.0020, +0.0073)** | **+8.0pp (+0.4, +15.6)** | −0.028 (−0.089, +0.032) | 242 | 106 | 10.0% |
+| `test` | student-B | +0.0015 (−0.0013, +0.0043) | **+9.6pp (+2.0, +17.6)** | −0.033 (−0.095, +0.027) | 236 | 110 | 4.4% |
+| `test-adv` | heuristic | +0.0321 (+0.0281, +0.0360) | −15.3pp (−26.7, −3.3) | **−0.111 (−0.193, −0.027)** | 147 | 37 | 20.0% |
+| `test-adv` | student-A | +0.0030 (−0.0008, +0.0067) | +3.4pp (−6.2, +13.1) | +0.022 (−0.039, +0.081) | 141 | 70 | 26.2% |
+| `test-adv` | student-B | +0.0037 (+0.0001, +0.0073) | +1.4pp (−8.8, +11.6) | −0.010 (−0.078, +0.056) | 144 | 71 | 9.5% |
 
-Three things this says, and they do not all point the same way:
+Four things this says, and they do not all point the same way:
 
 1. **The students learned a real mapping — round 1's did not.** On `test`, both beat the
    majority-class predictor with CIs excluding zero (+8.0pp, +9.6pp). Round 1's student scored
    *exactly* the prior, on the same rows. Together with output entropy at 96–98% of the labels'
    and 106/110 distinct weight vectors against round 1's 24, the collapse is gone.
-2. **Neither beats a constant predictor on MAE.** Student-A is significantly *worse* (+0.0046);
-   student-B is indistinguishable from it. This is round 1's headline failure repeating on this
-   one metric — but it does not carry the same meaning, because the round-2 labels are nearly
-   flat: mean max-weight 0.281 against a uniform 0.200. When the targets sit that close to their
-   own mean, the mean vector is a strong MAE baseline and MAE barely discriminates. Getting the
-   *ordering* right, which the arms demonstrably do, moves little MAE mass. **MAE is the wrong
-   headline metric for targets of this shape**, and that is a lesson about the metric, not a
-   result about the model.
+2. **Neither beats a constant predictor on MAE — and rank agreement does not rescue that.**
+   Student-A is significantly *worse* on MAE (+0.0046); student-B is indistinguishable from it.
+   The reading recorded here before rank agreement existed was that MAE is simply the wrong
+   instrument: the round-2 labels are nearly flat (mean max-weight 0.281 against a uniform
+   0.200), so the mean vector is a strong MAE baseline, and getting the *ordering* right moves
+   little MAE mass. **The first half of that survives measurement and the second half does
+   not.** MAE does discriminate poorly on targets this flat. But the ordering claim was never
+   measured over the ordering — it was inferred from argmax match — and measured directly it
+   fails: mean ρ on `test` is 0.453 (A) and 0.466 (B) against the constant predictor's 0.484 on
+   the same rows, Δρ −0.028 (−0.089, +0.032) and −0.033 (−0.095, +0.027), both CIs spanning
+   zero. **Neither student is distinguishable from a single fixed ordering on the ordering
+   itself.** What the students demonstrably beat is the majority-class predictor on the *top*
+   dimension (point 1); that is a narrower claim than "they get the ordering right", and it is
+   the one the evidence supports.
 3. **Neither student's advantage survives the adversarial split.** Both top-dim CIs span zero
-   there (+3.4pp, +1.4pp). Robustness to unfamiliar phrasing is **not** established — the arms
-   are not distinguishable from always answering `quality` on that pool.
+   there (+3.4pp, +1.4pp), and so do both Δρ CIs (+0.022, −0.010). Robustness to unfamiliar
+   phrasing is **not** established on either metric — the arms are not distinguishable from
+   always answering `quality`, nor from the constant ordering, on that pool.
+4. **The heuristic fails on ordering by a margin nothing else here approaches.** Δρ −0.310
+   (−0.372, −0.246) on `test`, CI nowhere near zero, against student-A's −0.028. It is beaten by
+   a fixed ordering on the full five-dimension ranking, and beaten by always guessing on the top
+   dimension. This is the arm production runs when the LLM path is off, and the new metric makes
+   the gap wider rather than narrower — mean ρ 0.174 against the students' 0.45–0.47.
 
 ### The untuned base changed failure mode between rounds
 
@@ -770,15 +876,19 @@ a `reasoning` array and a one-line summary, so there is far less to generate.
 
 ## Verdict
 
-**Can the student replace the teacher?** No — not for the weight *magnitudes*. Neither student
-produces a weight vector measurably more accurate than predicting the teacher's mean, and neither
-reproduces the teacher's price-polarity response at all. Round 2 fixed the collapse, not the
-regression problem.
+**Can the student replace the teacher?** No — not for the weight *magnitudes*, and not for the
+ordering either. Neither student produces a weight vector measurably more accurate than
+predicting the teacher's mean, neither orders the five dimensions measurably better than that
+same constant (Δρ CIs span zero on both splits), and neither reproduces the teacher's
+price-polarity response at all. Round 2 fixed the collapse, not the regression problem.
 
 **Can the student replace the heuristic fallback?** Yes, clearly, and that is the decision
 actually on the table — `derivePersona` is what production runs when the LLM path is off.
 Student-A beats it on every axis measured: MAE 0.0490 vs 0.0854, top-dimension agreement 40.4% vs
-21.2%, output entropy 1.921 bits vs 1.327, and 106 distinct weight vectors vs 26. The heuristic is
+21.2%, **rank agreement ρ 0.453 vs 0.174** (τ 0.415 vs 0.146), output entropy 1.921 bits vs
+1.327, and 106 distinct weight vectors vs 26. The rank-agreement gap is the widest of them
+relative to its reference: the heuristic is 0.310 below the constant predictor with a CI
+excluding zero, student-A 0.028 below it with a CI spanning zero. The heuristic is
 also the only arm here that is *worse than always guessing* on top-dimension agreement (−11.2pp
 against the majority-class predictor, CI excluding zero), while carrying the same price-first
 prior this work exists to remove.
