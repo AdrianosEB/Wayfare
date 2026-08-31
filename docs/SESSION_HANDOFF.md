@@ -48,8 +48,8 @@ are wired together and everything is on `main`.
   cross-checks findings at the source, and re-prices the whole itinerary before surfacing it.
   It is the default and the fail-safe, and runs in the server as a background job over SSE
   (`POST /api/orchestrate` → `GET /api/orchestrate/:id/events`). `packages/orchestrator-llm` is
-  the same pipeline with every agent a **real LLM agent** on a **10-node LangGraph
-  `StateGraph`**, whose critic loops back to `planQueries` with widened breadth on failure;
+  the same pipeline with every agent a **real LLM agent** on a **10-agent LangGraph
+  `StateGraph`** (11 nodes — the 10 agents plus a non-agent `widen` step on the retry edge), whose critic loops back to `planQueries` with widened breadth on failure;
   opt-in behind `WAYFARE_LLM_ORCHESTRATOR`, spend-capped, emitting the identical `PlanResult`.
   Bookings are staged as `requires_approval` intents — nothing books autonomously.
 - **Persona distillation** (`training/`) — the `persona` agent distilled from a Claude teacher
