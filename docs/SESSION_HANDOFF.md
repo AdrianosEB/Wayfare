@@ -22,8 +22,9 @@ front door is one prompt box, not a form.
 **The MVP is done end-to-end on mock data** (Phase 1 in [ROADMAP.md](./ROADMAP.md)); both apps
 are wired together and everything is on `main`.
 
-- **Monorepo** — pnpm workspaces, Node 20+, TypeScript everywhere: `packages/shared`,
-  `apps/server`, `apps/web`.
+- **Monorepo** — pnpm workspaces, Node 20+, TypeScript for the app: `packages/shared`,
+  `packages/orchestrator`, `packages/orchestrator-llm`, `apps/server`, `apps/web`; plus
+  `training/` (Python 3.11 + MLX) for the model distillation.
 - **Conversational planner, full loop** — prompt → clarifying questions → **SSE-streamed**
   agent progress → itinerary + budget panel → refine chat (partial re-plan + "what changed"
   diff + budget delta).
@@ -41,6 +42,21 @@ are wired together and everything is on `main`.
   [AUTH_CONTRACT.md](./AUTH_CONTRACT.md).
 - **Imagery is frontend-supplied** via `apps/web/src/lib/images.ts` — the wire carries **no**
   image fields.
+- **Agent orchestration, two implementations of one pipeline** — `packages/orchestrator` is a
+  supervisor *pattern* in pure TypeScript (zod-only, no graph runtime): it fans out across
+  flight × stay × date combinations, prunes branches against budget before expanding,
+  cross-checks findings at the source, and re-prices the whole itinerary before surfacing it.
+  It is the default and the fail-safe, and runs in the server as a background job over SSE
+  (`POST /api/orchestrate` → `GET /api/orchestrate/:id/events`). `packages/orchestrator-llm` is
+  the same pipeline with every agent a **real LLM agent** on a **10-node LangGraph
+  `StateGraph`**, whose critic loops back to `planQueries` with widened breadth on failure;
+  opt-in behind `WAYFARE_LLM_ORCHESTRATOR`, spend-capped, emitting the identical `PlanResult`.
+  Bookings are staged as `requires_approval` intents — nothing books autonomously.
+- **Persona distillation** (`training/`) — the `persona` agent distilled from a Claude teacher
+  into a local **Qwen2.5-1.5B** via **LoRA on MLX**, with a stdlib-Python eval harness (schema
+  validity, Spearman ρ / Kendall τ-b rank agreement, per-slice error vs. constant- and
+  majority-class baselines). Read [`training/RESULTS.md`](../training/RESULTS.md) before
+  touching it: round 1 failed and the write-up says exactly why.
 
 ---
 
@@ -83,8 +99,19 @@ serialize to exactly those shapes.
 wayfare/
 ├── docs/                         authoritative specs + design/ + fixtures/  (index: docs/README.md)
 ├── packages/
-│   └── shared/src/               @wayfare/shared — THE frozen wire contract (TS types + Zod)
-│       common · listing · request · trip · budget · refinement · session · api · sse · auth
+│   ├── shared/src/               @wayfare/shared — THE frozen wire contract (TS types + Zod)
+│   │   common · listing · request · trip · budget · refinement · session · api · sse · auth
+│   ├── orchestrator/             @wayfare/orchestrator — the deterministic supervisor (DEFAULT)
+│   │   src/                      orchestrator · agents/ · providers/ · types · demo
+│   │   bench/fanout.ts           the bounded-fan-out benchmark (see the package README)
+│   └── orchestrator-llm/         @wayfare/orchestrator-llm — the same pipeline as LangGraph
+│       src/                      graph · nodes · state · tools · prompts · model · budget ·
+│                                 config · factory      (10 agent nodes + a widen step)
+│       scripts/                  gen-persona-data.ts — teacher labelling for training/
+├── training/                     Python 3.11 + MLX — persona distillation (Apple Silicon only)
+│   RESULTS.md                    the written-up result: two rounds, incl. a failed one
+│   train.sh · fuse.sh            LoRA train → fuse (⚠ --dequantize on a quantized base)
+│   eval.py · arm_stats.py        the eval harness + per-arm stats (pure stdlib; `--self-test`)
 └── apps/
     ├── server/src/               @wayfare/server — API + agent + mock integrations + auth
     │   index · app · config · errors · sse · dates · ids · rng

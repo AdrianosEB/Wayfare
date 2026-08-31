@@ -4,6 +4,11 @@ Distils the `persona` agent (free-text traveler signals → `PersonaSchema` weig
 from a Claude teacher into a local small model that `mlx_lm.server` can serve. Apple Silicon
 only: training is **MLX** — CUDA tooling (Unsloth, bitsandbytes, 4-bit QLoRA) does not apply.
 
+> **Looking for the outcome, not the recipe?** [`RESULTS.md`](RESULTS.md) is the write-up:
+> two rounds, what the student does and does not beat, and a first round that failed with a
+> healthy-looking loss curve over a degenerate target. It reports the misses as plainly as the
+> wins, and two of its own metrics are retracted in place.
+
 **Base model:** `mlx-community/Qwen2.5-1.5B-Instruct-4bit` (chosen for a 16 GB machine; use the
 3B at 24–32 GB, 7B at 36 GB+).
 

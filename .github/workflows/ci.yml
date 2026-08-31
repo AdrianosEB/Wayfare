@@ -29,3 +29,22 @@ jobs:
 
       - name: Test (golden fixtures, journeys, refine, HTTP)
         run: pnpm -r test
+
+  training-eval:
+    # The eval/reporting half of training/ is pure stdlib, so it is checkable on Linux.
+    # Training and serving are NOT: they are MLX, which is Apple Silicon only.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile the eval scripts
+        working-directory: training
+        run: python -m compileall -q .
+
+      - name: Rank statistics self-test (Spearman rho, Kendall tau-b)
+        working-directory: training
+        run: python eval.py --self-test

@@ -1,6 +1,6 @@
 # @wayfare/orchestrator-llm
 
-The same nine-agent pipeline as [`@wayfare/orchestrator`](../orchestrator/README.md), but every
+The same ten-agent pipeline as [`@wayfare/orchestrator`](../orchestrator/README.md), but every
 agent is a **real LLM agent** wired as a [LangGraph](https://langchain-ai.github.io/langgraphjs/)
 state graph.
 
