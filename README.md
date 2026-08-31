@@ -104,9 +104,9 @@ MVP is implemented end-to-end and wired together (`VITE_USE_MOCKS=0` talks to th
   This package is a supervisor *pattern* in pure TypeScript — zod-only, no graph runtime — and
   is the default and the fail-safe.
 - **The LangGraph path** ([`packages/orchestrator-llm`](packages/orchestrator-llm/README.md)) —
-  the same pipeline with every agent a **real LLM agent**, wired as a **10-node LangGraph
+  the same pipeline with every agent a **real LLM agent**, wired as a **10-agent LangGraph
   `StateGraph`** (`intake → persona → planQueries → search → verify → match → supervisor →
-  select → reprice → critic`). The critic's conditional edge loops back to `planQueries` with a
+  select → reprice → critic`, plus a non-agent `widen` step on the retry edge — 11 nodes). The critic's conditional edge loops back to `planQueries` with a
   widened breadth on failure — a genuine cycle over mutating state, which is why it is a graph
   and not a chain. Every node follows the same rule: **the agent decides, the tool computes** —
   no model does arithmetic or ranking in its head, it calls a tool already exported from
