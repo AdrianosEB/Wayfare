@@ -7,11 +7,15 @@ layer cross-checks findings at the source and re-prices the full itinerary befor
 it**, returning confirmed, bookable options at the low end of the price range — matched to the
 traveler's budget and personality, and graded by a self-check that re-runs on failure.
 
-> **Stack note:** this is implemented as a supervisor *pattern* in **TypeScript/Node** (with a
-> React client elsewhere in the monorepo), not a third-party graph runtime — there is no
-> LangGraph or Python here. The behavior below (supervisor fan-out, budget-pruned
-> branch-and-bound, source re-pricing) is real and tested; the technology names are called out
-> honestly so the code and its description match.
+> **Stack note:** *this package* is a supervisor *pattern* in **TypeScript/Node**, deliberately
+> dependency-light — zod only, no graph runtime, no Python. That is what keeps it fast to
+> install, fast to test, and trivially benchmarkable, and it stays the default and the
+> fail-safe. The LLM version of the same pipeline — every agent a real LLM agent on a 10-node
+> **LangGraph** `StateGraph` — lives next door in
+> [`@wayfare/orchestrator-llm`](../orchestrator-llm/README.md) and calls the functions below as
+> its tools. The behavior described here (supervisor fan-out, budget-pruned branch-and-bound,
+> source re-pricing) is real and tested; the technology names are called out per-package so the
+> code and its description match.
 
 > **This package stages, it never executes.** No booking is completed, no form is submitted,
 > and no hotel is called autonomously. Bookings and calls come out as `BookingIntent`s with
@@ -134,6 +138,36 @@ plan.budget;         // total === sum of lines
 plan.bookingIntents; // all status: "requires_approval"
 plan.trace;          // full audit trail of who did what
 ```
+
+## Bounded fan-out — the benchmark
+
+Fanning agents out across flight × stay × date combinations means a lot of concurrent provider
+calls, and a real provider answers that with a 429. Three mechanisms bound it: a **per-provider
+concurrency limiter** (metered per provider, never globally — a global cap would let one slow
+source starve the others), **request coalescing** (identical in-flight queries share one call),
+and a **five-minute TTL cache** on provider results.
+
+[`bench/fanout.ts`](bench/fanout.ts) measures what they buy. It wraps the mock providers in a
+decorator that adds ~60ms latency and throws a 429 past 6 concurrent calls *per provider*, then
+runs 40 concurrent plans over a destination list with heavy repeats — twice:
+
+```
+$ pnpm --filter @wayfare/orchestrator bench
+40 concurrent plans · providers throttled to 6 concurrent, ~60ms latency
+
+A. before  plans 40/40  429s  716  peak/provider 7  confirmed  4/40  withinBudget  6/40  options   95  wall 128ms
+B. after   plans 40/40  429s    0  peak/provider 4  confirmed 40/40  withinBudget 40/40  options  624  wall 186ms
+```
+
+**716 provider rate-limit errors → 0, and re-price-confirmed itineraries 4/40 → 40/40, for
++58ms of wall clock.**
+
+Read the right column, not the plan count. Both runs return 40/40 plans, because `runSearch`
+degrades rather than throwing — a plan that lost every provider call still comes back, just
+hollow. The honest measure is what *survived*: itineraries composed, budgets held, and
+itineraries actually confirmed at the source. And run A is "fast" only because failing fast is
+fast: a 429 returns instantly. Run B waits for real data, so its latency is higher, and that is
+the correct trade.
 
 ## Status & roadmap
 

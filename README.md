@@ -1,5 +1,7 @@
 # Wayfare
 
+[![CI](https://github.com/AdrianosEB/Wayfare/actions/workflows/ci.yml/badge.svg)](https://github.com/AdrianosEB/Wayfare/actions/workflows/ci.yml)
+
 > **A trip planned for you from one sentence.**
 
 Wayfare turns a single sentence ("a relaxed 8-day beach trip in Greece in late August for
@@ -10,16 +12,21 @@ the price math always on the table. See [docs/VISION.md](docs/VISION.md).
 
 ```
 wayfare/
-├── docs/               # authoritative specs (the frozen contract lives here)
+├── docs/                    # authoritative specs (the frozen contract lives here)
 ├── packages/
-│   ├── shared/         # @wayfare/shared — TS types + Zod schemas (the wire contract)
-│   └── orchestrator/   # @wayfare/orchestrator — self-verifying multi-agent travel engine
-└── apps/
-    ├── server/         # @wayfare/server — API + planning agent + background orchestration
-    └── web/            # React client (frontend session's lane)
+│   ├── shared/              # @wayfare/shared — TS types + Zod schemas (the wire contract)
+│   ├── orchestrator/        # @wayfare/orchestrator — self-verifying multi-agent travel engine
+│   └── orchestrator-llm/    # @wayfare/orchestrator-llm — the same pipeline as a 10-agent
+│                            #   LangGraph state graph, every node a real LLM agent (opt-in)
+├── apps/
+│   ├── server/              # @wayfare/server — API + planning agent + background orchestration
+│   └── web/                 # React client (frontend session's lane)
+└── training/                # Python/MLX LoRA distillation of the persona agent into a
+                             #   local 1.5B model, with its eval harness and written-up results
 ```
 
-- **pnpm workspaces, Node 20+, TypeScript everywhere.** API on `:3000`, web on `:5173`
+- **pnpm workspaces, Node 20+, TypeScript everywhere** for the app; **Python 3.11 + MLX** for
+  the model training in `training/`. API on `:3000`, web on `:5173`
   (proxies `/api` → `:3000`).
 - `packages/shared` is the single source of truth for the wire — see
   [docs/API_CONTRACT.md](docs/API_CONTRACT.md). Both apps import it; neither invents fields.
@@ -94,7 +101,24 @@ MVP is implemented end-to-end and wired together (`VITE_USE_MOCKS=0` talks to th
   confirmed, bookable options at the low end of the range. It runs as a **background job over
   SSE** in the server (`POST /api/orchestrate` → `GET /api/orchestrate/:id/events`). Bookings
   and hotel calls are staged as approval-required intents — nothing is booked autonomously.
-  Implemented as a supervisor *pattern* in TypeScript (no LangGraph/Python).
+  This package is a supervisor *pattern* in pure TypeScript — zod-only, no graph runtime — and
+  is the default and the fail-safe.
+- **The LangGraph path** ([`packages/orchestrator-llm`](packages/orchestrator-llm/README.md)) —
+  the same pipeline with every agent a **real LLM agent**, wired as a **10-node LangGraph
+  `StateGraph`** (`intake → persona → planQueries → search → verify → match → supervisor →
+  select → reprice → critic`). The critic's conditional edge loops back to `planQueries` with a
+  widened breadth on failure — a genuine cycle over mutating state, which is why it is a graph
+  and not a chain. Every node follows the same rule: **the agent decides, the tool computes** —
+  no model does arithmetic or ranking in its head, it calls a tool already exported from
+  `@wayfare/orchestrator`. Opt-in behind `WAYFARE_LLM_ORCHESTRATOR`, hard-capped on spend, and
+  it emits the identical `PlanResult`.
+- **Model distillation** ([`training/`](training/README.md)) — the `persona` agent distilled
+  from a Claude teacher into a **local 1.5B model (Qwen2.5-1.5B, LoRA via MLX)** to cut
+  inference cost, with a Python eval harness scoring schema validity, rank agreement
+  (Spearman ρ / Kendall τ-b), and per-slice error against constant- and majority-class
+  baselines. The write-up in [`training/RESULTS.md`](training/RESULTS.md) reports what worked
+  **and what didn't** — including a failed first round traced to one line in the teacher
+  prompt, and two retracted metrics.
 
 Next: real pricing providers behind the provider interface, then saved trips for logged-in
 users. See [docs/ROADMAP.md](docs/ROADMAP.md), [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md),
