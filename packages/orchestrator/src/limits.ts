@@ -340,9 +340,14 @@ export class SearchLimits<T = unknown> {
     const work = () =>
       this.limiterFor(providerId).run(() => {
         this.#upstreamCalls++;
-        return Promise.race([Promise.resolve(fn()), new Promise<never>((_,
-  reject) => AbortSignal.timeout(10_000).addEventListener(“abort”, () =>
-  reject(new Error(“provider call exceeded 10000ms”))))]).then((value) => {
+        return Promise.race([
+          Promise.resolve(fn()),
+          new Promise<never>((_, reject) =>
+            AbortSignal.timeout(10_000).addEventListener("abort", () =>
+              reject(new Error("provider call exceeded 10000ms")),
+            ),
+          ),
+        ]).then((value) => {
           this.#cache.set(key, value);
           return value;
         });
