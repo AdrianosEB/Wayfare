@@ -47,9 +47,11 @@ export function ExplorePage() {
 
   return (
     // Page composition, top to bottom: hero Section → stats → filters → grid → CTA.
-    // Base is `bg-surface` (a barely-cool off-white) rather than stark white, so the white
-    // cards/bands (bg-bg) lift off the page with their shadows instead of blending in.
-    <div className="min-h-full bg-surface">
+    // Base is `surface-2` (#EEF3FA) — the same cool light blue the home page stands on.
+    // `surface` (#F7F9FC) was too close to white to read as anything but white once you
+    // scrolled past the hero's azure wash, which left the page feeling stark. The white
+    // cards/bands (bg-bg) now have a tint to lift off, so their shadows actually register.
+    <div className="min-h-full bg-surface-2">
       <TopNav alwaysSolid />
       <main>
         {/* The hero gets its OWN <Section> so its centered max-w-site container aligns the

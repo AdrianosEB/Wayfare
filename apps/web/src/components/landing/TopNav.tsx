@@ -69,20 +69,34 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
 
         {/* Desktop: one Explore jump-link, then the CTA + auth. */}
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          {/* Lighter blue than the ink these shared with the bar; azure-600 still clears 4.7:1. */}
           <button
             type="button"
             onClick={goExplore}
             className={cn(
               'inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium transition focus-visible:ring-2',
-              solid ? 'text-ink hover:bg-surface' : 'text-white hover:bg-white/10',
+              solid ? 'text-azure-600 hover:bg-azure-50' : 'text-azure-100 hover:bg-white/10',
             )}
           >
             Explore
           </button>
-          <Button onClick={goPlan}>
+          {/*
+            The pale-azure primary, matching the home bar: azure-700 on azure-100 rather than
+            white on azure-500. One 36px height across the whole row.
+          */}
+          <button
+            type="button"
+            onClick={goPlan}
+            className={cn(
+              'inline-flex h-9 items-center rounded-pill border px-4 text-sm font-semibold transition focus-visible:ring-2',
+              solid
+                ? 'border-azure-200 bg-azure-100 text-azure-700 hover:bg-azure-200'
+                : 'border-white/30 bg-azure-100/90 text-azure-700 hover:bg-azure-100',
+            )}
+          >
             {MARKETING.hero.cta}
-          </Button>
-          <AuthControls onLight={!solid} className="ml-1" />
+          </button>
+          <AuthControls onLight={!solid} />
         </nav>
 
         {/* Mobile hamburger */}

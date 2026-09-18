@@ -26,7 +26,9 @@ export {
   AnthropicStructuredModel,
   DryRunModel,
   DryRunSkip,
+  LocalStructuredModel,
   SchemaValidationError,
+  extractJsonObject,
 } from "./model.js";
 export type { StructuredModel, StructuredCall, StructuredResult, TranscriptEntry } from "./model.js";
 

@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Photo } from '@/components/Photo';
 import { Chip } from '@/components/Chip';
-import { staggerChild } from '@/lib/motion';
+import { revealItem } from '@/lib/motion';
 import { images } from '@/lib/images';
 import { formatFrom } from './_shared';
 import type { SampleTrip } from '@/lib/content';
@@ -15,7 +15,7 @@ export function TripCard({ trip, onClick }: { trip: SampleTrip; onClick: () => v
   return (
     <motion.button
       type="button"
-      variants={staggerChild}
+      variants={revealItem}
       whileHover={reduce ? undefined : { y: -2 }}
       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
       onClick={onClick}

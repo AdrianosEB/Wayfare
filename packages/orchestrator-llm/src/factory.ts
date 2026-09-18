@@ -6,7 +6,12 @@ import {
   type TravelerProfile,
 } from "@wayfare/orchestrator";
 import { readConfig, type LlmConfig } from "./config.js";
-import { AnthropicStructuredModel, DryRunModel, type StructuredModel } from "./model.js";
+import {
+  AnthropicStructuredModel,
+  DryRunModel,
+  LocalStructuredModel,
+  type StructuredModel,
+} from "./model.js";
 import { AGENT_TOOLS } from "./prompts.js";
 import { LlmOrchestrator } from "./graph.js";
 
@@ -64,6 +69,9 @@ export function createOrchestrator(
 
 function buildModel(config: LlmConfig, env: NodeJS.ProcessEnv): StructuredModel | undefined {
   if (config.dryRun) return new DryRunModel(AGENT_TOOLS);
+  // A local OpenAI-compatible server wins over Anthropic and needs no key: this is the seam
+  // the distilled student in `training/fused` plugs into.
+  if (config.localBaseUrl) return new LocalStructuredModel(config, config.localBaseUrl);
   const key = env.ANTHROPIC_API_KEY;
   if (!key) return undefined;
   return new AnthropicStructuredModel(config, key);

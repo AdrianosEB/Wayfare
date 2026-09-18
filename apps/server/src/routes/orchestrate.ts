@@ -50,10 +50,23 @@ function labelFor(event: TraceEvent): string {
     case "persona": return "Learning your travel style…";
     case "search": return "Searching sources in parallel…";
     case "verify": return "Cross-checking listings for real prices…";
+    // supervisor + reprice were missing, so two of the nine agents reported the generic
+    // "Working…" and the trace read as if the pipeline had stalled twice.
+    case "supervisor": return "Composing whole-trip combinations…";
+    case "reprice": return "Re-checking prices before staging…";
     case "match": return "Matching to your budget…";
     case "critic": return "Double-checking the plan…";
     case "booking": return "Staging bookings for your approval…";
-    case "orchestrator": return event.event === "retry" ? "Refining and trying again…" : "Working…";
+    // The LangGraph path brackets its run as `llm` rather than `orchestrator`, and also emits
+    // per-agent `agent_usage` bookkeeping. Same wording as the deterministic bookends so the
+    // two paths read alike; `agent_usage` is telemetry the UI reads from `usage`, not a step.
+    case "llm":
+    case "orchestrator":
+      // The orchestrator brackets the run and drives retries, so its label is per-event.
+      if (event.event === "retry") return "Refining and trying again…";
+      if (event.event === "start") return "Starting the pipeline…";
+      if (event.event === "done") return "Finished — everything below needs your approval.";
+      return "Working…";
     default: return "Working…";
   }
 }

@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react';
 import { motion } from 'framer-motion';
-import { staggerContainer, staggerChild } from '@/lib/motion';
+import { revealContainer, revealItem, revealViewport } from '@/lib/motion';
 import { SparkleIcon, TagIcon, MapPinIcon, CheckIcon } from '@/components/icons';
 import { VALUE_CARDS } from '@/lib/content';
 import { Section } from './_shared';
@@ -23,10 +23,10 @@ export function ValueCards() {
       <h2 className="font-display text-3xl font-semibold text-ink">Why Wayfare</h2>
 
       <motion.div
-        variants={staggerContainer}
+        variants={revealContainer}
         initial="hidden"
         whileInView="show"
-        viewport={{ once: true, margin: '-80px' }}
+        viewport={revealViewport}
         className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2"
       >
         {VALUE_CARDS.map((card) => {
@@ -34,7 +34,7 @@ export function ValueCards() {
           return (
             <motion.div
               key={card.key}
-              variants={staggerChild}
+              variants={revealItem}
               className="rounded-lg border border-border bg-bg p-6 shadow-card"
             >
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-azure-50 text-[22px] text-azure-600">

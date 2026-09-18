@@ -2,7 +2,7 @@
   "name": "wayfare",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayfare — a trip planned for you from one sentence.",
+  "description": "Wayfare \u2014 a trip planned for you from one sentence.",
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
@@ -17,6 +17,7 @@
     "serve": "pnpm build:single && pnpm start",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "serve:student": "training/.venv/bin/python -m mlx_lm.server --model \"$PWD/training/fused-A\" --port 8080"
   }
 }

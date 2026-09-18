@@ -601,6 +601,10 @@ async function main(): Promise<void> {
       dryRun: false,
       maxPasses: 1,
       model,
+      // Labels come from the Anthropic teacher by definition — never route this script at the
+      // local student, or it would be distilling from itself.
+      localBaseUrl: undefined,
+      localModel: "unused",
     };
 
     const inner = opts.dryRun ? null : new AnthropicStructuredModel(budgetCfg, apiKey!);

@@ -33,9 +33,19 @@ const CURATED: Record<string, string> = {
   paris: u('1502602898657-3e91760cbb34'),
   barcelona: u('1583422409516-2895a77efded'),
   valencia: u('1583422409516-2895a77efded'),
+  // Aegean set added for the /collection chapters. Each verified 200 before committing —
+  // scripts/build-lqip.sh re-checks them and fails the build if one ever rots.
+  aegean_port: u('1603182673190-4270225080e0'),
+  aegean_table: u('1639244132045-94c307ff4bfc'),
+  cyclades_alley: u('1630490866118-5805daf1954d'),
+  aegean_terrace: u('1537182534312-f945134cce34'),
+
   // budget showcase destinations
   sofia: u('1601581875309-fafbf2d3ed3a'),
-  krakow: u('1606992894456-799462dc3b3a'),
+  // The previously curated ID (…-799462dc3b3a) 404s — a corrupted hash suffix; the real
+  // photo is …-799462dacd65. Verified 200 before swapping, because the deterministic
+  // fallback silently served Kraków a Santorini photo, which looks like working code.
+  krakow: u('1606992894456-799462dacd65'),
   budapest: u('1565426873118-a17ed65d74b9'),
   prague: u('1541849546-216549ae216d'),
   porto: u('1555881400-74d7acaacd8b'),
@@ -61,7 +71,8 @@ const CURATED: Record<string, string> = {
   boat: u('1544551763-46a013bb70d5'),
   food: u('1414235077428-338989a2e8c0'),
   meal: u('1414235077428-338989a2e8c0'),
-  museum: u('1565060169194-19fabf63012c'),
+  // Previous ID 404'd (same corrupted-suffix failure as krakow). Verified 200 before swap.
+  museum: u('1498473956271-69e18b4dde5a'),
   ruins: u('1555993539-1732b0258235'),
   viewpoint: u('1502602898657-3e91760cbb34'),
   hike: u('1551632811-561732d1e306'),

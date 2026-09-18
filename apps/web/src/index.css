@@ -95,14 +95,33 @@
     scrollbar-width: none;
   }
 
-  /* Scrim gradient for legible text over hero photography. */
-  .bg-scrim {
+  /*
+   * Scrim gradient for legible text over photography.
+   *
+   * Deliberately NOT named `.bg-scrim`: `scrim` is also registered as a colour in
+   * tailwind.config.ts, so Tailwind emits its own `.bg-scrim { background-color: ... }`
+   * with no alpha. The two collide, the opaque colour wins, and every photo behind one
+   * disappears behind a solid slate block. The colour token is still the right tool when
+   * you want an alpha modifier (`bg-scrim/45`); this utility is for the gradient.
+   */
+  .photo-scrim {
     background-image: linear-gradient(
       to top,
       rgb(var(--scrim) / 0.7) 0%,
       rgb(var(--scrim) / 0.35) 45%,
       rgb(var(--scrim) / 0.15) 100%
     );
+  }
+
+  /*
+   * Two very soft azure radial washes. Kept at <10% alpha on purpose: TOKENS.md §6 wants
+   * white to carry ~90% of any screen and azure reserved for brand and interactive
+   * elements, so this reads as depth rather than as a coloured panel.
+   */
+  .section-glow {
+    background-image:
+      radial-gradient(55% 45% at 12% 0%, rgb(var(--azure-500) / 0.09), transparent 70%),
+      radial-gradient(45% 40% at 88% 18%, rgb(var(--azure-400) / 0.07), transparent 72%);
   }
 
   .snap-x-mandatory {

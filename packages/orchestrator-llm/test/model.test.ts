@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ChatAnthropic } from "@langchain/anthropic";
-import { anthropicChatOptions } from "../src/model.js";
+import { z } from "zod";
+import {
+  LocalStructuredModel,
+  SchemaValidationError,
+  anthropicChatOptions,
+  extractJsonObject,
+} from "../src/model.js";
 import type { LlmConfig } from "../src/config.js";
 
 /**
@@ -24,6 +30,8 @@ const cfg = (model: string): LlmConfig => ({
   dryRun: false,
   maxPasses: 1,
   model,
+  localBaseUrl: undefined,
+  localModel: "unused",
 });
 
 /** What actually goes on the wire: JSON serialisation drops undefined-valued keys. */
@@ -48,5 +56,115 @@ describe("anthropicChatOptions — sampling params must never reach the wire", (
     const params = wireParams("claude-sonnet-5");
     expect(params.model).toBe("claude-sonnet-5");
     expect(params.max_tokens).toBe(4096);
+  });
+});
+
+/* --------------------------------------------------------------------------- *
+ * The local student seam. `training/` produces a model that mlx_lm.server can
+ * serve; these cover the two things that path gets wrong in practice — a small
+ * model wrapping its JSON in prose, and an off-schema answer that must degrade
+ * rather than be coerced.
+ * --------------------------------------------------------------------------- */
+
+describe("extractJsonObject — a 1.5B student does not always return bare JSON", () => {
+  it("reads a bare object", () => {
+    expect(extractJsonObject('{"a":1}')).toEqual({ a: 1 });
+  });
+
+  it("reads an object out of a ```json fence", () => {
+    expect(extractJsonObject('```json\n{"a":1}\n```')).toEqual({ a: 1 });
+  });
+
+  it("reads an object with prose either side", () => {
+    expect(extractJsonObject('Sure! {"a":1} hope that helps')).toEqual({ a: 1 });
+  });
+
+  it("stops at the matching brace, ignoring trailing garbage", () => {
+    // RESULTS.md records exactly this mode: valid JSON followed by `""}` or `"}"}`.
+    expect(extractJsonObject('{"a":{"b":2}}""}')).toEqual({ a: { b: 2 } });
+  });
+
+  it("does not miscount braces inside strings or escapes", () => {
+    expect(extractJsonObject('{"s":"a{b}c \\" }","n":1}')).toEqual({ s: 'a{b}c " }', n: 1 });
+  });
+
+  it("returns undefined when there is no balanced object", () => {
+    expect(extractJsonObject('{"a":1')).toBeUndefined();
+    expect(extractJsonObject("no json here")).toBeUndefined();
+  });
+});
+
+describe("LocalStructuredModel", () => {
+  const schema = z.object({ pace: z.enum(["relaxed", "moderate", "packed"]) }).strict();
+
+  function modelReturning(content: string, usage?: unknown) {
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    const fetchStub = (async (url: string, init: { body: string }) => {
+      calls.push({ url, body: JSON.parse(init.body) as Record<string, unknown> });
+      return {
+        ok: true,
+        json: async () => ({ choices: [{ message: { content } }], usage }),
+      };
+    }) as unknown as typeof fetch;
+    const original = globalThis.fetch;
+    globalThis.fetch = fetchStub;
+    const restore = () => {
+      globalThis.fetch = original;
+    };
+    return { model: new LocalStructuredModel(cfg("local"), "http://localhost:8080/"), calls, restore };
+  }
+
+  const call = { agent: "persona" as const, system: "SYS", user: "USR", schema };
+
+  it("posts to the OpenAI-compatible path and returns the parsed value", async () => {
+    const { model, calls, restore } = modelReturning('{"pace":"relaxed"}', {
+      prompt_tokens: 11,
+      completion_tokens: 7,
+    });
+    try {
+      const out = await model.invoke(call);
+      expect(out.value).toEqual({ pace: "relaxed" });
+      // provider-reported usage is preferred over an estimate
+      expect(out.inputTokens).toBe(11);
+      expect(out.outputTokens).toBe(7);
+      // trailing slash on the base URL must not double up
+      expect(calls[0]!.url).toBe("http://localhost:8080/v1/chat/completions");
+      expect(calls[0]!.body.messages).toEqual([
+        { role: "system", content: "SYS" },
+        { role: "user", content: "USR" },
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("decodes greedily — sampling only adds schema violations for a distilled student", async () => {
+    const { model, calls, restore } = modelReturning('{"pace":"relaxed"}');
+    try {
+      await model.invoke(call);
+      expect(calls[0]!.body.temperature).toBe(0);
+    } finally {
+      restore();
+    }
+  });
+
+  it("throws SchemaValidationError on an off-schema answer rather than coercing", async () => {
+    // The real failure this guards: `training/fused` emits pace as an array, and the caller
+    // (decide()) must be able to fall back to the deterministic agent.
+    const { model, restore } = modelReturning('{"pace":["family-friendly","relaxed"]}');
+    try {
+      await expect(model.invoke(call)).rejects.toThrow(SchemaValidationError);
+    } finally {
+      restore();
+    }
+  });
+
+  it("throws when the response carries no JSON at all", async () => {
+    const { model, restore } = modelReturning("I am afraid I cannot help with that.");
+    try {
+      await expect(model.invoke(call)).rejects.toThrow(SchemaValidationError);
+    } finally {
+      restore();
+    }
   });
 });

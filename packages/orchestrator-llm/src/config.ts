@@ -37,6 +37,16 @@ export interface LlmConfig {
   /** LLM path retries less than the deterministic one — each pass is ~10 calls. */
   maxPasses: number;
   model: string;
+  /**
+   * Base URL of an OpenAI-compatible server to use INSTEAD of Anthropic — set this to the
+   * `mlx_lm.server` serving `training/fused`, and the persona agent runs on the locally
+   * distilled student instead of a frontier model. No API key is involved.
+   *
+   * Absent → Anthropic, exactly as before.
+   */
+  localBaseUrl: string | undefined;
+  /** Model name to send to that server. `mlx_lm.server` accepts the served path. */
+  localModel: string;
 }
 
 const TRUE = (v: string | undefined): boolean => v === "true";
@@ -74,5 +84,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig {
     dryRun: TRUE(env.WAYFARE_LLM_DRY_RUN),
     maxPasses: parsePositiveInt(env.WAYFARE_LLM_MAX_PASSES, 2),
     model: env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
+    localBaseUrl: env.WAYFARE_LOCAL_MODEL_URL?.trim() || undefined,
+    localModel: env.WAYFARE_LOCAL_MODEL ?? "local-student",
   };
 }

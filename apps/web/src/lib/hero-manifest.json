@@ -1,0 +1,32 @@
+{
+  "version": "1a0b19b6c00",
+  "frames": 151,
+  "pad": 4,
+  "start": 1,
+  "formats": [
+    "webp"
+  ],
+  "basename": "frame",
+  "variants": {
+    "desktop": {
+      "dir": "/hero/desktop",
+      "width": 1440,
+      "height": 810,
+      "bytes": 8071698
+    },
+    "mobile": {
+      "dir": "/hero/mobile",
+      "width": 960,
+      "height": 540,
+      "bytes": 4532268
+    }
+  },
+  "poster": {
+    "desktop": "/hero/poster-desktop.jpg",
+    "mobile": "/hero/poster-mobile.jpg"
+  },
+  "source": {
+    "duration": 5,
+    "fps": 30
+  }
+}

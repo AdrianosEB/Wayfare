@@ -41,7 +41,7 @@ export function TestimonialCarousel() {
               alt={`${current.tripTaken}`}
               className="absolute inset-0 h-full w-full"
             />
-            <span className="absolute inset-0 bg-scrim" aria-hidden />
+            <span className="photo-scrim absolute inset-0" aria-hidden />
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={index}

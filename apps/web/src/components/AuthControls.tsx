@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/store/auth';
 import { cn } from '@/lib/cn';
-import { Button } from './Button';
 import { AuthModal, type AuthMode } from './AuthModal';
 
 /**
@@ -43,19 +42,33 @@ export function AuthControls({ onLight = false, className }: AuthControlsProps) 
         <span aria-hidden className="h-9 w-px" />
       ) : (
         <>
+          {/*
+            Log in and Sign up are a tertiary/primary pair at one height.
+            Sign up used to render the full-size <Button> (h-11, filled azure-500), which made
+            it a pixel-identical twin of the nav's own "Plan my trip" CTA sitting right beside
+            it — two competing primaries, and a bar with three different control heights. It is
+            now a 36px pill that matches every other control in the row.
+          */}
           <button
             type="button"
             onClick={() => openModal('login')}
             className={cn(
-              'rounded-pill px-3.5 py-2 text-sm font-semibold transition focus-visible:ring-2',
-              onLight
-                ? 'text-white/90 hover:bg-white/10 hover:text-white'
-                : 'text-azure-700 hover:bg-azure-50',
+              'inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium transition focus-visible:ring-2',
+              onLight ? 'text-white/90 hover:bg-white/10 hover:text-white' : 'text-ink-2 hover:bg-surface',
             )}
           >
             Log in
           </button>
-          <Button onClick={() => openModal('signup')}>Sign up</Button>
+          <button
+            type="button"
+            onClick={() => openModal('signup')}
+            className={cn(
+              'inline-flex h-9 items-center rounded-pill px-4 text-sm font-semibold transition focus-visible:ring-2',
+              'bg-azure-500 text-white hover:bg-azure-600',
+            )}
+          >
+            Sign up
+          </button>
         </>
       )}
 

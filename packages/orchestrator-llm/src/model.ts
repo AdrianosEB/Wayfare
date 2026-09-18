@@ -169,3 +169,117 @@ export class AnthropicStructuredModel implements StructuredModel {
     return { value: parsed.data, inputTokens, outputTokens };
   }
 }
+
+/* ----------------------------------------------------------- local student --- */
+
+/**
+ * Extract the first complete JSON object from a completion.
+ *
+ * A 1.5B student does not always return bare JSON — it may wrap it in a ```json fence or add a
+ * sentence either side. Scanning for the first balanced `{...}` (string- and escape-aware, so a
+ * brace inside a quoted value never miscounts) recovers the object in all of those cases. If
+ * there is no balanced object the caller throws a normal validation error and the node falls
+ * back to its deterministic implementation.
+ */
+export function extractJsonObject(text: string): unknown {
+  const start = text.indexOf("{");
+  if (start === -1) return undefined;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      if (inString) escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(text.slice(start, i + 1));
+        } catch {
+          return undefined;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The locally distilled student, served over an OpenAI-compatible endpoint (`mlx_lm.server`).
+ *
+ * This is the runtime half of `training/` — until now the fine-tune had no way into the app.
+ * It sends `system` and `user` verbatim, which matters: `gen-persona-data.ts` built the training
+ * set from the *exact* prompt the production node sends, so sending anything else here would put
+ * the student off its training distribution.
+ *
+ * Structured output is not requested via a provider binding (mlx_lm has no equivalent of
+ * Anthropic's tool-schema forcing). The student was trained to answer with a bare JSON object,
+ * so the response is parsed and then validated against the same shared schema the Anthropic
+ * path uses — an off-schema answer surfaces as a validation failure and `decide()` degrades to
+ * the deterministic agent, never a silent coercion.
+ */
+export class LocalStructuredModel implements StructuredModel {
+  constructor(
+    private readonly config: LlmConfig,
+    private readonly baseUrl: string,
+  ) {}
+
+  async invoke<T>(call: StructuredCall<T>): Promise<StructuredResult<T>> {
+    const url = `${this.baseUrl.replace(/\/+$/, "")}/v1/chat/completions`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.config.localModel,
+        messages: [
+          { role: "system", content: call.system },
+          { role: "user", content: call.user },
+        ],
+        // Greedy: the student was distilled toward one target per input, so sampling only adds
+        // schema violations. Deterministic decoding also keeps plans reproducible.
+        temperature: 0,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`local model ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    }
+
+    const body = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    const content = body.choices?.[0]?.message?.content ?? "";
+    const raw = extractJsonObject(content);
+
+    // Same contract as the Anthropic path: wireSchema (if any) is the laxer provider-facing
+    // shape, `repair` may only move a value, and `call.schema` remains what downstream sees.
+    const wire = call.wireSchema ?? call.schema;
+    const onWire = wire.safeParse(raw);
+    const candidate = onWire.success ? onWire.data : raw;
+    const parsed = call.schema.safeParse(call.repair ? call.repair(candidate) : candidate);
+    if (!parsed.success) throw new SchemaValidationError(call.agent, parsed.error.issues);
+
+    return {
+      value: parsed.data,
+      inputTokens:
+        body.usage?.prompt_tokens ?? Math.ceil((call.system.length + call.user.length) / 4),
+      outputTokens: body.usage?.completion_tokens ?? Math.ceil(content.length / 4),
+    };
+  }
+}

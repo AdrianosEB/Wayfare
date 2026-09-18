@@ -2,12 +2,13 @@ import express, { type Application, type NextFunction, type Request, type Respon
 import cookieParser from "cookie-parser";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { ZodError } from "zod";
 import { AppError } from "./errors.js";
 import { createSessionRouter, type RouteDeps } from "./routes/session.js";
 import { createOrchestrateRouter } from "./routes/orchestrate.js";
 import { InMemoryOrchestrationJobStore } from "./orchestration/jobStore.js";
+import { readConfig as readLlmConfig } from "@wayfare/orchestrator-llm";
 import { createAuthRouter, createInMemoryAuthDeps, type AuthDeps } from "./auth/index.js";
 
 /**
@@ -20,7 +21,20 @@ export function createApp(deps: RouteDeps): Application {
   app.use(cookieParser());
 
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", planner: deps.useAgent ? "agent" : "deterministic" });
+    // `planner` describes the /session path. `orchestrator` describes the /orchestrate path,
+    // which is configured separately — reporting only the former made it look like the LLM
+    // agents were off when they were running. `model` is a name, never a key or a URL secret.
+    const llm = readLlmConfig();
+    res.json({
+      status: "ok",
+      planner: deps.useAgent ? "agent" : "deterministic",
+      orchestrator: {
+        llm: llm.enabled,
+        agents: llm.enabled ? [...llm.agents] : [],
+        runtime: llm.localBaseUrl ? "local" : "anthropic",
+        model: llm.localBaseUrl ? basename(llm.localModel) : llm.model,
+      },
+    });
   });
 
   // Auth is additive: mounted alongside the planner, never gating it. If the caller didn't

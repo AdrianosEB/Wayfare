@@ -38,3 +38,9 @@ training/**/*.npz
 .venv/
 
 # temporary orchestration scaffolding for the persona-distillation run (deleted at finish)
+
+# The hero frame set is committed as WebP only. `pnpm frames` also writes a jpg fallback for
+# pre-2020 browsers; that tripled git history for browsers nobody runs, so it is generated
+# locally and ignored here. `hero-manifest.json` declares formats: ["webp"] to match, and a
+# browser that cannot decode WebP gets the committed poster instead of the scrub.
+apps/web/public/hero/*/frame*.jpg

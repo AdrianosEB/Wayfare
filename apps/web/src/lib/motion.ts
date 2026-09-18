@@ -88,5 +88,38 @@ export const sheet: Variants = {
   exit: { opacity: 0, y: 24, transition: { duration: 0.2 } },
 };
 
+/**
+ * Scroll reveal for marketing sections — a slightly larger, slower move than `staggerChild`,
+ * which was tuned for in-app lists where things should appear briskly. On a landing page the
+ * content is the event, so it gets 24px of travel and ~0.5s to settle.
+ *
+ * Always drive these from `whileInView` with `revealViewport` (i.e. `once: true`). Per the
+ * guardrail above, that is what makes them safe: the IntersectionObserver re-fires and
+ * self-heals, so content can never get stranded near opacity 0.
+ */
+export const revealContainer: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.03 } },
+};
+
+/**
+ * The slight scale is what separates "appears" from "settles" — travel alone reads as a
+ * slide, while a 1.5% scale-up alongside it reads as the card coming to rest. Both are
+ * compositor-only properties (transform + opacity), so a full grid staggering in never
+ * touches layout or paint.
+ */
+export const revealItem: Variants = {
+  hidden: { opacity: 0, y: 22, scale: 0.985 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.58, ease: EASE },
+  },
+};
+
+/** Shared viewport config: fire once, slightly before the element is fully on screen. */
+export const revealViewport = { once: true, margin: '-80px' } as const;
+
 /** Hover lift for TripCard / StayCard. */
 export const cardHover = { whileHover: { y: -2 }, transition: { duration: 0.18, ease: EASE } };
