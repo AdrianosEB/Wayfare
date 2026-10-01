@@ -4,8 +4,7 @@ import { formatMoney } from '@/lib/format';
 import { SourceChip } from './SourceChip';
 
 /**
- * A price + its provenance, always together. The amount uses tabular figures; the
- * SourceChip carries source + freshness. The combined SR label reads them as one unit
+ * A price with its SourceChip. The combined SR label reads them as one unit
  * ("€620, Estimated price") per the a11y target in DESIGN_SYSTEM.md.
  */
 export interface PriceProps {

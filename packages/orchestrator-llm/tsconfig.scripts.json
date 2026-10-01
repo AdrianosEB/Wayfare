@@ -1,7 +1,6 @@
 {
-  // The build tsconfig pins rootDir to ./src so dist/ stays flat. Scripts are run through tsx and
-  // never emitted, so they get their own no-emit project — otherwise they'd sit outside every
-  // tsconfig and go silently untypechecked, which is how a data-generation script rots.
+  // The build tsconfig pins rootDir to ./src so dist/ stays flat. Scripts run through tsx and are
+  // never emitted, so they get their own no-emit project. Otherwise nothing would typecheck them.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,

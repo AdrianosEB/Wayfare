@@ -7,10 +7,9 @@ import { MARKETING } from '@/lib/content';
 import { Section } from './_shared';
 
 /**
- * "All-in-one planner" — two-column section. Left is the pitch + a single primary CTA.
- * Right is a static, non-interactive product-shot mock of an itinerary plus an azure budget
- * panel. The mock's prices carry an "Estimated" source dot — it reinforces the honest-budget
- * differentiator and never claims a live/bookable price. (Not the real planner components.)
+ * "All-in-one planner": two-column section. Left is the pitch + a single primary CTA. Right
+ * is a static product-shot mock (not the real planner components). The mock's prices carry
+ * an "Estimated" source dot and never claim a live/bookable price.
  */
 export function AllInOne() {
   return (
@@ -22,7 +21,7 @@ export function AllInOne() {
           </h2>
           <p className="mt-4 max-w-md leading-relaxed text-ink-2">
             Describe the trip, answer a couple of quick questions, and watch the whole plan come
-            together — every price sourced and dated, with a running total you can trust.
+            together: every price sourced and dated, with a running total you can trust.
           </p>
           <div className="mt-8">
             <Button size="lg" onClick={() => navigate(planHref())}>
@@ -37,7 +36,7 @@ export function AllInOne() {
   );
 }
 
-/** Static styled mock — an itinerary preview + an azure budget panel. Decorative. */
+/** Static styled mock: an itinerary preview + an azure budget panel. Decorative. */
 function ProductShot() {
   return (
     <div className="relative" aria-hidden>
@@ -70,7 +69,7 @@ function ProductShot() {
             <span className="text-xs font-medium uppercase tracking-wide text-azure-700">Running total</span>
             <span className="tnum font-display text-2xl font-semibold text-azure-700">€2,410</span>
           </div>
-          {/* budget bar — comfortably under a €2,500 target */}
+          {/* budget bar, comfortably under a €2,500 target */}
           <div className="mt-3 h-2 w-full overflow-hidden rounded-pill bg-azure-100">
             <div className="h-full rounded-pill bg-azure-500" style={{ width: '96%' }} />
           </div>

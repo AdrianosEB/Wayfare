@@ -13,11 +13,10 @@ import { SparkleIcon } from './icons';
 /**
  * The in-app planner (docs/design/SCREENS.md) + responsive shell.
  *  - Empty state: centered hero prompt.
- *  - Desktop (lg+): split — chat ~40% left, plan + docked azure budget ~60% right.
+ *  - Desktop (lg+): chat ~40% left, plan + docked budget ~60% right.
  *  - Mobile: plan on top, chat below, budget as a sticky bottom bar (MobileBudgetBar).
  *
- * Seeding: a `/plan/:type` route or `?seed=…&go=1` query (from the landing hero / trip cards)
- * pre-fills or auto-starts the prompt on first mount.
+ * A `/plan/:type` route or `?seed=…&go=1` query pre-fills or auto-starts the prompt on mount.
  */
 export function Planner() {
   const phase = useSession((s) => s.phase);
@@ -131,7 +130,7 @@ function PlanPlaceholder() {
       </span>
       <p className="text-sm font-semibold text-ink">Your plan will appear here</p>
       <p className="mt-1 max-w-xs text-sm text-ink-2">
-        Answer or skip the questions on the left and Wayfare will start assembling your trip —
+        Answer or skip the questions on the left and Wayfare will start assembling your trip:
         flights, stay and days, with the budget adding up live.
       </p>
     </div>

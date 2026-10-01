@@ -9,36 +9,28 @@ import {
 /**
  * Preloads and decodes a numbered frame sequence for canvas scrubbing.
  *
- * Two deliberate choices shape this hook:
+ * Decoded frames live in a ref, not state. The render loop reads `framesRef.current`
+ * directly, so only `decoded` / `ready` / `error` cause re-renders, and `decoded` is batched
+ * every `REPORT_EVERY` frames.
  *
- * 1. **Decoded frames live in a ref, not state.** The render loop reads
- *    `framesRef.current` directly, so decoding 150 frames causes *zero* re-renders for
- *    frame data. Only `decoded` / `ready` / `error` are state — and `decoded` is batched
- *    every `REPORT_EVERY` frames, because a progress readout does not need 150 renders.
+ * `createImageBitmap` is used where available: it decodes off the main thread, so
+ * `drawImage` during a scrub never pays decode cost. The `<img>` path is the fallback.
  *
- * 2. **`createImageBitmap` where available.** It decodes off the main thread and hands back
- *    an already-rasterised bitmap, so `drawImage` during a scrub never pays decode cost on
- *    the frame it is trying to hit. The `<img>` path is a fallback, not the plan.
- *
- * Bitmaps are explicitly `close()`d on unmount. `ImageBitmap` holds memory outside the JS
- * heap that the GC will not reclaim for you, and 150 × 1920px frames is not a rounding
- * error — leaving them open is how a landing page ends up holding ~400MB.
+ * Bitmaps are `close()`d on unmount. `ImageBitmap` memory lives outside the JS heap, and
+ * 150 frames at 1920px can hold ~400MB if left open.
  */
 
 /** Anything `CanvasRenderingContext2D.drawImage` accepts that we actually produce. */
 export type DecodedFrame = ImageBitmap | HTMLImageElement;
 
-/** Parallel in-flight requests. Enough to saturate a connection, few enough that the
- *  browser's own per-host queue stays useful and frame 0 is not stuck behind frame 140. */
+/** Parallel in-flight requests. Few enough that frame 0 is not stuck behind frame 140 in
+ *  the browser's per-host queue. */
 const CONCURRENCY = 6;
 /**
- * Fraction of frames that must be decoded before scrubbing engages.
- *
- * Not 0.9. Frames are claimed in ascending order, so a decoded prefix is exactly what a
- * visitor scrubbing forward consumes first, and `nearest()` bridges anything still in
- * flight. Waiting for near-complete decode instead means that on a slow connection the
- * hero is very often still unarmed by the time someone scrolls — and an effect that does
- * not arm is worse than one that is briefly a little chunky at the far end.
+ * Fraction of frames that must be decoded before scrubbing engages. Frames are claimed in
+ * ascending order, so a decoded prefix is what a visitor scrubbing forward needs first, and
+ * `nearest()` covers anything still in flight. A higher ratio leaves the hero unarmed on
+ * slow connections by the time someone scrolls.
  */
 const READY_RATIO = 0.4;
 /** Re-render cadence for the `decoded` counter. */
@@ -48,11 +40,11 @@ export interface FrameSequenceHandle {
   /** Sparse until loading completes. Index-aligned with frame index (0-based). */
   framesRef: React.MutableRefObject<(DecodedFrame | undefined)[]>;
   /**
-   * Nearest decoded frame to `index`, searching outward. Lets the canvas degrade to a
-   * chunkier scrub on a half-loaded set instead of stalling on a hole.
+   * Nearest decoded frame to `index`, searching outward, so a half-loaded set scrubs
+   * coarsely instead of stalling on a hole.
    */
   nearest: (index: number) => DecodedFrame | undefined;
-  /** Frames decoded so far (batched — see REPORT_EVERY). */
+  /** Frames decoded so far (batched, see REPORT_EVERY). */
   decoded: number;
   total: number;
   /** True once enough frames are decoded to scrub without visible stalling. */
@@ -66,8 +58,8 @@ function loadViaImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {
-      // Best-effort: force the decode now rather than on first paint. Failure here is
-      // not fatal — the image is loaded either way.
+      // Best-effort: force the decode now instead of on first paint. The image is loaded
+      // either way.
       const decoded = typeof img.decode === 'function' ? img.decode() : Promise.resolve();
       decoded.then(
         () => resolve(img),
@@ -96,12 +88,10 @@ function releaseFrames(frames: (DecodedFrame | undefined)[]) {
 }
 
 /**
- * @param manifest  Stable manifest object — treated as an identity-compared dependency,
- *                  so pass an imported/memoised value, never a fresh literal.
+ * @param manifest  Compared by identity, so pass an imported/memoised value, never a fresh
+ *                  literal.
  * @param variant   Which resolution set to pull.
- * @param enabled   When false, nothing is requested at all. This is the switch that keeps
- *                  reduced-motion, narrow, and slow-connection visitors from paying for
- *                  bytes they will never see.
+ * @param enabled   When false, nothing is requested.
  */
 export function useFrameSequence(
   manifest: SequenceManifest,
@@ -124,10 +114,9 @@ export function useFrameSequence(
 
     (async () => {
       const webp = await supportsWebP();
-      // The repo ships a webp-only frame set (the jpg fallback tripled git history for
-      // browsers released before ~2020). So when the manifest offers nothing this browser can
-      // decode, request nothing: downloading 151 undecodable frames to end up on the poster
-      // anyway is pure waste. `decideSequence` already routes such a visitor to the poster.
+      // The repo ships a webp-only frame set (the jpg fallback tripled git history). When
+      // the manifest offers nothing this browser can decode, request nothing.
+      // `decideSequence` already routes such a visitor to the poster.
       const decodable = manifest.formats.filter((f) => f !== 'webp' || webp);
       const preferred = webp
         ? decodable.find((f) => f === 'webp')
@@ -137,9 +126,8 @@ export function useFrameSequence(
       // No decodable format (or an empty `formats`, i.e. a malformed manifest): request nothing.
       if (cancelled || !format) return;
 
-      // Ordered work queue: a shared cursor consumed by CONCURRENCY workers. Frames are
-      // claimed in ascending order so the early frames — the ones a visitor sees first —
-      // land first, and `nearest()` has something useful to fall back on immediately.
+      // Shared cursor consumed by CONCURRENCY workers. Frames are claimed in ascending
+      // order so the ones a visitor sees first land first.
       let cursor = 0;
       const worker = async () => {
         while (!cancelled) {
@@ -159,8 +147,8 @@ export function useFrameSequence(
             frames[index] = frame;
           } catch (err) {
             if (cancelled || controller.signal.aborted) return;
-            // A single missing frame is survivable — `nearest()` bridges the gap. Only
-            // report it so the failure is visible in dev rather than silently smoothed over.
+            // A single missing frame is survivable (`nearest()` bridges the gap), so only
+            // warn in dev.
             if (import.meta.env.DEV) console.warn('[ScrollSequence]', err);
           }
           done += 1;

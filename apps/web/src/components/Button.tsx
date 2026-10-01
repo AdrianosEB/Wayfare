@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 /**
- * The azure button system — docs/design/TOKENS.md §4 + COMPONENTS.md.
+ * The azure button system: docs/design/TOKENS.md §4 + COMPONENTS.md.
  * One primary azure CTA per view; never stack azure buttons.
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'pill';

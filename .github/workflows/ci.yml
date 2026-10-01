@@ -31,8 +31,8 @@ jobs:
         run: pnpm -r test
 
   training-eval:
-    # The eval/reporting half of training/ is pure stdlib, so it is checkable on Linux.
-    # Training and serving are NOT: they are MLX, which is Apple Silicon only.
+    # The eval/reporting scripts in training/ are pure stdlib, so they run on Linux.
+    # Training and serving need MLX (Apple Silicon only).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

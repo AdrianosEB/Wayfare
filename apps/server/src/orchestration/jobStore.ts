@@ -9,14 +9,11 @@ import { createOrchestrator } from "@wayfare/orchestrator-llm";
 import { makeId } from "../ids.js";
 
 /**
- * Background orchestration jobs. `POST /api/orchestrate` kicks a plan off here and returns a
- * jobId immediately — the orchestration runs *in the background* while the client watches its
- * progress over SSE (or polls). The orchestrator's own Tracer.onEvent hook feeds each agent's
- * step into the job's event buffer as it happens, so a late subscriber can replay everything
- * from the start and then follow live.
+ * Background orchestration jobs. `POST /api/orchestrate` starts a plan here and returns a jobId;
+ * the client follows progress over SSE or by polling. Trace events are buffered per job so a
+ * late subscriber can replay from the start and then follow live.
  *
- * In-memory MVP behind an interface, mirroring InMemorySessionStore — swap for Redis/a queue
- * when jobs need to outlive the process.
+ * In-memory behind an interface, like InMemorySessionStore. Jobs don't outlive the process.
  */
 
 export type JobStatus = "running" | "done" | "error";
@@ -45,8 +42,8 @@ export interface OrchestrationJobStore {
   get(id: string): OrchestrationJob | undefined;
   /**
    * Replays the job's buffered events to `listener` synchronously, then streams future ones.
-   * Returns an unsubscribe fn. Safe against races: emission only happens in async
-   * continuations, so nothing fires between the synchronous replay and registration.
+   * Returns an unsubscribe fn. Events are only emitted from async continuations, so none can
+   * slip in between the replay and registration.
    */
   subscribe(id: string, listener: JobListener): () => void;
 }
@@ -80,7 +77,7 @@ export class InMemoryOrchestrationJobStore implements OrchestrationJobStore {
       },
     });
 
-    // Fire-and-forget: the HTTP handler has already returned the jobId by the time this settles.
+    // Not awaited: the HTTP handler has already returned the jobId.
     void orchestrator
       .plan(prompt, profile)
       .then((result) => {
@@ -105,10 +102,10 @@ export class InMemoryOrchestrationJobStore implements OrchestrationJobStore {
     const job = this.jobs.get(id);
     if (!job) return () => {};
 
-    // 1. replay everything that already happened.
+    // replay what already happened
     for (const event of job.events) listener({ type: "event", event });
 
-    // 2. if the job already terminated, deliver the terminal update and don't register.
+    // already finished: deliver the terminal update and don't register
     if (job.status === "done" && job.result) {
       listener({ type: "done", result: job.result });
       return () => {};
@@ -118,7 +115,7 @@ export class InMemoryOrchestrationJobStore implements OrchestrationJobStore {
       return () => {};
     }
 
-    // 3. otherwise follow live.
+    // otherwise follow live
     const set = this.listeners.get(id)!;
     set.add(listener);
     return () => set.delete(listener);

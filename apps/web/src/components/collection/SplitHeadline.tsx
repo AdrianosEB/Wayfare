@@ -3,14 +3,11 @@ import { cn } from '@/lib/cn';
 import type { Align } from './chapters';
 
 /**
- * A chapter headline, split into the units its reveal animates — letters, words, or whole
+ * A chapter headline, split into the units its reveal animates: letters, words, or whole
  * lines. See `REVEAL_UNIT` in chapters.ts for which style wants which.
  *
- * Accessibility is the whole difficulty with split text. Broken into one element per
- * character, the accessible name becomes "T h e   a r t" and text selection produces the
- * same mess. So the real string goes on the heading as `aria-label` and every visual
- * fragment is `aria-hidden`: screen readers get one clean phrase, and the pieces are free
- * to animate.
+ * Split into one element per character, the accessible name becomes "T h e   a r t". So the
+ * real string goes on the heading as `aria-label` and every visual fragment is `aria-hidden`.
  */
 
 export type SplitUnit = 'letter' | 'word' | 'line';
@@ -43,8 +40,8 @@ function splitWords(text: string, unit: SplitUnit, keyPrefix: string): ReactNode
           : word}
       </span>,
     ];
-    // A real space between words rather than a margin — margins collapse differently per
-    // font and would drift the tracking.
+    // A real space between words, not a margin: margins collapse differently per font and
+    // would drift the tracking.
     if (wordIndex < all.length - 1) {
       nodes.push(<span key={`${keyPrefix}-s${wordIndex}`}> </span>);
     }
@@ -53,11 +50,9 @@ function splitWords(text: string, unit: SplitUnit, keyPrefix: string): ReactNode
 }
 
 /**
- * For the `wipe` style: each line rides inside its own clipping box.
- *
- * The mask needs vertical slack or descenders get sliced off — the padding is cancelled by
- * an equal negative margin, so the line box is unchanged and the rhythm of the headline
- * does not shift between styles.
+ * For the `wipe` style: each line rides inside its own clipping box. The mask needs vertical
+ * slack or descenders get sliced off, so the padding is cancelled by an equal negative margin
+ * and the line box is unchanged.
  */
 function Line({ children, masked }: { children: ReactNode; masked: boolean }) {
   if (!masked) return <span className="block">{children}</span>;
@@ -80,7 +75,7 @@ export function SplitHeadline({
   id: string;
   /** The serif italic phrase. */
   script: string;
-  /** The wide-tracked caps lines, broken by hand — one word per line. */
+  /** The wide-tracked caps lines, broken by hand, one word per line. */
   caps: string[];
   unit: SplitUnit;
   align: Align;

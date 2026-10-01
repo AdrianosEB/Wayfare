@@ -7,9 +7,8 @@ import { TESTIMONIALS } from '@/lib/content';
 import { Section } from './_shared';
 
 /**
- * Testimonial carousel — one card at a time with prev/next arrows and dot navigation.
- * Keyboard-accessible: the arrow buttons carry aria-labels and the live region announces the
- * current card. Clearly sample content (labeled below the heading).
+ * Testimonial carousel: one card at a time with prev/next arrows and dot navigation. The
+ * live region announces the current card. Sample content, labeled as such below the heading.
  */
 export function TestimonialCarousel() {
   const [index, setIndex] = useState(0);
@@ -33,7 +32,7 @@ export function TestimonialCarousel() {
           className="grid grid-cols-1 overflow-hidden rounded-lg border border-border bg-bg shadow-card sm:grid-cols-[minmax(0,15rem)_1fr]"
           aria-live="polite"
         >
-          {/* Destination photo — visible by default; only the label crossfades. */}
+          {/* Destination photo, visible by default; only the label crossfades. */}
           <div className="relative isolate min-h-[10rem] sm:min-h-0">
             <Photo
               image={images.for(current.imageKey)}

@@ -8,9 +8,8 @@ import type {
 import { makeId } from "../ids.js";
 
 /**
- * Session store + trip versioning. A session holds the evolving constraints and an ordered list
- * of trip versions (every refinement = a new version → "what changed" + future undo). MVP is an
- * in-memory implementation behind a pluggable interface (swap to Redis/Postgres at [Later]).
+ * Session store + trip versioning. A session holds the current constraints and an ordered list
+ * of trip versions; each refinement adds one. In-memory behind an interface for now.
  */
 
 export interface SessionRecord {

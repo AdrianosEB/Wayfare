@@ -10,9 +10,8 @@ import type {
 } from "@wayfare/shared";
 
 /**
- * Server-Sent Events writer implementing the exact framing in API_CONTRACT.md:
- * `event:` line + single-line JSON `data:` line + blank line. `: ping` heartbeats keep the
- * connection alive; clients ignore comment lines.
+ * Server-Sent Events writer using the framing in API_CONTRACT.md: `event:` line, single-line
+ * JSON `data:` line, blank line. `: ping` comment lines are heartbeats.
  */
 export class SseStream {
   private closed = false;
@@ -23,7 +22,7 @@ export class SseStream {
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     });
-    // Prime the stream so proxies flush headers immediately.
+    // An initial write so proxies flush headers right away.
     res.write(": ping\n\n");
     res.flushHeaders?.();
   }

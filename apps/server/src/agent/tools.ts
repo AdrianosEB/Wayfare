@@ -17,9 +17,8 @@ import {
 import { computeBudget, ComputeBudgetInputSchema } from "./budget.js";
 
 /**
- * The entire toolset: four read/compute tools, no write/booking tools (least privilege,
- * AGENT_DESIGN.md). Each is Zod-validated on input AND output. The same Toolbox backs both the
- * deterministic planner and the Anthropic tool-use loop, so they are interchangeable.
+ * The whole toolset: four read/compute tools, nothing that writes or books (AGENT_DESIGN.md).
+ * Inputs and outputs are Zod-validated. Shared by the deterministic planner and the Anthropic loop.
  */
 export class Toolbox {
   constructor(private readonly provider: PricingProvider) {}
@@ -123,7 +122,7 @@ export const ANTHROPIC_TOOLS = [
   {
     name: "compute_budget",
     description:
-      "Sum the chosen listings into a categorized budget vs the target. The ONLY way to total costs — never sum prices yourself.",
+      "Sum the chosen listings into a categorized budget vs the target. The ONLY way to total costs. Never sum prices yourself.",
     input_schema: {
       type: "object",
       properties: {

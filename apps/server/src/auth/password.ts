@@ -1,9 +1,6 @@
 import bcrypt from "bcryptjs";
 
-/**
- * Password hashing via bcryptjs (pure-JS, no native build). Cost factor 12 (≥ 10 per the
- * auth contract). Plaintext passwords are never stored or logged — only the resulting hash.
- */
+/** Password hashing via bcryptjs (pure JS, no native build). The auth contract requires cost ≥ 10. */
 
 const COST = 12;
 

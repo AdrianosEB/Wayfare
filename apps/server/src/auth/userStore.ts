@@ -2,9 +2,8 @@ import type { User } from "@wayfare/shared";
 import { makeId } from "../ids.js";
 
 /**
- * User store. Holds the *internal* user record — including `passwordHash`, which never crosses
- * the wire. In-memory Map keyed by lowercased email, behind an interface so it can swap to a DB
- * later (mirrors InMemorySessionStore). Use `toWireUser` to map a record to the public `User`.
+ * User store. Records include `passwordHash`, which must never be sent to a client: use
+ * `toWireUser` to get the public `User`. In-memory, behind an interface so it can move to a DB.
  */
 
 export interface UserRecord {
@@ -22,18 +21,16 @@ export interface NewUser {
 }
 
 export interface UserStore {
-  /** Lookup by email (case-insensitive). */
+  /** Case-insensitive. */
   findByEmail(email: string): UserRecord | undefined;
-  /** Lookup by id — used to resolve a session's userId back to a record. */
   findById(id: string): UserRecord | undefined;
-  /** Insert a new user. Caller must check `findByEmail` first for email_taken. */
+  /** Caller must check `findByEmail` first for email_taken. */
   create(user: NewUser): UserRecord;
 }
 
-/** Normalize an email for use as the store key (case-insensitive, trimmed). */
 export const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
-/** Map an internal record to the public wire `User` — explicitly drops `passwordHash`. */
+/** Public wire `User` for a record. Drops `passwordHash`. */
 export function toWireUser(rec: UserRecord): User {
   return {
     id: rec.id,

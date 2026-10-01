@@ -1,6 +1,6 @@
 /**
- * Email + password auth module (docs/AUTH_CONTRACT.md). Additive to the planner — never gates
- * the guest `/api/session*` routes.
+ * Email + password auth module (docs/AUTH_CONTRACT.md). Never gates the guest `/api/session*`
+ * routes.
  */
 export {
   createAuthRouter,

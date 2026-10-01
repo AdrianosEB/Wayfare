@@ -1,7 +1,7 @@
 {
   "trip": {
     "id": "trip_naxos_v1",
-    "summary": "8 days on Naxos — €2,410 for two",
+    "summary": "8 days on Naxos, €2,410 for two",
     "status": "complete",
     "request": {
       "destination": { "value": "Greece", "source": "prompt", "confidence": 0.95 },
@@ -87,7 +87,7 @@
           "listing": {
             "id": "lst_stay_1",
             "kind": "stay",
-            "title": "Studios Agios Prokopios — 8 nights",
+            "title": "Studios Agios Prokopios, 8 nights",
             "price": { "amount": 980, "currency": "EUR" },
             "source": { "provider": "mock:curated", "label": "Estimated price" },
             "fetchedAt": "2026-06-16T10:00:00Z",

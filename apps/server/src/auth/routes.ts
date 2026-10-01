@@ -32,8 +32,8 @@ import {
 } from "./cookies.js";
 
 /**
- * Email + password auth (docs/AUTH_CONTRACT.md). Factory form, mirroring createSessionRouter,
- * so tests inject fresh stores. Additive only — never gates the planner routes.
+ * Email + password auth (docs/AUTH_CONTRACT.md). A factory, like createSessionRouter, so tests
+ * can inject fresh stores. Never gates the planner routes.
  */
 
 export interface AuthDeps {
@@ -42,7 +42,6 @@ export interface AuthDeps {
   now: () => string;
 }
 
-/** Convenience builder for the default in-memory wiring. */
 export function createInMemoryAuthDeps(now: () => string): AuthDeps {
   return {
     users: new InMemoryUserStore(now),
@@ -63,10 +62,7 @@ const wrap =
     fn(req, res, next).catch(next);
   };
 
-/**
- * Resolve the authenticated user from the request cookie, or null for a guest.
- * Never throws — guests are a first-class, valid state.
- */
+/** The authenticated user from the request cookie, or null for a guest. Never throws. */
 export function currentUser(req: Request, deps: AuthDeps): User | null {
   const sessionId = readSessionCookie(req);
   if (!sessionId) return null;
@@ -108,8 +104,8 @@ export function createAuthRouter(deps: AuthDeps): Router {
       const body = parseBody(LoginRequestSchema, req.body);
       const rec = deps.users.findByEmail(body.email);
 
-      // No account enumeration: unknown email and wrong password are indistinguishable. We still
-      // run a bcrypt compare on a dummy hash when the user is missing to keep timing similar.
+      // No account enumeration: unknown email and wrong password look the same, and a missing
+      // user still gets a bcrypt compare against a dummy hash to keep timing similar.
       const hash = rec?.passwordHash ?? DUMMY_HASH;
       const ok = await verifyPassword(body.password, hash);
       if (!rec || !ok) throw invalidCredentials();
@@ -121,7 +117,7 @@ export function createAuthRouter(deps: AuthDeps): Router {
     }),
   );
 
-  // POST /api/auth/logout — idempotent
+  // POST /api/auth/logout (idempotent)
   router.post("/auth/logout", (req, res) => {
     const sessionId = readSessionCookie(req);
     if (sessionId) deps.sessions.destroy(sessionId);
@@ -129,7 +125,7 @@ export function createAuthRouter(deps: AuthDeps): Router {
     res.status(204).end();
   });
 
-  // GET /api/auth/me — guest → { user: null }, never 401
+  // GET /api/auth/me. A guest gets { user: null }, never 401.
   router.get("/auth/me", (req, res) => {
     const response: MeResponse = { user: currentUser(req, deps) };
     res.status(200).json(response);
@@ -138,8 +134,5 @@ export function createAuthRouter(deps: AuthDeps): Router {
   return router;
 }
 
-/**
- * A fixed bcrypt hash of a random string, compared against on unknown-email logins so the
- * response timing of "unknown email" matches "wrong password". Value is non-secret.
- */
+/** Bcrypt hash of a random string, for the unknown-email compare above. Not a secret. */
 const DUMMY_HASH = "$2a$12$zaOmePSkE3hbCcOuuJ7DVe0wbsOQ3KSZAj5LMgi4KAdgU/jZRk0cK";

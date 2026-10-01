@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# build-collection-video.sh — cut the /collection page's looping clips from a source video.
+# Cut the /collection page's looping clips from a source video.
 #
 #   scripts/build-collection-video.sh <source.mp4>
 #
-# Emits, per loop, into public/collection/:
-#   <name>.mp4    H.264 high/4.0, yuv420p, NO audio track, faststart, under 2.5MB
-#   <name>.webp   the loop's FIRST FRAME, used as its poster
+# Writes to public/collection/, per loop:
+#   <name>.mp4    H.264 high/4.0, yuv420p, no audio track, faststart, under 2.5MB
+#   <name>.webp   the loop's first frame, used as its poster
 #
-# The poster is extracted from the already-trimmed loop rather than re-seeking the source,
-# so it is genuinely frame one and the swap from poster to video is invisible.
+# The poster comes from the trimmed loop, not a re-seek of the source, so it matches frame
+# one exactly and the poster-to-video swap is invisible.
 set -euo pipefail
 
 SRC="${1:?usage: build-collection-video.sh <source.mp4>}"
@@ -22,9 +22,9 @@ MAX_BYTES=$((2500 * 1024))
 
 mkdir -p "$OUT"
 
-# name:start:duration:width:crf — distinct windows, so these are different shots rather
-# than one clip reused. The hero loop is deliberately the smallest: it is the only video
-# that loads inside the first chapter, which carries a hard 1.2MB interactive budget.
+# name:start:duration:width:crf. Each loop uses a different window of the source. The hero
+# loop is the smallest because it loads inside the first chapter, which has a 1.2MB
+# interactive budget.
 LOOPS="harbour-pan:12:5:1280:28 harbour-open:4.5:5:1600:26"
 
 for spec in $LOOPS; do

@@ -2,8 +2,8 @@ import { PARTNERS, PRESS, MARKETING } from '@/lib/content';
 import { Section } from './_shared';
 
 /**
- * Trust strips — greyscale partner text-logos with a caption, and an "As seen in" press row.
- * Static placeholder logos this pass (text rendered in a muted, grayscale style).
+ * Trust strips: greyscale partner text-logos with a caption, and an "As seen in" press row.
+ * Static placeholder logos for now.
  */
 export function PartnerLogoRow() {
   return (

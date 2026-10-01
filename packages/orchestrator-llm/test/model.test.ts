@@ -12,14 +12,13 @@ import type { LlmConfig } from "../src/config.js";
 /**
  * Regression: @langchain/anthropic 0.3.x sends its default sampling parameters (temperature 1,
  * top_k -1, top_p -1) for models it doesn't special-case by name. Claude Opus 4.7+ and Sonnet 5
- * reject sampling parameters outright, so every request 400'd ("`top_p` cannot be set to -1") —
- * and because decide() degrades on model errors, the whole LLM path silently fell back to the
+ * reject sampling parameters, so every request 400'd ("`top_p` cannot be set to -1"), and
+ * because decide() degrades on model errors, the whole LLM path silently fell back to the
  * deterministic heuristics. Found when a 25-example teacher pass produced 25 fallbacks.
  *
- * The fix rides on invocationKwargs spreading LAST into the request body, with explicit
- * undefined deleting each key. This test drives the REAL ChatAnthropic (no network — request
- * construction only) so a langchain upgrade that changes either behavior fails loudly here
- * instead of silently degrading production to heuristics again.
+ * The fix relies on invocationKwargs spreading last into the request body, with explicit
+ * undefined deleting each key. This test builds a real ChatAnthropic (request construction
+ * only, no network) so a langchain upgrade that changes either behavior fails here.
  */
 
 const cfg = (model: string): LlmConfig => ({
@@ -40,9 +39,8 @@ function wireParams(model: string): Record<string, unknown> {
   return JSON.parse(JSON.stringify(chat.invocationParams())) as Record<string, unknown>;
 }
 
-describe("anthropicChatOptions — sampling params must never reach the wire", () => {
-  // Models langchain 0.3.34 does NOT special-case (the original bug), plus one it does:
-  // the invariant must hold regardless of which side of langchain's allowlist a model is on.
+describe("anthropicChatOptions: sampling params must never reach the wire", () => {
+  // Models langchain 0.3.34 does not special-case (the original bug), plus one it does.
   for (const model of ["claude-opus-4-8", "claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5"]) {
     it(`sends no temperature/top_k/top_p for ${model}`, () => {
       const params = wireParams(model);
@@ -59,14 +57,10 @@ describe("anthropicChatOptions — sampling params must never reach the wire", (
   });
 });
 
-/* --------------------------------------------------------------------------- *
- * The local student seam. `training/` produces a model that mlx_lm.server can
- * serve; these cover the two things that path gets wrong in practice — a small
- * model wrapping its JSON in prose, and an off-schema answer that must degrade
- * rather than be coerced.
- * --------------------------------------------------------------------------- */
+// The local student. Covers a small model wrapping its JSON in prose, and an off-schema answer
+// that must degrade and not be coerced.
 
-describe("extractJsonObject — a 1.5B student does not always return bare JSON", () => {
+describe("extractJsonObject: a 1.5B student does not always return bare JSON", () => {
   it("reads a bare object", () => {
     expect(extractJsonObject('{"a":1}')).toEqual({ a: 1 });
   });
@@ -80,7 +74,7 @@ describe("extractJsonObject — a 1.5B student does not always return bare JSON"
   });
 
   it("stops at the matching brace, ignoring trailing garbage", () => {
-    // RESULTS.md records exactly this mode: valid JSON followed by `""}` or `"}"}`.
+    // RESULTS.md records this mode: valid JSON followed by `""}` or `"}"}`.
     expect(extractJsonObject('{"a":{"b":2}}""}')).toEqual({ a: { b: 2 } });
   });
 
@@ -138,7 +132,7 @@ describe("LocalStructuredModel", () => {
     }
   });
 
-  it("decodes greedily — sampling only adds schema violations for a distilled student", async () => {
+  it("decodes greedily, since sampling only adds schema violations for a distilled student", async () => {
     const { model, calls, restore } = modelReturning('{"pace":"relaxed"}');
     try {
       await model.invoke(call);
@@ -149,7 +143,7 @@ describe("LocalStructuredModel", () => {
   });
 
   it("throws SchemaValidationError on an off-schema answer rather than coercing", async () => {
-    // The real failure this guards: `training/fused` emits pace as an array, and the caller
+    // Guards a real failure: `training/fused` emits pace as an array, and the caller
     // (decide()) must be able to fall back to the deterministic agent.
     const { model, restore } = modelReturning('{"pace":["family-friendly","relaxed"]}');
     try {

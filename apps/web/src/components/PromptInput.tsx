@@ -3,8 +3,8 @@ import { cn } from '@/lib/cn';
 import { SendIcon } from './icons';
 
 /**
- * The hero free-text input AND the persistent refine input (same component, two variants).
- * Enter submits, Shift+Enter newlines; the textarea auto-grows. Big tap target, low chrome.
+ * The hero free-text input and the persistent refine input (one component, two variants).
+ * Enter submits, Shift+Enter inserts a newline.
  */
 export interface PromptInputProps {
   onSubmit: (text: string) => void;
@@ -13,7 +13,7 @@ export interface PromptInputProps {
   busy?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Controlled value (optional) — used when example chips prefill the hero input. */
+  /** Controlled value (optional), used when example chips prefill the hero input. */
   value?: string;
   onValueChange?: (v: string) => void;
 }
@@ -38,12 +38,9 @@ export function PromptInput({
     onValueChange?.(v);
   };
 
-  // Auto-grow the textarea to fit content.
-  //
-  // Measured on a rAF as well as synchronously: on first mount the textarea can still be at its
-  // pre-layout width (the flex row hasn't sized it yet), which wraps the placeholder over many
-  // lines, inflates scrollHeight, and pins the box to its max height — an empty input rendering
-  // as a ~220px void. Re-measuring after layout settles (and on resize) keeps it honest.
+  // Auto-grow the textarea to fit content. Measured again on a rAF and on resize: on first
+  // mount the textarea can still be at its pre-layout width, which wraps the placeholder,
+  // inflates scrollHeight and pins an empty input at its max height.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -79,12 +76,10 @@ export function PromptInput({
     <div
       className={cn(
         'group relative flex items-end gap-2 rounded-3xl border border-border bg-bg',
-        // Resting: soft card lift, a transparent ring held in reserve so the focus
-        // transition animates the colour rather than snapping a new box into place.
+        // The transparent ring at rest lets focus animate the colour instead of snapping in.
         'shadow-card ring-2 ring-transparent',
         'transition-all duration-200 ease-out',
         'hover:border-azure-200',
-        // Focus: calm azure halo + firmer border + a gentle lift. Never a hard outline.
         'focus-within:border-azure-500 focus-within:ring-azure-500/25 focus-within:shadow-float',
         'focus-within:hover:border-azure-500',
         isHero ? 'p-3 pl-5' : 'p-2 pl-4',

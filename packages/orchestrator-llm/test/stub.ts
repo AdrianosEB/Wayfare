@@ -11,11 +11,9 @@ import type { AgentName } from "../src/config.js";
 import type { StructuredCall, StructuredModel, StructuredResult } from "../src/model.js";
 
 /**
- * StubModel — a chat model that never touches the network.
- *
- * It returns canned, schema-valid responses derived from the deterministic implementations, so
- * the whole graph can run end to end with no key. Every call is recorded, which is what the
- * ceiling, allowlist, and tool-boundary tests assert against.
+ * A chat model that never touches the network. It returns canned, schema-valid responses derived
+ * from the deterministic implementations, and records every call for the ceiling, allowlist and
+ * tool-boundary tests.
  */
 export class StubModel implements StructuredModel {
   readonly calls: AgentName[] = [];
@@ -49,8 +47,8 @@ export class StubModel implements StructuredModel {
       };
     }
 
-    // No canned value: signal "no opinion" with an empty/neutral response the nodes treat as
-    // a fallback trigger. Nodes are written so an empty array means "use the tool output".
+    // No canned value: return an empty response. Nodes treat an empty array as "use the tool
+    // output".
     const empty = (call.schema as z.ZodTypeAny).safeParse([]);
     if (empty.success) {
       return { value: empty.data as T, inputTokens: this.inputTokens, outputTokens: this.outputTokens };

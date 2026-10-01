@@ -2,19 +2,12 @@ import { useEffect, useId, useRef, type RefObject } from 'react';
 import { BookingForm } from './BookingForm';
 
 /**
- * The booking panel — a modal over the page.
+ * The booking panel, a modal over the page. It never navigates on open and never touches
+ * scroll position.
  *
- * It never navigates on open and never touches scroll position, so the chapter you were
- * reading is still there behind it and still there when you close it.
- *
- * Scroll lock is `overflow: hidden` on <body> plus scrollbar-width compensation, NOT the
- * common `position: fixed; top: -scrollY` trick. That trick works, but it detaches the body
- * and then restores it, and any rounding error shows up as the page jumping — exactly the
- * "do not reset scroll" failure it is meant to prevent.
- *
- * No date picker. What a traveller books here is a plan, and the dates come out of the
- * planning conversation rather than a calendar that would have to imply availability we do
- * not have. `when` is deliberately free text.
+ * Scroll lock is `overflow: hidden` on <body> plus scrollbar-width compensation, not the
+ * `position: fixed; top: -scrollY` trick: detaching and restoring the body lets rounding
+ * errors show up as the page jumping.
  */
 
 const FOCUSABLE =
@@ -24,9 +17,8 @@ export interface BookingPanelProps {
   open: boolean;
   onClose: () => void;
   /**
-   * Optional explicit focus-return target. Normally omitted: the panel remembers whatever was
-   * focused when it opened, which is what you want now that several different controls can
-   * open it rather than one Book button in the bar.
+   * Optional explicit focus-return target. Normally omitted: the panel remembers whatever
+   * was focused when it opened.
    */
   returnFocusTo?: RefObject<HTMLElement>;
 }
@@ -78,11 +70,9 @@ export function BookingPanel({ open, onClose, returnFocusTo }: BookingPanelProps
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [open, onClose]);
 
-  // Move focus in on open, and hand it back to the opener on close.
-  //
-  // The opener is captured here rather than passed in: at the moment this effect runs the
-  // clicked control is still the active element, so whichever prompt opened the panel gets
-  // focus back. An explicit `returnFocusTo` still wins if a caller provides one.
+  // Move focus in on open, and hand it back to the opener on close. The opener is captured
+  // here: when this effect runs the clicked control is still the active element. An explicit
+  // `returnFocusTo` wins if a caller provides one.
   useEffect(() => {
     if (!open) return;
     const opener =

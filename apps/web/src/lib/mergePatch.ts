@@ -2,13 +2,12 @@
  * RFC-7386-style JSON merge patch, as specified by API_CONTRACT.md for `partial` events:
  *
  *   - Objects merge recursively.
- *   - Arrays in the patch REPLACE the target array (no index merging).
+ *   - Arrays in the patch replace the target array (no index merging).
  *   - A `null` value deletes the key.
  *   - Scalars overwrite.
  *
- * Used only for perceived progress while streaming; the final `complete.trip` is
- * authoritative and replaces the working copy. We treat the working trip as a loose
- * partial during the stream, so this is intentionally untyped (`unknown` in/out).
+ * Only used for progress while streaming. The final `complete.trip` replaces the working
+ * copy, which is why this is untyped (`unknown` in/out).
  */
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);

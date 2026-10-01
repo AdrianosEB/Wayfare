@@ -7,9 +7,8 @@ import { tierOf, activityBaseEur } from "../costIndex.js";
 import { mockListing, round, type MockContext, type MockTier } from "../listingFactory.js";
 
 /**
- * Procedural activities — drawn from category templates filtered by the user's interests and
- * tagged for kid-suitability. Many "free" options (price 0) serve budget/student personas.
- * Prices are party totals (per-person base × party size).
+ * Procedural activities, drawn from category templates ranked by the user's interests. Plenty
+ * are free (price 0) for budget trips. Prices are party totals.
  */
 
 interface Template {
@@ -41,10 +40,8 @@ const TEMPLATES: Template[] = [
 ];
 
 /**
- * Interest-match score = number of template tags that overlap the user's interests. Matching is
- * substring-both-ways (tag in interest OR interest in tag) so "food"/"foodie" and "kid"/"kids"
- * align without an exact-string requirement. No interests given → score 1 (everything ties, the
- * seeded shuffle then picks a balanced spread).
+ * Number of template tags that overlap the user's interests. Substring match in both directions
+ * so "food"/"foodie" and "kid"/"kids" line up. With no interests everything scores 1.
  */
 function matches(t: Template, interests: string[]): number {
   if (interests.length === 0) return 1;

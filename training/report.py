@@ -4,24 +4,19 @@
     ./.venv/bin/python report.py            # markdown to stdout
     ./.venv/bin/python report.py --worst 6  # + the worst student rows beside the teacher's
 
-Reporting rules enforced here rather than left to whoever writes the prose — every one of them
-comes from a measurement note in RESULTS.md, and each is easy to violate by accident:
+Reporting rules, each from a measurement note in RESULTS.md:
 
-* Slices are never merged. `clean` and `conflict` are reported as separate rows, always.
-* Student schema-validity is stated against the teacher's own **99.5%**, not against 100%.
-* **Top-dimension agreement and rank agreement are different claims and are never used as
-  synonyms.** Top-dimension agreement is argmax match — one dimension, right or wrong. Rank
-  agreement (Spearman's rho, Kendall's tau-b) is ordinal correlation over all five dimensions.
-  Both are printed; a sentence about one is not evidence about the other.
-* Top-dimension agreement is stated against the **majority-class predictor**, not against the
+* `clean` and `conflict` slices are reported as separate rows and never merged.
+* Student schema-validity is stated against the teacher's own 99.5%, not against 100%.
+* Top-dimension agreement (argmax match) and rank agreement (Spearman's rho, Kendall's tau-b
+  over all five dimensions) are different claims. Both are printed.
+* Top-dimension agreement is stated against the majority-class predictor, not the
   teacher-teacher 17/25. That figure was retracted in round 1: chance agreement under the
-  round-1 marginal is 0.678 and 17/25 is 0.680, so it measured the shared prior and bounded
-  nothing (RESULTS.md measurement note 3). `report_arms.py` computes the round-2 references.
-* The untuned baseline is printed in its own block, never as a row beside the student. It emits
-  no JSON at all, so a near-zero denominator would otherwise make any student number look
-  spectacular by comparison — the headline comparison is student vs teacher.
-* Metrics over schema-valid rows carry their own `n`. An arm scoring 3 valid rows out of 248
-  does not get to show a competitive MAE without that being visible.
+  round-1 marginal is 0.678 and 17/25 is 0.680 (RESULTS.md measurement note 3).
+  `report_arms.py` computes the round-2 references.
+* The untuned baseline is printed in its own block, not as a row beside the student. It emits
+  prose, not JSON, so its metrics have a near-zero denominator.
+* Metrics over schema-valid rows carry their own `n`.
 """
 
 import argparse
@@ -29,11 +24,10 @@ import json
 import statistics
 from pathlib import Path
 
-# From RESULTS.md measurement notes / STATE.md — measured, not assumed.
+# Measured values from RESULTS.md measurement notes / STATE.md.
 TEACHER_SCHEMA_VALID = 99.5      # 7 discards in 1,429 attempts, single cause
-# Opus 4.8 vs Sonnet 5 on the same 25 profiles. RETAINED AS A FACT, NOT USED AS A FLOOR: it
-# equals chance agreement under the round-1 marginal (0.680 vs 0.678). Kept so the retraction
-# stays legible next to the number that caused it.
+# Opus 4.8 vs Sonnet 5 on the same 25 profiles. Not used as a floor: it equals chance agreement
+# under the round-1 marginal (0.680 vs 0.678).
 TEACHER_TEACHER_AGREE = 17 / 25
 ROUND1_CHANCE_AGREEMENT = 0.678
 TEACHER_TOKENS_IN, TEACHER_TOKENS_OUT, TEACHER_ROWS = 464_683, 634_764, 1_429
@@ -51,10 +45,8 @@ def agg(records, slice_name=None):
     valid = [r for r in rs if r["schema_valid"]]
     scored = [r["scores"] for r in valid if r.get("scores")]
     extracted = sum(1 for r in rs if r["parse_mode"] == "extracted")
-    # Rank agreement carries its own denominator, always. A row is undefined here when either
-    # weight vector is entirely flat — five equal weights have no ordering — and those rows are
-    # dropped from the mean rather than counted as agreement or disagreement. `n_rank` below is
-    # therefore <= `n_scored`, and the gap is a real property of the arm's output.
+    # A row has no rank agreement when either weight vector is entirely flat. Those rows are
+    # dropped from the mean, so `n_rank` <= `n_scored`.
     rhos = [s["spearman_rho"] for s in scored if s.get("spearman_rho") is not None]
     taus = [s["kendall_tau"] for s in scored if s.get("kendall_tau") is not None]
     return {
@@ -96,15 +88,15 @@ def main():
             arms[name] = json.loads(p.read_text())
 
     if "student" not in arms:
-        print(f"no student results in {d} — run eval.py first")
+        print(f"no student results in {d}. Run eval.py first")
         return
 
     st = arms["student"]
-    print(f"## Student vs teacher — `{args.split}` split, {st['n_rows']} rows\n")
+    print(f"## Student vs teacher: `{args.split}` split, {st['n_rows']} rows\n")
     print(f"Student = LoRA iter-800, fused. Reference = the teacher's stored label for the same "
           f"input. Teacher's own schema-valid rate is **{TEACHER_SCHEMA_VALID}%**. The "
           f"teacher-teacher figure of 17/25 ({100*TEACHER_TEACHER_AGREE:.0f}%) is NOT a floor "
-          f"here — it equals chance agreement under this marginal "
+          f"here: it equals chance agreement under this marginal "
           f"({ROUND1_CHANCE_AGREEMENT}), so it bounds nothing.\n")
     print("Two agreement columns, two different claims: **top-dim** is argmax match (one "
           "dimension); **rank agr.** is Spearman's rho / Kendall's tau-b over all five, as "
@@ -124,13 +116,13 @@ def main():
               f"{fmt(a['raw_sum_drift'], '.4f')} |")
     print(f"\nLatency (sequential sample, n={st['latency_sample_n']}): "
           f"p50 {fmt(st['latency_p50_s'], '.2f')}s · p95 {fmt(st['latency_p95_s'], '.2f')}s. "
-          f"Local inference — no API spend. Teacher: ${TEACHER_COST_USD} for {TEACHER_ROWS} rows "
+          f"Local inference, no API spend. Teacher: ${TEACHER_COST_USD} for {TEACHER_ROWS} rows "
           f"= **${1000 * TEACHER_COST_USD / TEACHER_ROWS:.2f}/1k**.\n")
 
     if "baseline" in arms:
         b = arms["baseline"]
         ab = agg(b["records"])
-        print("### Context only — untuned baseline\n")
+        print("### Context only: untuned baseline\n")
         print(f"Reported separately by design: the untuned base emits prose, not JSON, so its "
               f"schema-valid rate is a floor, and comparing the student against it would inflate "
               f"the student's apparent result. The headline is student vs teacher above.\n")
@@ -138,14 +130,14 @@ def main():
         print(f"- rows where JSON had to be extracted from surrounding prose: {ab['extracted_from_prose']}")
         if ab["n_scored"]:
             print(f"- norm. MAE over the {ab['n_scored']} scorable row(s): {fmt(ab['norm_mae'], '.4f')} "
-                  f"— **not comparable** to the student's, computed over a different and much "
-                  f"smaller denominator")
+                  f"(**not comparable** to the student's, computed over a different and much "
+                  f"smaller denominator)")
         else:
-            print(f"- norm. MAE: **undefined** — no schema-valid rows to score. Not zero, not "
+            print(f"- norm. MAE: **undefined**, no schema-valid rows to score. Not zero, not "
                   f"missing data: the arm produced nothing measurable on this axis.")
         print()
 
-    # ---- worst student rows -------------------------------------------------
+    # worst student rows
     if args.worst:
         rows = {json.loads(l)["meta"]["index"]: json.loads(l)
                 for l in open(Path(args.data_dir) / f"{args.split}.jsonl")}

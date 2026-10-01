@@ -13,21 +13,19 @@ import { RefinementScopeSchema } from "./refinement.js";
  * exactly the JSON in docs/fixtures/. The SSE event schemas live in ./sse.
  */
 
-/* -------------------------------------------------------------------------- */
-/* Errors (uniform shape)                                                     */
-/* -------------------------------------------------------------------------- */
+// Errors (uniform shape)
 
 export const ErrorCodeSchema = z.enum([
-  "invalid_request", // 400 — body fails schema validation
-  "session_not_found", // 404 — unknown sessionId
-  "not_ready", // 409 — refine/answers called before a valid state
-  "unplannable", // 422 — constraints contradictory/meaningless
-  "rate_limited", // 429 — provider/agent budget exhausted
-  "internal", // 500 — unexpected
-  // --- auth (see ./auth) — same { error: { code, message } } envelope ---
-  "email_taken", // 409 — signup email already exists
-  "invalid_credentials", // 401 — login failed (email unknown OR wrong password; never distinguish)
-  "unauthenticated", // 401 — protected route without a valid session (NOT planner routes)
+  "invalid_request", // 400: body fails schema validation
+  "session_not_found", // 404: unknown sessionId
+  "not_ready", // 409: refine/answers called before a valid state
+  "unplannable", // 422: constraints contradictory/meaningless
+  "rate_limited", // 429: provider/agent budget exhausted
+  "internal", // 500: unexpected
+  // auth (see ./auth), same { error: { code, message } } envelope
+  "email_taken", // 409: signup email already exists
+  "invalid_credentials", // 401: login failed (unknown email or wrong password; never distinguish)
+  "unauthenticated", // 401: protected route without a valid session (not planner routes)
 ]);
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
 
@@ -44,9 +42,7 @@ export const ApiErrorSchema = z
   .strict();
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
-/* -------------------------------------------------------------------------- */
-/* 1. POST /api/session                                                       */
-/* -------------------------------------------------------------------------- */
+// 1. POST /api/session
 
 export const SessionCreateRequestSchema = z
   .object({ prompt: z.string().min(1) })
@@ -63,9 +59,7 @@ export const SessionCreateResponseSchema = z
   .strict();
 export type SessionCreateResponse = z.infer<typeof SessionCreateResponseSchema>;
 
-/* -------------------------------------------------------------------------- */
-/* 2. POST /api/session/:id/answers                                           */
-/* -------------------------------------------------------------------------- */
+// 2. POST /api/session/:id/answers
 
 /**
  * The value type of an answer follows the question's `format` (API_CONTRACT.md §2):
@@ -92,18 +86,14 @@ export const AnswersRequestSchema = z
   .strict();
 export type AnswersRequest = z.infer<typeof AnswersRequestSchema>;
 
-/* -------------------------------------------------------------------------- */
-/* 3. POST /api/session/:id/refine                                            */
-/* -------------------------------------------------------------------------- */
+// 3. POST /api/session/:id/refine
 
 export const RefineRequestSchema = z
   .object({ utterance: z.string().min(1) })
   .strict();
 export type RefineRequest = z.infer<typeof RefineRequestSchema>;
 
-/* -------------------------------------------------------------------------- */
-/* 4. GET /api/session/:id                                                    */
-/* -------------------------------------------------------------------------- */
+// 4. GET /api/session/:id
 
 /** Lightweight per-version entry in the GET response (not the full TripVersion). */
 export const VersionSummarySchema = z

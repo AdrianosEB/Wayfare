@@ -5,10 +5,7 @@ import { SparkleIcon, TagIcon, MapPinIcon, CheckIcon } from '@/components/icons'
 import { VALUE_CARDS } from '@/lib/content';
 import { Section } from './_shared';
 
-/**
- * "Why Wayfare" — the four differentiators in a 2×2 grid (stacked on mobile). Each card pairs
- * an azure line icon with the title + body from content.ts. Reveals with a stagger.
- */
+/** "Why Wayfare": the four differentiators from content.ts in a 2×2 grid (stacked on mobile). */
 
 const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
   tailor: SparkleIcon,

@@ -1,21 +1,14 @@
 /**
- * Keeps ScrollTrigger's cached offsets honest as the document grows.
+ * Refreshes ScrollTrigger whenever the document height changes.
  *
- * Triggers measure their start and end when they are created, so anything that changes
- * document height afterwards leaves every earlier trigger firing in the wrong place. On
- * /collection that is the normal case, not an edge case: the hero's pin adds about two
- * viewports of `pinSpacing`, and it is created late because it waits on the frame sequence
- * decoding — seconds after the chapters have already registered.
+ * Triggers measure their start and end at creation, so a later height change leaves earlier
+ * triggers firing in the wrong place. On /collection the hero's pin adds about two viewports
+ * of `pinSpacing`, and it is created seconds after the chapters register because it waits on
+ * the frame sequence decoding.
  *
- * Two earlier attempts failed, and both failed the same way. Refreshing straight after
- * creating the pin was too early (its spacer had not been applied). Coalescing a refresh
- * across all the parties was *also* too early, because the chapters request theirs on mount,
- * long before the hero pin exists — the refresh then measured a short document and moved the
- * chapters' triggers even further forward.
- *
- * So instead of guessing when layout has settled, watch for it. A ResizeObserver on <body>
- * fires whenever the document's height actually changes — the late pin, images loading,
- * fonts swapping — and a refresh follows. No ordering assumptions.
+ * Refreshing right after creating the pin was too early (its spacer had not been applied),
+ * and so was a coalesced refresh, because the chapters request theirs on mount before the
+ * pin exists. A ResizeObserver on <body> needs no ordering assumptions.
  */
 
 type Refreshable = { refresh: () => void };

@@ -3,10 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import type { ChatRole } from '@/store/session';
 
-/**
- * One conversation turn. The user's voice wears the primary/teal; the agent speaks on a
- * calm surface bubble. Generous line height per DESIGN_SYSTEM.md.
- */
+/** One conversation turn. User bubbles use the primary color, agent bubbles the surface. */
 export function MessageBubble({
   role,
   children,

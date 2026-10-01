@@ -6,15 +6,10 @@ import { AuthControls } from '@/components/AuthControls';
 import { PlusIcon } from '@/components/icons';
 
 /**
- * Planner app chrome (SCREENS). Mirrors the marketing `TopNav` so the nav doesn't change
- * shape when you cross from `/explore` into `/plan`: same h-16 bar, same max-w-site inner
- * container, same hairline border, same Explore link. Only the primary action differs —
- * the marketing "Plan my trip" CTA is replaced by the planner's "New trip" reset, which
- * appears once a trip has started.
- *
- * Always renders the solid (light-bar) variant of TopNav's styling, and stays a plain
- * block `<header>` — the planner is a full-height flex shell, so a sticky bar here would
- * break the column layout.
+ * Planner app chrome (SCREENS). Matches the marketing `TopNav` (same h-16 bar, container,
+ * border and Explore link) so the nav doesn't change shape between `/explore` and `/plan`.
+ * Stays a plain block `<header>`: the planner is a full-height flex shell, so a sticky bar
+ * would break the column layout.
  */
 export function TopBar() {
   const phase = useSession((s) => s.phase);
@@ -28,7 +23,7 @@ export function TopBar() {
           type="button"
           onClick={() => navigate('/')}
           className="rounded-md focus-visible:ring-2"
-          aria-label="Wayfare — back to home"
+          aria-label="Wayfare, back to home"
         >
           <Wordmark />
         </button>
@@ -41,9 +36,8 @@ export function TopBar() {
           >
             Explore
           </button>
-          {/* Secondary, not primary: the planner already has an azure CTA in the content area
-              (send / refine), and the design system allows only one primary azure CTA per view.
-              This keeps TopNav's button proportions without stacking azure. */}
+          {/* Secondary: the planner already has an azure CTA in the content area, and the
+              design system allows only one primary azure CTA per view. */}
           {started && (
             <Button variant="secondary" onClick={reset} iconLeft={<PlusIcon />}>
               New trip

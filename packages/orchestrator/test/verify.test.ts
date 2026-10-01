@@ -4,9 +4,8 @@ import { verify, Tracer } from "../src/index.js";
 import type { Candidate } from "../src/index.js";
 
 /**
- * The verifier is the trust boundary, so it gets the closest scrutiny: corroboration →
- * verified, one source → unconfirmed, wildly disagreeing sources → suspect, and a direct
- * price under the aggregator → a surfaced DirectDeal.
+ * Corroboration → verified, one source → unconfirmed, wildly disagreeing sources → suspect,
+ * and a direct price under the aggregator → a DirectDeal.
  */
 
 function listing(provider: string, amount: number, over: Partial<Listing> = {}): Listing {

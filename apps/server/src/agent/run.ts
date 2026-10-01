@@ -4,9 +4,8 @@ import { planDeterministic, type PlanDeps, type PlanEmitter } from "./planner.js
 import { planWithAgent } from "./agentLoop.js";
 
 /**
- * Plan orchestrator — selects the live Anthropic agent loop when configured, else the
- * deterministic engine. Both stream the same SSE protocol and produce a schema-valid Trip, so
- * the choice is invisible to the caller (and the frontend).
+ * Picks the Anthropic agent loop when configured, else the deterministic engine. Both stream
+ * the same SSE protocol and return a schema-valid Trip.
  */
 export interface RunDeps extends PlanDeps {
   anthropic?: Anthropic;

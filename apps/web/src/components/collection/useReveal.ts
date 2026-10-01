@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Reveal-on-scroll via IntersectionObserver.
- *
- * Not a scroll listener: a listener fires on every wheel tick whether or not anything
- * crossed a threshold, and forces layout each time it measures. The observer fires once per
- * element, off the main thread's critical path.
- *
- * Returns `true` immediately when the visitor prefers reduced motion, so the element renders
- * in its final state and the transition never runs.
+ * Reveal-on-scroll via IntersectionObserver. Returns `true` immediately when the visitor
+ * prefers reduced motion, so the element renders in its final state.
  */
 export function useReveal<T extends HTMLElement>() {
   const ref = useRef<T>(null);

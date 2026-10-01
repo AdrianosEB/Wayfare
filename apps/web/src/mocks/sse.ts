@@ -1,7 +1,6 @@
 /**
- * SSE encoding + a paced ReadableStream, used only by the MSW mock to replay the fixture
- * frame sequences (see docs/fixtures/sse-stream.example.txt). This is dev-only scaffolding;
- * the real server produces the identical wire format.
+ * SSE encoding and a paced ReadableStream, used only by the MSW mock to replay the fixture
+ * frame sequences (see docs/fixtures/sse-stream.example.txt).
  */
 
 export type MockFrame =
@@ -26,8 +25,8 @@ const sleep = (ms: number) =>
   });
 
 /**
- * Build a streaming Response body from a script of frames, pacing them so the client shows
- * progressive fill rather than a blank spinner. `delay` frames insert think-time.
+ * Build a streaming Response body from a script of frames. `delay` frames pace the stream
+ * so the client shows progressive fill.
  */
 export function buildSseStream(frames: MockFrame[], signal?: AbortSignal): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({

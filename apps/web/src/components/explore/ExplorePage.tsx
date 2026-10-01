@@ -17,26 +17,22 @@ import { EXPLORE_TRIPS, type TripVibe } from '@/lib/content';
 import { navigate, planHref } from '@/lib/router';
 
 /**
- * `/explore` — the Explore / Trending trips hub. A filterable, photo-rich gallery of the trips
- * other travellers are planning right now: richer than the `/pricing` budget showcase (budget
- * split, trending signal, season, provenance) and folding in the "what others have done" social
- * proof. Curated content today (EXPLORE_TRIPS), shaped to become real saved-trip data in Phase
- * 2 — swap the array, keep the page.
+ * `/explore`: the Explore / Trending trips hub, a filterable gallery of trips. Curated
+ * content today (EXPLORE_TRIPS), shaped to become real saved-trip data in Phase 2.
  *
- * Mirrors the landing TopNav + SiteFooter chrome and the azure/white system. No dark hero, so
- * the nav renders `alwaysSolid`. Everything is visible by default; only the cards' hover lift
- * is animated. Tapping a card seeds the planner with that trip's prompt and auto-starts.
+ * No dark hero, so the nav renders `alwaysSolid`. Tapping a card seeds the planner with that
+ * trip's prompt and auto-starts.
  */
 export function ExplorePage() {
   const { filtered, filterControlProps } = useExploreFilters(EXPLORE_TRIPS);
 
-  // The spotlight features the single most-planned trip this week (the top social-proof story).
+  // The spotlight features the most-planned trip this week.
   const spotlight = EXPLORE_TRIPS.reduce((top, t) =>
     t.plannedThisWeek > top.plannedThisWeek ? t : top,
   );
 
   // "Browse by vibe" tiles drive the same vibe facet as the filter chips. Picking one toggles
-  // the vibe and scrolls down to the (now-filtered) results so the interaction feels live.
+  // the vibe and scrolls down to the results.
   const resultsRef = useRef<HTMLDivElement>(null);
   const handleVibePick = (vibe: TripVibe) => {
     filterControlProps.onToggleVibe(vibe);
@@ -46,19 +42,14 @@ export function ExplorePage() {
   };
 
   return (
-    // Page composition, top to bottom: hero Section → stats → filters → grid → CTA.
-    // Base is `surface-2` (#EEF3FA) — the same cool light blue the home page stands on.
-    // `surface` (#F7F9FC) was too close to white to read as anything but white once you
-    // scrolled past the hero's azure wash, which left the page feeling stark. The white
-    // cards/bands (bg-bg) now have a tint to lift off, so their shadows actually register.
+    // Base is `surface-2` (#EEF3FA), the same as the home page. `surface` (#F7F9FC) was too
+    // close to white for the white cards/bands (bg-bg) to lift off it.
     <div className="min-h-full bg-surface-2">
       <TopNav alwaysSolid />
       <main>
-        {/* The hero gets its OWN <Section> so its centered max-w-site container aligns the
-            copy/collage with the stats + grid below. ExploreHero renders no Section of its own
-            (it can't, or the widths wouldn't line up), so alignment is this wrapper's job.
-            The relative/overflow-hidden wrapper hosts ExploreBackdrop — a soft azure wash +
-            blurred blobs behind the starting screen so the page doesn't open on stark white. */}
+        {/* The hero gets its own <Section> so its max-w-site container aligns the copy and
+            collage with the stats + grid below. The relative/overflow-hidden wrapper hosts
+            ExploreBackdrop. */}
         <div className="relative overflow-hidden">
           <ExploreBackdrop />
           <Section className="pb-8 pt-16 sm:pt-24">
@@ -66,13 +57,10 @@ export function ExplorePage() {
           </Section>
         </div>
 
-        {/* Everything below the hero shares one Section (one aligned column): the derived stats
-            band, the filter bar, and then the results. */}
+        {/* Everything below the hero shares one Section: stats, filters, then results. */}
         <Section className="pt-0">
           <ExploreStats className="mb-12" />
 
-          {/* Editorial focal point: the hottest trip, blown up as a magazine-style feature so the
-              page leads with something rich instead of jumping straight to a uniform grid. */}
           <ExploreSpotlight
             trip={spotlight}
             onPlan={() => navigate(planHref({ seed: spotlight.prompt, autostart: true }))}
@@ -83,7 +71,7 @@ export function ExplorePage() {
           </div>
 
           {/* Filters + results. scroll-mt-24 keeps the sticky nav from covering the top when a
-              vibe tile scrolls us here. */}
+              vibe tile scrolls here. */}
           <div ref={resultsRef} className="mt-14 scroll-mt-24">
             <ExploreFilters {...filterControlProps} />
 
@@ -103,17 +91,15 @@ export function ExplorePage() {
             )}
 
             <p className="mt-8 max-w-prose text-sm text-ink-3">
-              Totals are illustrative “from” starting points for the whole trip and party shown —
-              every figure is a clearly-labelled estimate until live providers are connected. Tap
+              Totals are illustrative “from” starting points for the whole trip and party shown.
+              Every figure is a clearly-labelled estimate until live providers are connected. Tap
               a trip to tailor it to your dates, origin and budget; we’ll price the real thing
               honestly.
             </p>
           </div>
         </Section>
 
-        {/* Another way in below the results: themed, data-derived collections, set on a clean
-            white band (hairline top border) so the section reads as its own zone against the
-            off-white page base. */}
+        {/* Themed collections below the results, on a white band. */}
         <Section className="border-t border-border bg-bg">
           <ExploreCollections />
         </Section>
@@ -130,7 +116,7 @@ function EmptyState({ onClear }: { onClear: () => void }) {
     <div className="mt-8 flex flex-col items-center gap-4 rounded-xl border border-border bg-surface px-6 py-16 text-center">
       <p className="font-display text-lg font-semibold text-ink">No trips match those filters.</p>
       <p className="max-w-sm text-sm text-ink-2">
-        Try loosening a filter — or clear them all to see every trip.
+        Try loosening a filter, or clear them all to see every trip.
       </p>
       <Button variant="secondary" onClick={onClear}>
         Clear filters
@@ -143,15 +129,15 @@ function ExploreCTA() {
   return (
     <Section className="pt-0">
       <div className="relative flex flex-col items-start gap-5 overflow-hidden rounded-xl bg-azure-50 px-6 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-10">
-        {/* Faint travel-route lines behind the closing CTA for a bit of on-brand character.
-            Purely decorative; content below carries `relative` so it stays above the motif. */}
+        {/* Decorative route lines behind the closing CTA. Content below carries `relative`
+            so it stays above the motif. */}
         <ExploreRouteMotif className="absolute inset-0 h-full w-full text-azure-200 opacity-70" />
         <div className="relative">
           <h2 className="font-display text-2xl font-semibold text-ink">
             None of these quite it?
           </h2>
           <p className="mt-1.5 max-w-prose text-ink-2">
-            Describe the trip you actually want and we’ll plan it from scratch — or browse the
+            Describe the trip you actually want and we’ll plan it from scratch, or browse the
             cheapest getaways on the board.
           </p>
         </div>
@@ -159,9 +145,7 @@ function ExploreCTA() {
           <Button size="lg" onClick={() => navigate(planHref())}>
             Plan my trip
           </Button>
-          {/* Keep /pricing cross-linked: Explore (trending) and Pricing (budget showcase) are
-              sibling discovery surfaces — a browser who bounces off Explore should land on the
-              cheap-trips board, not a dead end. */}
+          {/* Cross-link to /pricing so Explore is not a dead end. */}
           <Button size="lg" variant="secondary" onClick={() => navigate('/pricing')}>
             Cheapest trips
           </Button>

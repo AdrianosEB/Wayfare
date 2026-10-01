@@ -3,20 +3,17 @@ import type { Candidate, EntityRef, SearchQuery } from "../types.js";
 import type { SearchProvider } from "./types.js";
 
 /**
- * Procedural mock providers — deterministic, dependency-free stand-ins that exercise the
- * whole orchestration exactly as real providers will, including the cases that make
- * verification worth doing:
+ * Deterministic mock providers with no dependencies. They cover the cases verification has to
+ * handle:
  *   - the same entity listed by several sources at slightly different prices,
  *   - a direct source that undercuts the aggregators (a DirectDeal),
  *   - a single-source entity (unconfirmed),
  *   - a "trap" entity with a wild price spread (suspect).
  *
- * Provenance is honest: every Listing is stamped `freshness: "mock"`. Per the project's
- * price-provenance rule, the UI must render source/freshness rather than assume live data —
- * these are sample numbers and they say so.
+ * Every Listing is stamped `freshness: "mock"` so the UI shows these as sample numbers.
  */
 
-// --- tiny deterministic RNG so the same query always yields the same market ---------------
+// Seeded RNG so the same query always yields the same market.
 function hashString(s: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < s.length; i++) {
@@ -123,9 +120,9 @@ interface MockProviderConfig {
   aggregator: boolean;
   /** applied to base price; <1 undercuts the market. */
   priceMultiplier: number;
-  /** fraction of entities this source lists (0–1); drives single-source cases. */
+  /** fraction of entities this source lists (0-1); drives single-source cases. */
   coverage: number;
-  /** how reliable this source's *price* is, 0–1. */
+  /** how reliable this source's price is, 0-1. */
   confidence: number;
   freshnessLabel?: string;
 }
@@ -143,7 +140,7 @@ function makeProvider(cfg: MockProviderConfig): SearchProvider {
       const out: Candidate[] = [];
       for (const c of catalog) {
         if (rng() > cfg.coverage) continue; // this source doesn't carry this entity
-        // ±6% honest noise, plus the provider's structural multiplier.
+        // ±6% noise, plus the provider's multiplier.
         const noise = 1 + (rng() - 0.5) * 0.12;
         let amount = Math.round(c.basePrice * cfg.priceMultiplier * noise);
         // the trap entity: aggregators quote it high, so cross-checking flags a mismatch.
@@ -179,9 +176,9 @@ function makeProvider(cfg: MockProviderConfig): SearchProvider {
 }
 
 /**
- * A default market: two aggregators + one direct source per bookable kind. The direct
- * sources undercut and don't carry everything — exactly the shape that produces DirectDeals
- * and single-source (unconfirmed) options for the verifier to reason about.
+ * Default market: two aggregators and one direct source per bookable kind. The direct sources
+ * undercut and don't carry everything, which produces DirectDeals and single-source
+ * (unconfirmed) options.
  */
 export function mockProviderRegistry(): SearchProvider[] {
   return [

@@ -4,7 +4,7 @@ import { Reveal, RevealGroup, Section } from './_shared';
 import { TripCard } from './TripCard';
 
 /**
- * "Where to go next" — a row of sample destination cards. Desktop is a grid; mobile becomes a
+ * "Where to go next": a row of sample destination cards. Desktop is a grid; mobile is a
  * horizontal scroll-snap rail. Tapping a card seeds its prompt and starts planning.
  */
 export function WhereToGo() {
@@ -13,7 +13,7 @@ export function WhereToGo() {
       <Reveal>
         <h2 className="font-display text-3xl font-semibold text-ink">Where to go next</h2>
         <p className="mt-2 max-w-prose text-ink-2">
-          A few starting points — tap one and tweak it in the chat.
+          A few starting points. Tap one and tweak it in the chat.
         </p>
       </Reveal>
 

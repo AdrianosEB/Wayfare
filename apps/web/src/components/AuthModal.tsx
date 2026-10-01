@@ -6,12 +6,8 @@ import { Button } from './Button';
 import { XIcon } from './icons';
 
 /**
- * Accessible email + password modal (AUTH_CONTRACT.md) in the azure design system.
- *
- *  - role="dialog" aria-modal, labeled by the title; focus trapped inside; Esc closes.
- *  - Toggles between Log in / Sign up; inline client validation + server error copy.
- *  - It NEVER blocks the app — there is always a close button and a "Maybe later" link, and
- *    the backdrop/Esc dismiss it. Guest mode keeps working underneath.
+ * Email + password modal (AUTH_CONTRACT.md). Focus is trapped inside. Esc, the backdrop, the
+ * close button and "Maybe later" all dismiss it, so it never blocks guest use.
  */
 
 export type AuthMode = 'login' | 'signup';
@@ -153,14 +149,14 @@ export function AuthModal({ open, mode: initialMode, onClose }: AuthModalProps) 
       {open && (
         <motion.div
           className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-6"
-          // Appear solid immediately (never gate the whole modal on an opacity tween that can
-          // stall and leave it see-through); keep the fade-OUT on close.
+          // Start solid: an opacity tween on the whole modal can stall and leave it
+          // see-through. The fade-out on close stays.
           initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
         >
-          {/* Backdrop — click to dismiss (never traps the user). */}
+          {/* Backdrop: click to dismiss. */}
           <button
             type="button"
             aria-label="Close"
@@ -269,7 +265,7 @@ export function AuthModal({ open, mode: initialMode, onClose }: AuthModalProps) 
                 onClick={onClose}
                 className="rounded-sm text-center text-xs font-medium text-ink-3 hover:text-ink-2 focus-visible:ring-2"
               >
-                Maybe later — keep exploring as a guest
+                Maybe later, keep exploring as a guest
               </button>
             </form>
           </motion.div>
@@ -279,7 +275,7 @@ export function AuthModal({ open, mode: initialMode, onClose }: AuthModalProps) 
   );
 }
 
-/* ----------------------------------------------------------------- labeled field --- */
+// Labeled field
 
 interface FieldProps {
   id: string;

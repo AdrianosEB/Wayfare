@@ -21,10 +21,9 @@ import {
 } from "./assemble.js";
 
 /**
- * The deterministic plan engine: RESOLVE → SCOUR (tools) → RANK → ASSEMBLE → COST → EXPLAIN,
- * streaming progress at each step (NFR-2). It drives the exact same four tools as the Anthropic
- * loop and emits the same SSE protocol, so the two are interchangeable. Pure + seeded ⇒ the
- * same request always yields the same trip (NFR-6).
+ * Deterministic plan engine: resolve, search, rank, assemble, cost, explain, streaming progress
+ * at each step (NFR-2). Uses the same tools and SSE protocol as the Anthropic loop. Seeded, so
+ * the same request always yields the same trip (NFR-6).
  */
 
 export interface PlanEmitter {
@@ -93,8 +92,7 @@ function buildSavings(opts: {
   return hints;
 }
 
-// Translate the free-text `avoid` list (e.g. "no layovers", "max 1 stop") into a numeric
-// maxStops constraint the flight search understands. Returns undefined when nothing matches.
+// Turn the free-text `avoid` list (e.g. "no layovers", "max 1 stop") into a maxStops constraint.
 const maxStopsFromAvoid = (request: TripRequest): number | undefined => {
   const avoid = (request.avoid?.value ?? []).join(" ").toLowerCase();
   if (/non-?stop|no layover|direct/.test(avoid)) return 0;
@@ -109,7 +107,7 @@ export async function planDeterministic(
 ): Promise<Trip> {
   const { ctx, year } = deps;
   const pc = buildPlanContext(request, year);
-  // bind the provider to the resolved trip currency so every listing is in one currency.
+  // one currency for every listing
   const provider = new MockProvider({ now: ctx.now, currency: pc.currency });
   const toolbox = new Toolbox(provider);
   const destShort = pc.destinationResolved.split(",")[0]!.trim();
@@ -119,7 +117,7 @@ export async function planDeterministic(
   emit.status("resolve", `Picking the right spot for a ${[...pc.vibe].join(", ") || "great"} trip…`);
   emit.partial({ itinerary: { destinationResolved: pc.destinationResolved, startDate: pc.dates.start, endDate: pc.dates.end } });
 
-  // 2. SCOUR — flights
+  // 2. SCOUR: flights
   emit.status("search_flights", `Searching flights ${pc.origin}→${destShort}…`);
   const flights = await toolbox.searchFlights({
     origin: pc.origin,
@@ -135,10 +133,7 @@ export async function planDeterministic(
   if (!pair) throw new Error("no_flights");
   emit.partial({ itinerary: { flights: pair } });
 
-  // SCOUR — stays
-  // Budgeting heuristic: reserve ~45% of the total budget for lodging, spread across the
-  // nights, to derive a per-night ceiling we hand the stay search. Keeps the stay in line
-  // with the trip budget before activities are even costed.
+  // SCOUR: stays. Reserve ~45% of the budget for lodging to get a per-night ceiling.
   emit.status("search_stays", `Comparing stays in ${destShort}…`);
   const nightlyCap = pc.budget ? (pc.budget.amount * 0.45) / pc.dates.nights : undefined;
   const stays = await toolbox.searchStays({
@@ -154,7 +149,7 @@ export async function planDeterministic(
   const cheaperStayDelta = stays.length > 1 && stays[0] !== stay ? stays[0]!.listing.price.amount - stay.listing.price.amount : undefined;
   emit.partial({ itinerary: { stays: [stay] } });
 
-  // SCOUR — activities
+  // SCOUR: activities
   emit.status("search_activities", `Finding things to do in ${destShort}…`);
   const activities = await toolbox.searchActivities({
     location: pc.destinationResolved,
@@ -164,9 +159,8 @@ export async function planDeterministic(
   });
 
   // 3. RANK / 4. ASSEMBLE
-  // Activities only get the budget left after the unavoidable fixed costs (flights + stay),
-  // and we leave an 8% cushion (×0.92) for the food/contingency buffer that compute_budget
-  // adds later. `headroom` is what selectActivities is allowed to spend on paid experiences.
+  // Activities get what's left after flights + stay, minus an 8% cushion for the food buffer
+  // that compute_budget adds later.
   const fixedSoFar =
     pair[0].listing.price.amount + pair[1].listing.price.amount + stay.listing.price.amount;
   const headroom = pc.budget ? pc.budget.amount * 0.92 - fixedSoFar : Number.POSITIVE_INFINITY;
@@ -190,7 +184,7 @@ export async function planDeterministic(
   // assumptions (US-5.2)
   for (const a of pc.assumptions) emit.assumption(a);
 
-  // 5. COST — compute_budget is the only summer
+  // 5. COST
   emit.status("compute_budget", "Costing it out…");
   const items: Listing[] = [
     pair[0].listing,
@@ -208,7 +202,7 @@ export async function planDeterministic(
     tier: pc.tier,
   });
 
-  // 7. EXPLAIN — savings + over-budget trims
+  // 7. EXPLAIN: savings + over-budget trims
   budget.savings = buildSavings({
     flightsLine: budget.lines.find((l) => l.category === "flights")?.amount,
     flexibility: pc.flexibility,
@@ -240,7 +234,7 @@ export async function planDeterministic(
       days,
     },
     budget,
-    summary: `${pc.dates.nights} days ${pc.isCurated ? "on" : "in"} ${destShort} — ${budget.currency} ${budget.total} for ${paxWord(pc.partySize.adults, pc.partySize.children)}`,
+    summary: `${pc.dates.nights} days ${pc.isCurated ? "on" : "in"} ${destShort}, ${budget.currency} ${budget.total} for ${paxWord(pc.partySize.adults, pc.partySize.children)}`,
     assumptions: pc.assumptions,
     status: degraded ? "degraded" : "complete",
   };

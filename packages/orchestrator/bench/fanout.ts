@@ -4,17 +4,16 @@ import type { SearchLimitsOptions } from "../src/index.js";
 import type { TravelerProfile } from "../src/index.js";
 
 /**
- * Fan-out benchmark. Wraps the mock providers in a decorator that adds ~60ms latency and, past
- * 6 concurrent calls *per provider*, throws a 429 — the failure mode of a real rate-limited API.
- * Then runs 40 concurrent plans across a destination list with heavy repeats, twice:
+ * Fan-out benchmark. Wraps the mock providers so each adds ~60ms latency and throws a 429 past
+ * 6 concurrent calls per provider. Runs 40 concurrent plans over a destination list with heavy
+ * repeats, twice:
  *
  *   A. escape hatches on  → unbounded fan-out (the old behavior)
  *   B. bounded            → per-provider cap + coalescing + TTL cache
  *
- * The finding is not "did the plans complete" — both return 40/40 because runSearch degrades
- * rather than throwing (Trap 7). It is what *survived*: itineraries composed, budgets held, and
- * itineraries actually re-price-confirmed. Concurrency is metered per provider, never globally
- * (Trap 6), or the two runs would read the same.
+ * Both runs return 40/40 plans because runSearch degrades instead of throwing, so compare
+ * itineraries composed, budgets held and itineraries reprice-confirmed. Concurrency is metered
+ * per provider, not globally, or the two runs would read the same.
  *
  *   pnpm --filter @wayfare/orchestrator bench
  */
@@ -29,7 +28,7 @@ interface ThrottleStats {
 /** Rate-limited API stand-in: ~60ms latency; throws 429 past `cap` concurrent calls. */
 function throttle(inner: SearchProvider, cap = 6, latency = 60): { provider: SearchProvider; stats: ThrottleStats } {
   const stats: ThrottleStats = { errors: 0, peak: 0 };
-  let live = 0; // this provider's own concurrency — a closure, so metering is per-provider.
+  let live = 0; // one counter per throttle() call, so metering is per-provider
   const provider: SearchProvider = {
     id: inner.id,
     displayName: inner.displayName,
@@ -132,7 +131,7 @@ async function main() {
   console.log(row(after));
 
   console.log(
-    "\nNote: run A is 'fast' because failing fast is fast — a 429 returns instantly. Run B waits\n" +
+    "\nNote: run A is 'fast' because failing fast is fast: a 429 returns instantly. Run B waits\n" +
       "for real data, so its p50 latency is higher and that is the correct, healthier trade.",
   );
 }

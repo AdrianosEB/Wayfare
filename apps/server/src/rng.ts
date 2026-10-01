@@ -1,6 +1,6 @@
 /**
- * Deterministic hashing + PRNG. Every mock number is seeded by hash(destination, dates,
- * party, slot) so the same request always yields the same plan (NFR-6).
+ * Hashing + seeded PRNG. Every mock number is seeded by hash(destination, dates, party, slot)
+ * so the same request always yields the same plan (NFR-6).
  */
 
 /** FNV-1a 32-bit hash of a string → unsigned int. */
@@ -13,12 +13,11 @@ export function hashStr(s: string): number {
   return h >>> 0;
 }
 
-/** Combine arbitrary seed parts into a single hash. */
 export function seedOf(...parts: Array<string | number>): number {
   return hashStr(parts.join("|"));
 }
 
-/** mulberry32 PRNG — fast, deterministic, decent distribution. Returns floats in [0, 1). */
+/** mulberry32 PRNG. Returns floats in [0, 1). */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -30,7 +29,6 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** A small seeded generator with convenience helpers. */
 export class Rng {
   private next: () => number;
   constructor(...seed: Array<string | number>) {
@@ -48,7 +46,6 @@ export class Rng {
   range(min: number, max: number): number {
     return min + this.next() * (max - min);
   }
-  /** pick one element. */
   pick<T>(arr: readonly T[]): T {
     if (arr.length === 0) throw new Error("Rng.pick on empty array");
     return arr[Math.floor(this.next() * arr.length)] as T;

@@ -7,7 +7,7 @@ import { z } from "zod";
  * "Currency & money". Timestamps are ISO-8601 UTC strings. IDs are opaque strings.
  */
 
-/** `{ amount, currency }` — major-unit money, ISO-4217 currency. */
+/** Major-unit money with an ISO-4217 currency. */
 export const MoneySchema = z
   .object({
     amount: z.number(),
@@ -29,7 +29,7 @@ export const FieldSourceSchema = z.enum([
 export type FieldSource = z.infer<typeof FieldSourceSchema>;
 
 /**
- * `Tracked<T>` — a constraint value plus its provenance and confidence.
+ * A constraint value plus its provenance and confidence.
  * Lets the conversation layer ask only for what's missing and reveal every assumption.
  */
 export const TrackedSchema = <T extends z.ZodTypeAny>(value: T) =>

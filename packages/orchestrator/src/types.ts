@@ -12,23 +12,18 @@ import {
 } from "@wayfare/shared";
 
 /**
- * Orchestration types — the vocabulary the agents speak to each other. Every priced thing is
- * a `Listing` from @wayfare/shared, so provenance (source / freshness / confidence) travels
- * with the number and the verifier can reason about honesty, never just magnitude.
+ * Types the agents pass to each other. Every priced thing is a `Listing` from @wayfare/shared,
+ * so provenance (source, freshness, confidence) travels with the price.
  *
- * Nothing here books or calls anyone. Booking and outbound calls are modeled as *intents*
- * that require explicit human approval — see BookingIntent and agents/booking.ts.
+ * Nothing here books or calls anyone. Bookings and outbound calls are intents that need human
+ * approval: see BookingIntent and agents/booking.ts.
  */
 
-// ---------------------------------------------------------------------------
 // Traveler + persona
-// ---------------------------------------------------------------------------
 
 /**
- * TravelerProfile — the raw human input. `signals` are free-text observations about the
- * person ("hates 6am flights", "foodie", "will pay for location"); the persona agent distils
- * them into normalized Preferences + PersonaWeights. Hard constraints (budget, party) sit
- * alongside so the matcher can enforce them.
+ * Raw traveler input. `signals` are free-text observations ("hates 6am flights", "foodie",
+ * "will pay for location") that the persona agent turns into Preferences + PersonaWeights.
  */
 export const TravelerProfileSchema = z
   .object({
@@ -39,7 +34,7 @@ export const TravelerProfileSchema = z
     signals: z.array(z.string()).default([]),
     budget: BudgetConstraintSchema.optional(),
     partySize: PartySizeSchema.optional(),
-    /** things the plan MUST contain (drives the critic's constraint check). */
+    /** things the plan must contain (drives the critic's constraint check). */
     mustHaves: z.array(z.string()).default([]),
     /** things to keep out of the plan. */
     avoid: z.array(z.string()).default([]),
@@ -47,11 +42,7 @@ export const TravelerProfileSchema = z
   .strict();
 export type TravelerProfile = z.infer<typeof TravelerProfileSchema>;
 
-/**
- * PersonaWeights — how much each axis matters to *this* traveler. They sum to ~1 and drive
- * the ranker. A budget-conscious person weights `price` high; a "location is everything"
- * person weights `location`.
- */
+/** How much each axis matters to this traveler. Sums to ~1 and drives the ranker. */
 export const PersonaWeightsSchema = z
   .object({
     price: z.number().min(0),
@@ -75,17 +66,14 @@ export type PersonaDimension = z.infer<typeof PersonaDimensionSchema>;
 export const PersonaSchema = z
   .object({
     /**
-     * Field order is load-bearing: `reasoning` precedes `weights` so a model filling the schema
-     * in order must commit to which signals it read, and which axis each one moves, before it
-     * emits a single number. With weights first, the numbers came out of a prior and `summary`
-     * rationalized them after the fact — measured, not hypothesized (see training/RESULTS.md).
+     * Field order matters: `reasoning` comes before `weights` so a model filling the schema in
+     * order has to say which signals it read, and which axis each one moves, before it emits
+     * numbers. With weights first, `summary` rationalized the numbers afterwards (see
+     * training/RESULTS.md).
      *
-     * Plain strings ("waves off the bill talk -> price down"), not objects. An earlier version
-     * used {signal, dimension, direction} with `dimension` as an enum; models put that array
-     * inside `preferences` on 13-19% of calls across three prompt revisions, which failed the
-     * strict parse three ways at once. Nothing measures the enum — the cross-tab reads the input
-     * dimension from the fixture tags and the output dimension from `weights` — so the structure
-     * bought no measurement and cost an eighth of every teacher pass.
+     * Plain strings ("waves off the bill talk -> price down"), not objects. A
+     * {signal, dimension, direction} shape failed the strict parse on 13-19% of calls because
+     * models put the array inside `preferences`, and nothing reads the structured form.
      */
     reasoning: z.array(z.string()),
     weights: PersonaWeightsSchema,
@@ -96,9 +84,7 @@ export const PersonaSchema = z
   .strict();
 export type Persona = z.infer<typeof PersonaSchema>;
 
-// ---------------------------------------------------------------------------
 // Search
-// ---------------------------------------------------------------------------
 
 /** A single fan-out unit of work handed to every relevant provider in parallel. */
 export const SearchQuerySchema = z
@@ -118,9 +104,9 @@ export const SearchQuerySchema = z
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 
 /**
- * EntityRef — the normalized identity a listing points at, independent of who listed it.
- * Two listings of the same hotel from Booking and the hotel's own site share an entity key;
- * that is what lets the verifier cross-check them.
+ * The normalized identity a listing points at, independent of who listed it. Listings of the
+ * same hotel from Booking and from the hotel's own site share an entity key, which is what
+ * lets the verifier cross-check them.
  */
 export const EntityRefSchema = z
   .object({
@@ -132,7 +118,7 @@ export const EntityRefSchema = z
   .strict();
 export type EntityRef = z.infer<typeof EntityRefSchema>;
 
-/** Candidate — one provider's answer for one entity, price + provenance carried by Listing. */
+/** One provider's answer for one entity. Price and provenance are on the Listing. */
 export const CandidateSchema = z
   .object({
     listing: ListingSchema,
@@ -147,17 +133,12 @@ export const CandidateSchema = z
   .strict();
 export type Candidate = z.infer<typeof CandidateSchema>;
 
-// ---------------------------------------------------------------------------
 // Verification
-// ---------------------------------------------------------------------------
 
 export const VerdictSchema = z.enum(["verified", "unconfirmed", "suspect"]);
 export type Verdict = z.infer<typeof VerdictSchema>;
 
-/**
- * DirectDeal — the "cheaper off Booking" signal. When a direct (non-aggregator) source lists
- * the same entity below the best aggregator price, the traveler saves by booking direct.
- */
+/** Set when a direct (non-aggregator) source lists the same entity below the best aggregator price. */
 export const DirectDealSchema = z
   .object({
     aggregatorPrice: z.number(),
@@ -170,17 +151,14 @@ export const DirectDealSchema = z
   .strict();
 export type DirectDeal = z.infer<typeof DirectDealSchema>;
 
-/**
- * VerifiedOption — the verifier's cross-checked ruling on one entity. `best` is the lowest
- * *trustworthy* price; `corroboration` is every independent listing that agrees it is real.
- */
+/** The verifier's cross-checked ruling on one entity. */
 export const VerifiedOptionSchema = z
   .object({
     entity: EntityRefSchema,
     verdict: VerdictSchema,
-    /** 0–1 blend of corroboration count, source quality, and price agreement. */
+    /** 0-1 blend of corroboration count, source quality, and price agreement. */
     confidence: z.number().min(0).max(1),
-    /** lowest trustworthy listing — what we'd actually book. */
+    /** lowest trustworthy listing, the one we'd book. */
     best: ListingSchema,
     /** every listing pointing at this entity, across sources. */
     corroboration: z.array(ListingSchema),
@@ -217,17 +195,15 @@ export const RankedOptionSchema = z
   .strict();
 export type RankedOption = z.infer<typeof RankedOptionSchema>;
 
-// ---------------------------------------------------------------------------
-// Booking (intent only — never executed autonomously)
-// ---------------------------------------------------------------------------
+// Booking (intent only, never executed autonomously)
 
 export const BookingChannelSchema = z.enum(["web_deeplink", "phone_call", "email"]);
 export type BookingChannel = z.infer<typeof BookingChannelSchema>;
 
 /**
- * BookingIntent — a *prepared* booking or hotel call. Status is always `requires_approval`:
- * this package never completes a purchase, submits a form, or places a call on its own. The
- * intent is a hand-off to a human (or an approval-gated tool) with everything staged.
+ * A prepared booking or hotel call. Status is always `requires_approval`: this package never
+ * completes a purchase, submits a form, or places a call. The intent is handed to a human (or
+ * an approval-gated tool).
  */
 export const BookingIntentSchema = z
   .object({
@@ -244,9 +220,7 @@ export const BookingIntentSchema = z
   .strict();
 export type BookingIntent = z.infer<typeof BookingIntentSchema>;
 
-// ---------------------------------------------------------------------------
 // Self-check + result
-// ---------------------------------------------------------------------------
 
 export const CriticSeveritySchema = z.enum(["blocker", "warning", "info"]);
 export type CriticSeverity = z.infer<typeof CriticSeveritySchema>;
@@ -270,7 +244,7 @@ export const CriticReportSchema = z
   .strict();
 export type CriticReport = z.infer<typeof CriticReportSchema>;
 
-/** One entry in the orchestration trace — an audit trail of who did what. */
+/** One entry in the orchestration trace. */
 export const TraceEventSchema = z
   .object({
     at: z.string(),
@@ -281,9 +255,7 @@ export const TraceEventSchema = z
   .strict();
 export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
-// ---------------------------------------------------------------------------
 // Supervisor: itinerary composition + full-itinerary reprice
-// ---------------------------------------------------------------------------
 
 /** A candidate travel window the supervisor branches over (dates move price). */
 export const DateWindowSchema = z
@@ -291,16 +263,15 @@ export const DateWindowSchema = z
     start: z.string(),
     end: z.string(),
     label: z.string(),
-    /** seasonal price factor vs the mid window (dates are a real cost lever). */
+    /** seasonal price factor vs the mid window. */
     priceFactor: z.number(),
   })
   .strict();
 export type DateWindow = z.infer<typeof DateWindowSchema>;
 
 /**
- * ItineraryCombination — one whole-trip branch the supervisor composed: a flight + a stay +
- * activities under a date window, priced as a unit. Only branches that survived budget pruning
- * and expansion appear here.
+ * One whole-trip branch: a flight, a stay and activities under a date window, priced as a
+ * unit. Only branches that survived budget pruning appear here.
  */
 export const ItineraryCombinationSchema = z
   .object({
@@ -319,13 +290,13 @@ export const ItineraryCombinationSchema = z
   .strict();
 export type ItineraryCombination = z.infer<typeof ItineraryCombinationSchema>;
 
-/** What the supervisor's branch-and-bound actually did — the fan-out/prune accounting. */
+/** Fan-out and prune counts from the supervisor's branch-and-bound. */
 export const SupervisorStatsSchema = z
   .object({
     windows: z.number().int().min(0),
     /** (flight × stay × window) branches generated. */
     expanded: z.number().int().min(0),
-    /** branches dropped on the flight+stay partial cost BEFORE activities were added. */
+    /** branches dropped on the flight+stay partial cost before activities were added. */
     prunedOnBudget: z.number().int().min(0),
     /** survivors kept in the beam and fully expanded. */
     kept: z.number().int().min(0),
@@ -346,9 +317,8 @@ export const RepriceLineSchema = z
 export type RepriceLine = z.infer<typeof RepriceLineSchema>;
 
 /**
- * ItineraryConfirmation — the last gate before an itinerary is surfaced. Every leg is re-priced
- * at its source and the whole-itinerary total is recomputed; only if nothing drifted beyond
- * tolerance is the itinerary `confirmed` (i.e. actually bookable at the quoted price).
+ * The last gate before an itinerary is surfaced. Every leg is re-priced at its source and the
+ * total recomputed. `confirmed` means nothing drifted beyond tolerance.
  */
 export const ItineraryConfirmationSchema = z
   .object({

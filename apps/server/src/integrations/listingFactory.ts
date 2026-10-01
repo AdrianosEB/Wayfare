@@ -2,9 +2,9 @@ import type { Listing, ListingKind, Money } from "@wayfare/shared";
 import { convertFromEur } from "./costIndex.js";
 
 /**
- * Helpers for minting `Listing`s with honest provenance. MVP is mock-only, so every Listing
- * is `freshness: 'mock'`; curated uses `mock:curated`, procedural uses `mock:procedural` with
- * the human label "Estimated price" (US-5.1). Prices round to whole major units.
+ * Helpers for building `Listing`s. MVP is mock-only, so every Listing is `freshness: 'mock'`
+ * with source `mock:curated` or `mock:procedural` and the label "Estimated price" (US-5.1).
+ * Prices round to whole major units.
  */
 
 export type MockTier = "curated" | "procedural";

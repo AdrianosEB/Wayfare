@@ -15,17 +15,15 @@ import type {
 } from "@wayfare/orchestrator";
 
 /**
- * Graph state. This is why the package uses a StateGraph rather than a chain: the critic→retry
- * edge is a real cycle over mutating state — `pass` and `breadthMultiplier` carry forward, the
- * middle of the graph re-runs wider, and everything downstream is recomputed. A linear chain
- * cannot express that.
+ * Graph state. The critic→retry edge is a cycle over mutating state: `pass` and
+ * `breadthMultiplier` carry forward and everything from planQueries down is recomputed.
  */
 export const PlanState = Annotation.Root({
-  // --- inputs, fixed for the run ---
+  // inputs, fixed for the run
   prompt: Annotation<string>(),
   profile: Annotation<TravelerProfile>(),
 
-  // --- produced by the agents ---
+  // produced by the agents
   request: Annotation<TripRequest | undefined>(),
   destination: Annotation<string>(),
   persona: Annotation<Persona | undefined>(),
@@ -45,7 +43,7 @@ export const PlanState = Annotation.Root({
   confirmation: Annotation<ItineraryConfirmation | undefined>(),
   critic: Annotation<CriticReport | undefined>(),
 
-  // --- loop control: the reason this is a graph ---
+  // loop control
   /** 1-based; incremented on every retry through the cycle. */
   pass: Annotation<number>({ reducer: (_, b) => b, default: () => 1 }),
   maxPasses: Annotation<number>({ reducer: (_, b) => b, default: () => 2 }),

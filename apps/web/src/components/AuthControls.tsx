@@ -5,12 +5,8 @@ import { cn } from '@/lib/cn';
 import { AuthModal, type AuthMode } from './AuthModal';
 
 /**
- * TopBar auth surface (AUTH_CONTRACT.md §guest behavior):
- *   - Logged out → "Log in" (ghost) + "Sign up" (solid azure) → open the modal.
- *   - Logged in  → an avatar/initial button → small menu with name/email + "Log out".
- *
- * This only personalizes the chrome; guest mode is the default and the app stays fully usable.
- * `onLight` makes the controls legible over a transparent hero (used by the landing nav).
+ * TopBar auth surface (AUTH_CONTRACT.md §guest behavior): "Log in" + "Sign up" when logged
+ * out, an avatar menu with "Log out" when logged in.
  */
 
 export interface AuthControlsProps {
@@ -30,8 +26,7 @@ export function AuthControls({ onLight = false, className }: AuthControlsProps) 
   const openModal = (mode: AuthMode) => setModal({ open: true, mode });
   const closeModal = () => setModal((m) => ({ ...m, open: false }));
 
-  // While the session is resolving, render nothing in place of the buttons to avoid a flash
-  // of "Log in" for an already-authenticated user. Guest/idle still shows the CTAs.
+  // Render nothing while the session resolves, so a signed-in user never sees "Log in" flash.
   const resolving = status === 'loading' || status === 'idle';
 
   return (
@@ -42,13 +37,8 @@ export function AuthControls({ onLight = false, className }: AuthControlsProps) 
         <span aria-hidden className="h-9 w-px" />
       ) : (
         <>
-          {/*
-            Log in and Sign up are a tertiary/primary pair at one height.
-            Sign up used to render the full-size <Button> (h-11, filled azure-500), which made
-            it a pixel-identical twin of the nav's own "Plan my trip" CTA sitting right beside
-            it — two competing primaries, and a bar with three different control heights. It is
-            now a 36px pill that matches every other control in the row.
-          */}
+          {/* Sign up is a 36px pill rather than the full-size <Button>, so it doesn't compete
+              with the nav's "Plan my trip" CTA beside it. */}
           <button
             type="button"
             onClick={() => openModal('login')}
@@ -77,7 +67,7 @@ export function AuthControls({ onLight = false, className }: AuthControlsProps) 
   );
 }
 
-/* ----------------------------------------------------------------- account menu --- */
+// Account menu
 
 function initialOf(user: { name?: string; email: string }): string {
   const source = user.name?.trim() || user.email.trim();

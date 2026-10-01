@@ -2,13 +2,10 @@ import type { z } from "zod";
 import type { AgentName, LlmConfig } from "./config.js";
 
 /**
- * The model seam.
- *
- * Every node talks to a `StructuredModel`, never to ChatAnthropic directly. That keeps three
- * things possible without any network: the stub used by the whole test suite, dry-run mode, and
- * per-agent fallback. The real implementation is a thin wrapper over
- * `ChatAnthropic#withStructuredOutput`, which is imported lazily so the package can be loaded,
- * type-checked, and tested with no API key present.
+ * Nodes talk to a `StructuredModel`, never to ChatAnthropic directly, so the test stub, dry-run
+ * mode and per-agent fallback all work without a network. The real implementation wraps
+ * `ChatAnthropic#withStructuredOutput` and is imported lazily, so the package loads with no API
+ * key present.
  */
 
 export interface StructuredCall<T> {
@@ -16,16 +13,14 @@ export interface StructuredCall<T> {
   system: string;
   user: string;
   /**
-   * Input is left unconstrained on purpose. Several shared schemas use `.default([])`, so their
-   * Zod *input* and *output* types differ; binding `T` to a plain `ZodType<T>` would unify T
-   * with the input side and hand every caller the pre-default shape.
+   * Input is left unconstrained. Several shared schemas use `.default([])`, so their Zod input
+   * and output types differ, and a plain `ZodType<T>` would bind T to the pre-default shape.
    */
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   /**
-   * Optional laxer schema to hand the provider's structured-output binding, when the strict
-   * `schema` rejects a recoverable formatting slip the model reliably makes. The provider's own
-   * parser validates against this; `repair` then normalises the shape and `schema` remains the
-   * contract everything downstream sees.
+   * Optional laxer schema for the provider's structured-output binding, for when the strict
+   * `schema` rejects a recoverable formatting slip. `repair` then normalises the shape and
+   * `schema` still validates the result.
    */
   wireSchema?: z.ZodType<unknown, z.ZodTypeDef, unknown>;
   /** Normalise a wire-shaped object before strict validation. Must be pure and deterministic. */
@@ -42,7 +37,7 @@ export interface StructuredModel {
   invoke<T>(call: StructuredCall<T>): Promise<StructuredResult<T>>;
 }
 
-/** One prompt as it would have been sent — the dry-run transcript entry. */
+/** Dry-run transcript entry: one prompt as it would have been sent. */
 export interface TranscriptEntry {
   agent: AgentName;
   system: string;
@@ -53,9 +48,8 @@ export interface TranscriptEntry {
 }
 
 /**
- * Dry-run model: records the exact prompt that *would* have been sent, then throws a sentinel
- * so the calling node falls back to its deterministic implementation. Zero API calls, complete
- * inspectable transcript — this is how the prompts get developed.
+ * Records the prompt that would have been sent, then throws a sentinel so the calling node
+ * falls back to its deterministic implementation. No API calls.
  */
 export class DryRunModel implements StructuredModel {
   readonly transcript: TranscriptEntry[] = [];
@@ -74,7 +68,7 @@ export class DryRunModel implements StructuredModel {
   }
 }
 
-/** Sentinel: not an error condition, just "no model output — use the deterministic path". */
+/** Sentinel, not an error: there is no model output, so use the deterministic path. */
 export class DryRunSkip extends Error {
   constructor(readonly agent: AgentName) {
     super(`dry-run: skipped ${agent}`);
@@ -88,9 +82,7 @@ export class SchemaValidationError extends Error {
     readonly agent: AgentName,
     readonly issues: unknown,
   ) {
-    // The issues are in the message, not just on the instance: callers log `String(err)`, and a
-    // bare "off-schema response" is unactionable — it cost a diagnostic round to learn which
-    // field was wrong.
+    // Issues go in the message, not just on the instance, because callers log `String(err)`.
     super(
       `agent "${agent}" returned an off-schema response: ` +
         JSON.stringify(issues)?.slice(0, 600),
@@ -100,16 +92,15 @@ export class SchemaValidationError extends Error {
 }
 
 /**
- * Construction options for the underlying ChatAnthropic. Exported so the test suite can assert
- * on the *request shape* these options produce without a network call.
+ * Construction options for ChatAnthropic, exported so tests can assert on the request shape
+ * without a network call.
  *
- * The invocationKwargs line is load-bearing: Claude Opus 4.7+ / Sonnet 5 reject sampling
- * parameters, but @langchain/anthropic (0.3.x) still sends its defaults (temperature 1,
- * top_k/top_p -1) for models it doesn't special-case by name — every request 400s
- * ("`top_p` cannot be set to -1") and, because decide() degrades on model errors, the whole
- * LLM path silently fell back to heuristics. Constructor nulls can't fix it
- * (`fields?.topP ?? -1`); invocationKwargs spreads last into the request body, and explicit
- * undefined removes the keys entirely. Covered by a regression test in test/model.test.ts.
+ * invocationKwargs is required: Claude Opus 4.7+ / Sonnet 5 reject sampling parameters, but
+ * @langchain/anthropic (0.3.x) still sends its defaults (temperature 1, top_k/top_p -1) for
+ * models it doesn't special-case by name. Every request then 400s ("`top_p` cannot be set to
+ * -1") and decide() silently falls back to heuristics. Constructor nulls can't fix it
+ * (`fields?.topP ?? -1`). invocationKwargs spreads last into the request body, and explicit
+ * undefined removes the keys. Regression test in test/model.test.ts.
  */
 export function anthropicChatOptions(config: LlmConfig, apiKey: string) {
   return {
@@ -121,8 +112,8 @@ export function anthropicChatOptions(config: LlmConfig, apiKey: string) {
 }
 
 /**
- * The real model. `ChatAnthropic` is imported dynamically so that merely importing this package
- * — which the tests and the deterministic path both do — never pulls the SDK or requires a key.
+ * `ChatAnthropic` is imported dynamically so that importing this package never pulls the SDK or
+ * requires a key.
  */
 export class AnthropicStructuredModel implements StructuredModel {
   #chat: unknown;
@@ -156,9 +147,8 @@ export class AnthropicStructuredModel implements StructuredModel {
       { role: "user", content: call.user },
     ]);
 
-    // Validate against the shared schema ourselves too: an off-schema response must surface as
-    // a validation failure, never a silent coercion. `repair` may only move a value that is in
-    // the wrong place — it can never invent one, so this stays a validation, not a coercion.
+    // Validate against the shared schema ourselves too, so an off-schema response surfaces as a
+    // validation failure. `repair` may only move a misplaced value, never invent one.
     const parsed = call.schema.safeParse(call.repair ? call.repair(raw) : raw);
     if (!parsed.success) throw new SchemaValidationError(call.agent, parsed.error.issues);
 
@@ -170,16 +160,12 @@ export class AnthropicStructuredModel implements StructuredModel {
   }
 }
 
-/* ----------------------------------------------------------- local student --- */
+// Local student
 
 /**
- * Extract the first complete JSON object from a completion.
- *
- * A 1.5B student does not always return bare JSON — it may wrap it in a ```json fence or add a
- * sentence either side. Scanning for the first balanced `{...}` (string- and escape-aware, so a
- * brace inside a quoted value never miscounts) recovers the object in all of those cases. If
- * there is no balanced object the caller throws a normal validation error and the node falls
- * back to its deterministic implementation.
+ * Extracts the first complete JSON object from a completion. The 1.5B student sometimes wraps
+ * its JSON in a ```json fence or adds a sentence either side, so this scans for the first
+ * balanced `{...}`, tracking strings and escapes. Returns undefined if there is none.
  */
 export function extractJsonObject(text: string): unknown {
   const start = text.indexOf("{");
@@ -221,16 +207,12 @@ export function extractJsonObject(text: string): unknown {
 /**
  * The locally distilled student, served over an OpenAI-compatible endpoint (`mlx_lm.server`).
  *
- * This is the runtime half of `training/` — until now the fine-tune had no way into the app.
- * It sends `system` and `user` verbatim, which matters: `gen-persona-data.ts` built the training
- * set from the *exact* prompt the production node sends, so sending anything else here would put
- * the student off its training distribution.
+ * `system` and `user` are sent verbatim. `gen-persona-data.ts` built the training set from the
+ * exact prompt the production node sends, so anything else puts the student off its training
+ * distribution.
  *
- * Structured output is not requested via a provider binding (mlx_lm has no equivalent of
- * Anthropic's tool-schema forcing). The student was trained to answer with a bare JSON object,
- * so the response is parsed and then validated against the same shared schema the Anthropic
- * path uses — an off-schema answer surfaces as a validation failure and `decide()` degrades to
- * the deterministic agent, never a silent coercion.
+ * mlx_lm has no equivalent of Anthropic's tool-schema forcing, so the response is parsed as
+ * bare JSON and validated against the same shared schema the Anthropic path uses.
  */
 export class LocalStructuredModel implements StructuredModel {
   constructor(

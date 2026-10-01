@@ -26,17 +26,10 @@ import type { ToolContext } from "./tools.js";
 import type { PlanStateType, PlanStateUpdate } from "./state.js";
 
 /**
- * The ten agent nodes.
- *
- * Every node has the same shape, and it is the shape that makes this safe:
- *
- *   1. ask the model for a *decision* (structured output, validated against the shared schema)
- *   2. run the deterministic tool to produce the *numbers*
- *   3. merge — judgment shapes the inputs and the choice; the tool supplies every figure
- *
- * If the agent is not in the allowlist, a ceiling is spent, dry-run is on, or the model errors,
- * step 1 is skipped and the deterministic implementation from @wayfare/orchestrator supplies the
- * decision too. The plan always lands.
+ * Each node asks the model for a decision (structured output, validated against the shared
+ * schema), then runs the deterministic tool to produce the numbers. If the agent is not
+ * allowlisted, a ceiling is spent, dry-run is on, or the model errors, the deterministic
+ * implementation from @wayfare/orchestrator supplies the decision instead.
  */
 
 export interface NodeDeps {
@@ -47,11 +40,9 @@ export interface NodeDeps {
 }
 
 /**
- * Run one agent's model call under the budget, falling back to `fallback` on any of: not
- * allowlisted, ceiling spent, dry-run, or a model/validation error. Records usage either way.
- *
- * A SchemaValidationError is deliberately re-thrown rather than swallowed — an off-schema
- * response is a real failure the caller must see, not something to silently paper over.
+ * Runs one agent's model call under the budget. Falls back to `fallback` when the agent is not
+ * allowlisted, a ceiling is spent, dry-run is on, or the model errors. Records usage either way.
+ * A SchemaValidationError is re-thrown, not swallowed.
  */
 async function decide<T>(
   deps: NodeDeps,
@@ -127,9 +118,7 @@ const brief = (v: unknown, max = 1800): string => {
   return s.length > max ? `${s.slice(0, max)}…(truncated)` : s;
 };
 
-/* -------------------------------------------------------------------------- */
-/* 1. intake                                                                   */
-/* -------------------------------------------------------------------------- */
+// 1. intake
 
 export function intakeNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
@@ -146,31 +135,18 @@ export function intakeNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 2. persona                                                                  */
-/* -------------------------------------------------------------------------- */
+// 2. persona
 
 /**
- * Models put `reasoning` inside `preferences` on 13–19% of persona calls, across three prompt
- * revisions that told them not to in increasingly explicit terms. That one misplacement fails
- * the strict parse three ways at once: `reasoning` missing at the top level, an unrecognised key
- * in a `.strict()` `preferences`, and `preferences`' own required fields displaced.
- *
- * So the model is handed a schema lenient enough to accept the misplacement, and the shape is
- * repaired here before the STRICT `PersonaSchema` validates it. The strict schema is still the
- * contract — nothing downstream sees an unrepaired object — but a recoverable formatting slip
- * no longer costs an eighth of a paid teacher pass.
- *
- * Repaired rows are counted, not hidden: the hoist rate is a reported number (see
- * training/RESULTS.md). If it climbs, the prompt or the schema is drifting and that is worth
- * knowing rather than silently absorbing.
+ * Models put `reasoning` inside `preferences` on 13 to 19% of persona calls, even after three
+ * prompt revisions telling them not to. So the model gets a lenient schema that accepts the
+ * misplacement, and the shape is repaired here before the strict `PersonaSchema` validates it.
+ * Repairs are counted, and the hoist rate is reported in training/RESULTS.md.
  */
 export const PersonaWireSchema = PersonaSchema.extend({
-  // EVERY hoistable field is optional here, not just `reasoning`. The model does not misplace
-  // one key — it moves `weights` and `summary` down into `preferences` as well, so requiring
-  // any of them at the top level makes the wire parse fail before the repair can run. That was
-  // a real bug: a first version relaxed only `reasoning` and left the discard rate at 15.5%.
-  // Nothing is lost by relaxing them, because the strict schema still validates after repair.
+  // Every hoistable field is optional, not just `reasoning`: the model also moves `weights` and
+  // `summary` down into `preferences`, and requiring any of them at the top level fails the
+  // wire parse before the repair can run. The strict schema still validates after repair.
   reasoning: z.array(z.string()).optional(),
   weights: PersonaSchema.shape.weights.optional(),
   summary: z.string().optional(),
@@ -187,18 +163,17 @@ export function repairPersonaShape(raw: unknown): unknown {
   const prefs = o.preferences as Record<string, unknown> | undefined;
   if (!prefs || typeof prefs !== "object") return raw;
 
-  // Only hoist keys that belong at the top level and are missing there — never overwrite a
-  // value the model put in the right place.
+  // Only hoist keys that are missing at the top level. Never overwrite a value the model put
+  // in the right place.
   const misplaced = ["reasoning", "weights", "summary"] as const;
   const moved: Record<string, unknown> = {};
   for (const k of misplaced) {
     if (k in prefs && o[k] === undefined) moved[k] = prefs[k];
   }
 
-  // The model also wraps the real preferences in a second `preferences` layer, giving
-  // {preferences: {preferences: {pace, interests…}, weights, …}}. Unwrapping the inner object is
-  // the only way the outer one can satisfy a strict PreferencesSchema, since pace/interests live
-  // down there. Inner wins on conflict: it is the one holding the actual preference fields.
+  // The model also wraps the real preferences in a second `preferences` layer:
+  // {preferences: {preferences: {pace, interests…}, weights, …}}. Unwrap it, since pace and
+  // interests live in the inner object. Inner wins on conflict.
   const inner = prefs.preferences;
   const hasInner = !!inner && typeof inner === "object" && !Array.isArray(inner);
   if (!Object.keys(moved).length && !hasInner) return raw;
@@ -229,9 +204,7 @@ export function personaNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 3. planQueries — build_query                                                */
-/* -------------------------------------------------------------------------- */
+// 3. planQueries: build_query
 
 export function planQueriesNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
@@ -259,9 +232,7 @@ export function planQueriesNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 4. search — run_search                                                      */
-/* -------------------------------------------------------------------------- */
+// 4. search: run_search
 
 export function searchNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
@@ -280,13 +251,11 @@ export function searchNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 5. verify — cross_check                                                     */
-/* -------------------------------------------------------------------------- */
+// 5. verify: cross_check
 
 export function verifyNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
-    // Tool first here: the cross-check IS the computation, and the agent interprets its output.
+    // Tool first here: the cross-check is the computation, and the agent interprets its output.
     const crossChecked = T.crossCheckTool(deps.ctx, "verify")(s.candidates);
     const verified = await decide(
       deps,
@@ -299,9 +268,7 @@ export function verifyNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 6. match — score_options + compute_budget                                   */
-/* -------------------------------------------------------------------------- */
+// 6. match: score_options + compute_budget
 
 function groupByKind(options: PlanStateType["verified"]): Record<string, typeof options> {
   const out: Record<string, typeof options> = {};
@@ -326,9 +293,7 @@ export function matchNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 7. supervisor — enumerate_itineraries + compute_total                       */
-/* -------------------------------------------------------------------------- */
+// 7. supervisor: enumerate_itineraries + compute_total
 
 export function supervisorNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
@@ -356,9 +321,7 @@ export function supervisorNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 8. select — reasons over the supervisor's tool output                       */
-/* -------------------------------------------------------------------------- */
+// 8. select: reasons over the supervisor's tool output
 
 export const SelectionSchema = z
   .object({ chosenIndex: z.number().int().min(0), rationale: z.string() })
@@ -395,9 +358,7 @@ export function selectNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 9. reprice — fetch_current_price                                            */
-/* -------------------------------------------------------------------------- */
+// 9. reprice: fetch_current_price
 
 export function repriceNode(deps: NodeDeps) {
   return async (s: PlanStateType): Promise<PlanStateUpdate> => {
@@ -425,9 +386,7 @@ export function repriceNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* 10. critic — compute_budget                                                 */
-/* -------------------------------------------------------------------------- */
+// 10. critic: compute_budget
 
 function selectionForCritic(
   legs: ItineraryLeg[],
@@ -483,14 +442,9 @@ export function criticNode(deps: NodeDeps) {
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* the conditional edge — the cycle                                            */
-/* -------------------------------------------------------------------------- */
-
 /**
- * The graph's one cycle. On a critic failure with passes remaining we widen and go back to
- * planQueries; everything downstream recomputes against the wider market. This is the whole
- * reason for a StateGraph over a chain.
+ * The graph's one cycle: on a critic failure with passes remaining, widen and go back to
+ * planQueries so everything downstream recomputes against the wider market.
  */
 export function shouldRetry(s: PlanStateType): "retry" | "done" {
   if (s.critic?.passed) return "done";

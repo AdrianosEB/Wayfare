@@ -4,10 +4,9 @@ import { PersonaSchema } from "@wayfare/orchestrator";
 import { PersonaWireSchema, repairPersonaShape } from "../src/nodes.js";
 
 /**
- * The hoist is a safety net over a paid teacher pass and over the production persona path, so it
- * has to be exactly as narrow as advertised: move a misplaced value, never invent or overwrite
- * one. These cover the shape actually observed in the wild (13–19% of calls put `reasoning`
- * inside `preferences`) plus the ways a careless repair could do damage.
+ * The repair may move a misplaced value but never invent or overwrite one. These cover the shape
+ * observed live (13 to 19% of calls put `reasoning` inside `preferences`) plus the ways a
+ * careless repair could do damage.
  */
 
 const goodPreferences = { pace: "relaxed" as const, interests: ["food"] };
@@ -20,8 +19,7 @@ describe("repairPersonaShape", () => {
       preferences: { ...goodPreferences, reasoning: ["counts every euro -> price up"] },
       summary: "cost-led",
     };
-    // The observed wire shape must at least parse against the lenient schema, or the repair
-    // never runs — that is the whole mechanism.
+    // The observed wire shape must parse against the lenient schema, or the repair never runs.
     expect(PersonaWireSchema.safeParse(wire).success).toBe(true);
 
     const repaired = repairPersonaShape(wire);
@@ -33,9 +31,9 @@ describe("repairPersonaShape", () => {
   });
 
   it("accepts and repairs the whole persona nested inside preferences", () => {
-    // The failure actually observed in the wild: reasoning, weights AND summary all moved down
-    // into `preferences`, leaving nothing but `preferences` at the top level. A wire schema that
-    // relaxes only `reasoning` rejects this before the repair can run.
+    // Observed live: reasoning, weights and summary all moved down into `preferences`, leaving
+    // only `preferences` at the top level. A wire schema that relaxes only `reasoning` rejects
+    // this before the repair can run.
     const wire = {
       preferences: {
         ...goodPreferences,
@@ -53,7 +51,7 @@ describe("repairPersonaShape", () => {
 
   it("unwraps preferences nested inside preferences", () => {
     // Also observed live: {preferences: {preferences: {pace, interests}, weights, …}}. Hoisting
-    // the top-level keys alone leaves the inner object as an unrecognised key AND leaves the
+    // the top-level keys alone leaves the inner object as an unrecognised key and leaves the
     // outer preferences without its required pace/interests.
     const wire = {
       preferences: {
@@ -85,7 +83,7 @@ describe("repairPersonaShape", () => {
     expect(repairPersonaShape(good)).toBe(good);
   });
 
-  it("cannot invent a missing field — an unrepairable object still fails strict validation", () => {
+  it("cannot invent a missing field: an unrepairable object still fails strict validation", () => {
     // `weights` absent everywhere: the repair must not fabricate it, so this stays a failure.
     const wire = { preferences: { ...goodPreferences, reasoning: ["a -> price up"] }, summary: "s" };
     expect(PersonaSchema.safeParse(repairPersonaShape(wire)).success).toBe(false);

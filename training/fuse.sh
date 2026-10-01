@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # Merge the LoRA adapters into a standalone model for serving (mlx_lm.server can load the
-# fused directory directly, no adapter plumbing at inference time).
+# fused directory directly).
 #
-#   ./fuse.sh              # fuse ./adapters/adapters.safetensors — the LAST checkpoint written
+#   ./fuse.sh              # fuse ./adapters/adapters.safetensors, the last checkpoint written
 #   CKPT=200 ./fuse.sh     # fuse ./adapters/0000200_adapters.safetensors instead
 #
-# CKPT matters when training ran past the validation minimum: `mlx_lm fuse` takes only a
-# directory and always reads `adapters.safetensors` from it, which is whatever was saved most
-# recently. Fusing the final weights when the curve bottomed out earlier is silent — the model
-# loads and answers fine, it is just the overfit one. Pass CKPT to pin the iteration.
+# `mlx_lm fuse` always reads `adapters.safetensors`, which is whatever was saved most recently.
+# If training ran past the validation minimum, pass CKPT to pin the iteration.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,11 +17,10 @@ BASE_MODEL=${BASE_MODEL:-mlx-community/Qwen2.5-1.5B-Instruct-4bit}
 CKPT=${CKPT:-}
 DEQUANTIZE=${DEQUANTIZE:-auto}   # auto | always | never
 
-# `mlx_lm fuse` re-resolves the base model through the Hub and demands a *complete* snapshot —
-# including files inference never touches (.gitattributes, README.md). Training and generation
-# use a pattern-filtered download, so a cache that trains fine can still fail to fuse with
-# IncompleteSnapshotError. Resolve the cached snapshot directory ourselves and hand fuse a
-# local path, which skips the Hub entirely.
+# `mlx_lm fuse` re-resolves the base model through the Hub and requires a complete snapshot,
+# including files inference never touches (.gitattributes, README.md). Training downloads a
+# pattern-filtered subset, so fuse can fail with IncompleteSnapshotError on a cache that trains
+# fine. Resolve the cached snapshot directory here and pass fuse a local path instead.
 if [ ! -d "$BASE_MODEL" ]; then
   RESOLVED=$("$PY" - "$BASE_MODEL" <<'PY' 2>/dev/null || true
 import sys
@@ -47,8 +44,7 @@ if [ -n "$CKPT" ]; then
     ls "${ADAPTERS:-./adapters}"/[0-9]*_adapters.safetensors >&2 2>/dev/null || echo "  (none)" >&2
     exit 1
   fi
-  # Staged in a temp dir so ./adapters is never mutated — the numbered checkpoints stay
-  # intact and re-fusing a different iteration costs nothing.
+  # Staged in a temp dir so the numbered checkpoints in ./adapters are left untouched.
   ADAPTER_PATH=$(mktemp -d)
   trap 'rm -rf "$ADAPTER_PATH"' EXIT
   cp "${ADAPTERS:-./adapters}/adapter_config.json" "$ADAPTER_PATH/"
@@ -56,12 +52,10 @@ if [ -n "$CKPT" ]; then
   echo "fuse.sh: fusing iter-$CKPT checkpoint ($SRC)"
 fi
 
-# Fusing LoRA into a QUANTIZED base silently produces a model with the adapters not applied:
-# no error, no warning — it loads and answers, but as the untuned base. Verified 2026-08-15 on
-# the iter-650 checkpoint: base+adapter emitted schema-valid PersonaSchema JSON, the fused model
-# emitted degenerate prose, same prompt and tokenizer. `--dequantize` fixes it (fp16 output,
-# ~2.9 GB instead of ~1 GB). Always smoke-test what comes out of here — `smoke_test.py` exists
-# because this failure is invisible from the fuse output alone.
+# Fusing LoRA into a quantized base produces a model without the adapters applied, with no
+# error or warning. Seen 2026-08-15 on the iter-650 checkpoint: base+adapter emitted schema-valid
+# PersonaSchema JSON, the fused model emitted degenerate prose. `--dequantize` fixes it (fp16
+# output, ~2.9 GB instead of ~1 GB). Run `smoke_test.py` on the result.
 FUSE_ARGS=()
 case "$DEQUANTIZE" in
   always) FUSE_ARGS+=(--dequantize) ;;
@@ -72,7 +66,7 @@ import json, sys, pathlib
 cfg = pathlib.Path(sys.argv[1]) / 'config.json'
 sys.exit(0 if cfg.is_file() and 'quantization' in json.loads(cfg.read_text()) else 1)
 " "$BASE_MODEL" 2>/dev/null; then
-      echo "fuse.sh: base is quantized — fusing with --dequantize (see comment above)"
+      echo "fuse.sh: base is quantized, fusing with --dequantize"
       FUSE_ARGS+=(--dequantize)
     fi
     ;;
@@ -86,5 +80,5 @@ esac
   "${FUSE_ARGS[@]}"
 
 echo
-echo "fuse.sh: fused -> ${FUSED:-./fused}. VERIFY IT — a silently-unfused model is indistinguishable"
-echo "         from success here:  $PY smoke_test.py --model ${FUSED:-./fused}"
+echo "fuse.sh: fused -> ${FUSED:-./fused}. Verify it, since an unfused model looks the same here:"
+echo "         $PY smoke_test.py --model ${FUSED:-./fused}"

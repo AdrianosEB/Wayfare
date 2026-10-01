@@ -1,10 +1,8 @@
 import type { Tracked, TripRequest } from "@wayfare/shared";
 
 /**
- * Heuristic prompt parser — extracts every constraint it reasonably can from a single sentence
- * (US-1.2) so the user is never re-asked what they already said. This is the deterministic,
- * offline parser; when ANTHROPIC_API_KEY is set the server can swap in a structured Claude call
- * (see CONVERSATION_FLOW.md §2). Confidences mirror the worked example in the docs.
+ * Heuristic, offline prompt parser (US-1.2). Pulls what it can from one sentence so the user
+ * isn't re-asked. Confidences mirror the worked example in CONVERSATION_FLOW.md §2.
  */
 
 const t = <T>(value: T, source: Tracked<T>["source"], confidence: number): Tracked<T> => ({
@@ -134,9 +132,8 @@ function extractDestination(text: string, original: string): Tracked<string> | n
       return t(d.charAt(0).toUpperCase() + d.slice(1), "prompt", 0.95);
     }
   }
-  // vague: "somewhere <vibe>", "in Europe", "sunny".
-  // "in <Capitalized>" is a weak destination signal — but guard against month names so
-  // "travelling in March" isn't misread as a place called "March".
+  // "in <Capitalized>" is a weak destination signal. Skip month names so "travelling in March"
+  // isn't read as a place.
   const inMatch = original.match(/\bin\s+([A-Z][a-zA-Z]+)\b/);
   if (inMatch && !/march|april|august|june|july|may/i.test(inMatch[1]!)) {
     return t(inMatch[1]!, "prompt", 0.7);
@@ -161,5 +158,5 @@ function buildRecap(r: TripRequest): string {
   }
   if (r.budget) bits.push(`~${r.budget.value.currency} ${r.budget.value.amount}`);
   const recap = bits.length ? bits.join(", ") : "your trip";
-  return `Nice — ${recap}. A couple of quick things:`;
+  return `Nice, ${recap}. A couple of quick things:`;
 }

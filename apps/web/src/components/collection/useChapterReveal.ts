@@ -2,39 +2,25 @@ import { useEffect, type RefObject } from 'react';
 import { REVEAL_UNIT, type RevealStyle } from './chapters';
 
 /**
- * Scroll-driven reveal for one chapter.
+ * Scroll-driven reveal for one chapter. Over the chapter's sticky hold:
+ *   1. the full-bleed image expands from 1.28 to 1
+ *   2. the headline arrives letter by letter in front of it
+ *   3. the small frames fade up
  *
- * Over the chapter's sticky hold:
- *   1. the full-bleed image expands from 1.28 to 1 — it settles rather than slides
- *   2. the headline arrives letter by letter in front of it — the main event
- *   3. the small frames fade up quietly, without competing for attention
- *
- * GSAP builds and eases the timeline, but it is NOT driven by ScrollTrigger. The playhead is
- * set from the section's live `getBoundingClientRect()` on every frame instead.
- *
- * That is a deliberate departure, and it was arrived at the hard way. ScrollTrigger caches
+ * GSAP builds and eases the timeline, but it is not driven by ScrollTrigger. The playhead is
+ * set from the section's live `getBoundingClientRect()` on every frame. ScrollTrigger caches
  * each trigger's start and end when it is created, and this page changes height long
  * afterwards: the hero's pin adds two viewports of `pinSpacing` and is created late, because
- * it waits on 151 frames decoding. Measured, every chapter's trigger sat exactly 2.0
- * viewports early — chapter I believed it started at 1.0vh when it actually starts at 3.0 —
- * so each headline finished writing itself on while the visitor was still looking at the
- * hero, and the words were simply already there by the time the chapter arrived.
- *
- * Refreshing was tried three ways and each failed: immediately after creating the pin (its
- * spacer had not been applied yet), coalesced across all parties (the chapters request on
- * mount, long before the pin exists), and from a ResizeObserver on the document (never
- * fires reliably — it needs rendering opportunities, the same reason IntersectionObserver
- * callbacks stall in a backgrounded tab).
- *
- * Live geometry has no cache to invalidate, so it cannot be stale. It is also the pattern
- * already proven for the hero canvas: read the truth every frame, draw from that.
+ * it waits on the frames decoding. Every chapter's trigger sat 2.0 viewports early, and
+ * refreshing (right after creating the pin, coalesced, or from a ResizeObserver on the
+ * document) did not fix it.
  */
 
-/** How far past its final size the image starts. Expanding *in* reads as arrival. */
+/** How far past its final size the image starts. */
 const IMAGE_FROM_SCALE = 1.28;
 /** Fraction of the chapter over which the image finishes expanding. */
 const IMAGE_SETTLE_AT = 0.7;
-/** Playhead easing per frame — a little lag, so it feels scrubbed rather than welded. */
+/** Playhead easing per frame, so it lags the scroll a little. */
 const SMOOTHING = 0.14;
 
 type Chapter = {
@@ -55,9 +41,8 @@ function targetProgress(section: HTMLElement): number {
 }
 
 /**
- * One loop for every chapter on the page, not one each. Six `getBoundingClientRect` reads
- * per frame is nothing, and they all happen together before any write, so the reads cannot
- * interleave with the writes and force repeated layout.
+ * One loop for every chapter on the page. All the `getBoundingClientRect` reads happen
+ * together before any write, so they cannot interleave and force repeated layout.
  */
 function tick() {
   const targets: { chapter: Chapter; value: number }[] = [];
@@ -93,18 +78,14 @@ function unregister(chapter: Chapter) {
 
 /**
  * Stagger spacing, normalised so every headline takes about the same share of its chapter
- * regardless of length. A fixed per-unit value would make "Islands AND SLOW MORNINGS" (22
- * letters) crawl while "Begin ANYWHERE" (13) was over in a moment.
+ * regardless of length.
  */
 function staggerFor(count: number): number {
   if (count <= 1) return 0;
   return Math.min(0.22, Math.max(0.012, 0.6 / (count - 1)));
 }
 
-/**
- * The six headline treatments. Each returns the from-state and to-state for its unit, so
- * the page never plays the same trick twice running.
- */
+/** The six headline treatments, one per `RevealStyle`. */
 function buildHeadline(
   gsap: typeof import('gsap').gsap,
   tl: gsap.core.Timeline,
@@ -118,10 +99,9 @@ function buildHeadline(
   const each = staggerFor(targets.length);
   const START = 0.08;
 
-  // `gsap.set` first, then `.to` — never a staggered `fromTo`. A staggered `fromTo` applies
-  // each target's start state only when the playhead reaches that target (and
-  // `immediateRender: true` does not change it), so everything after the first unit sat
-  // visible before its own reveal.
+  // `gsap.set` first, then `.to`, never a staggered `fromTo`. A staggered `fromTo` applies
+  // each target's start state only when the playhead reaches that target (`immediateRender:
+  // true` does not change it), so later units sit visible before their own reveal.
   switch (style) {
     case 'rise':
       gsap.set(targets, { yPercent: 30, opacity: 0 });
@@ -130,38 +110,36 @@ function buildHeadline(
       break;
 
     case 'slide':
-      // Letters arrive from the side rather than from below — the chapter sits right-aligned,
-      // so they travel inward from the margin.
+      // Letters arrive from the side: the chapter is right-aligned, so they travel inward
+      // from the margin.
       gsap.set(targets, { xPercent: 60, opacity: 0 });
       tl.to(targets, { xPercent: 0, opacity: 1, ease: 'power3.out', duration: 0.16,
         stagger: { each, from: 'start' } }, START);
       break;
 
     case 'words':
-      // Whole words, slower and heavier. Fewer units means each one can afford real travel.
+      // Whole words, slower and heavier.
       gsap.set(targets, { yPercent: 40, opacity: 0, scale: 0.94 });
       tl.to(targets, { yPercent: 0, opacity: 1, scale: 1, ease: 'power3.out', duration: 0.26,
         stagger: { each, from: 'start' } }, START);
       break;
 
     case 'wipe':
-      // Whole lines rising from behind their clipping box — no fade at all, so it reads as
-      // the type being uncovered rather than appearing.
+      // Whole lines rising from behind their clipping box, with no fade.
       gsap.set(targets, { yPercent: 115 });
       tl.to(targets, { yPercent: 0, ease: 'power3.out', duration: 0.3,
         stagger: { each, from: 'start' } }, START);
       break;
 
     case 'scatter':
-      // Letters resolve in a fixed shuffled order. No travel — they settle out of nothing,
-      // which suits the chapter about prices being pinned down.
+      // Letters resolve in a fixed shuffled order, with no travel.
       gsap.set(targets, { opacity: 0, scale: 0.82 });
       tl.to(targets, { opacity: 1, scale: 1, ease: 'power1.out', duration: 0.16,
         stagger: { each, from: 'random' } }, START);
       break;
 
     case 'center-out':
-      // Outward from the middle of the line, closing the page symmetrically.
+      // Outward from the middle of the line.
       gsap.set(targets, { yPercent: -28, opacity: 0 });
       tl.to(targets, { yPercent: 0, opacity: 1, ease: 'power2.out', duration: 0.14,
         stagger: { each, from: 'center' } }, START);
@@ -209,9 +187,9 @@ export function useChapterReveal(
 
         buildHeadline(gsap, tl, section, style);
 
-        // The label and standfirst are animated individually rather than by fading their
-        // shared parent: a parent's opacity multiplies against each letter's own, which
-        // would dim the very reveal it sits around.
+        // The label and standfirst are animated individually, not by fading their shared
+        // parent: a parent's opacity multiplies against each letter's own and would dim the
+        // reveal.
         if (meta) {
           tl.fromTo(meta, { opacity: 0 }, { opacity: 1, ease: 'none', duration: 0.08 }, 0);
         }

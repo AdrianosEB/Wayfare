@@ -6,9 +6,9 @@ import { resolveDates, type ResolvedDates } from "../dates.js";
 import { findCuratedPack } from "../integrations/curated/index.js";
 
 /**
- * Turn a (possibly vague) TripRequest into a concrete plan context: a resolved destination,
- * concrete dates, party, currency, cost tier, interests, and the assumptions taken along the
- * way (US-5.2). This is step 1 (RESOLVE) of the plan loop — curated picks win over procedural.
+ * Step 1 (RESOLVE) of the plan loop: turn a possibly vague TripRequest into a concrete
+ * destination, dates, party, currency and cost tier, recording the assumptions made (US-5.2).
+ * Curated picks win over procedural ones.
  */
 
 export interface PlanContext {
@@ -105,9 +105,8 @@ function resolveVague(request: TripRequest): { name: string; reason: string } {
   const origin = resolvePlace(request.origin?.value ?? "London");
   const avoid = (request.avoid?.value ?? []).map((a) => a.toLowerCase());
 
-  // Score each candidate: +3 per matched taste tag (the dominant signal), a cheap-destination
-  // bonus only for tight hard budgets, a proximity bonus when the user wants a short hop, and a
-  // small seeded jitter so ties break deterministically rather than by array order.
+  // Score: +3 per matched tag, a bonus for cheap places on tight hard budgets, a proximity
+  // bonus when the user wants a short hop, and seeded jitter to break ties.
   const rng = new Rng("resolve", request.destination?.value ?? "", request.origin?.value ?? "");
   const scored = CANDIDATES.filter((c) => !avoid.some((a) => c.name.toLowerCase().includes(a)))
     .map((c) => {
@@ -140,9 +139,8 @@ export function buildPlanContext(request: TripRequest, year: number): PlanContex
     assumptions.push({ field: "origin", assumed: origin, reason: "you skipped origin; starting from a major hub near you." });
   }
 
-  // destination — resolution priority: (1) a curated hero pack owns it (e.g. "Greece" → Naxos),
-  // (2) it's vague ("somewhere sunny") → score the candidate shortlist, recording an assumption,
-  // (3) otherwise take the named place verbatim. Only (2) and the curated picks add assumptions.
+  // destination: a curated pack wins (e.g. "Greece" → Naxos), then a vague one ("somewhere
+  // sunny") is scored against the shortlist, otherwise the named place is taken verbatim.
   const rawDest = request.destination?.value;
   const curated = rawDest ? findCuratedPack(rawDest) : undefined;
   let destinationResolved: string;
@@ -157,7 +155,7 @@ export function buildPlanContext(request: TripRequest, year: number): PlanContex
     const r = resolveVague(request);
     destinationResolved = r.name;
     destinationReason = r.reason;
-    assumptions.push({ field: "destination", assumed: r.name, reason: `you were open on destination — picked ${r.name} because it ${r.reason}` });
+    assumptions.push({ field: "destination", assumed: r.name, reason: `you were open on destination, so we picked ${r.name} because it ${r.reason}` });
   } else {
     destinationResolved = rawDest!;
     destinationReason = "the destination you named.";
@@ -189,7 +187,7 @@ export function buildPlanContext(request: TripRequest, year: number): PlanContex
   if (!d?.exact) {
     assumptions.push({
       field: "dates",
-      assumed: `${dates.start} – ${dates.end}${flexibility !== "fixed" ? " (flexible window)" : ""}`,
+      assumed: `${dates.start} to ${dates.end}${flexibility !== "fixed" ? " (flexible window)" : ""}`,
       reason: d ? "you gave a rough window; picked concrete dates within it." : "you didn't give dates; picked a sensible window.",
     });
   }

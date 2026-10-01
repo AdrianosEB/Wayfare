@@ -3,10 +3,7 @@ import { cn } from '@/lib/cn';
 import { formatAmount, freshnessNote } from '@/lib/format';
 import { CATEGORY_META } from './budgetMeta';
 
-/**
- * One category line in the breakdown. Tappable to highlight the itinerary items behind it
- * (its `itemRefs`). Carries a freshness dot so each line is honest about its prices.
- */
+/** One category line in the breakdown. Tapping it highlights the itinerary items in `itemRefs`. */
 export function BudgetLineRow({
   line,
   currency,

@@ -12,9 +12,8 @@ import { addDays } from "../dates.js";
 import type { TransitLeg } from "../integrations/curated/index.js";
 
 /**
- * Pure assembly helpers: pick coherent options per slot and lay activities out across the days
- * honoring pace (relaxed → fewer scheduled activities/day) and arrival/departure logistics.
- * No day is left empty unless it's a deliberate rest day (US-3.1).
+ * Pure assembly helpers: pick an option per slot and lay activities out across the days by pace.
+ * No day is left empty unless it's a rest day (US-3.1).
  */
 
 const PACE_CAP: Record<Pace, number> = { relaxed: 1, moderate: 2, packed: 3 };
@@ -132,10 +131,8 @@ export function assembleDays(opts: {
     transitListings.push(departure.listing);
   }
 
-  // distribute paid activities across middle days, respecting the per-day cap.
-  // Fill order biases toward interior days (2..N) first, leaving the arrival day (index 0)
-  // for last and lightly — you rarely want a packed schedule on the day you land. `cursor`
-  // round-robins across days so activities spread out instead of stacking on the first slot.
+  // Spread paid activities round-robin over the interior days, respecting the per-day cap.
+  // The arrival day comes last and takes at most one.
   const interiorOrder: number[] = [];
   for (let d = 1; d < nights; d++) interiorOrder.push(d); // day 2..N (0-based 1..N-1)
   interiorOrder.push(0); // day 1 last, lightly
@@ -154,7 +151,7 @@ export function assembleDays(opts: {
       }
     }
     if (!placed) {
-      // everything full — append to the least-busy interior day anyway
+      // everything full: append to the least-busy interior day anyway
       const d = interiorOrder.reduce((best, x) => (dayItems[x]!.length < dayItems[best]!.length ? x : best), interiorOrder[0]!);
       dayItems[d]!.push(activityItem(a, true));
       placedActivityListings.push(a.listing);

@@ -1,7 +1,7 @@
 {
   "name": "@wayfare/shared",
   "version": "0.1.0",
-  "description": "Wayfare shared types + Zod schemas — the single source of truth for the API_CONTRACT wire.",
+  "description": "Shared types and Zod schemas for the Wayfare wire contract (API_CONTRACT.md).",
   "license": "UNLICENSED",
   "type": "module",
   "main": "./dist/index.js",

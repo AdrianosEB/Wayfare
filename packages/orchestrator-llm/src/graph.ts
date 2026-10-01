@@ -37,8 +37,8 @@ import {
  *          → supervisor → select → reprice → critic
  *          → critic.passed ? END : widen → back to planQueries
  *
- * The conditional edge back to planQueries is the reason this is a StateGraph: the retry is a
- * genuine cycle over mutating state (`pass`, `breadthMultiplier`), not a linear pipeline.
+ * The retry is a cycle over mutating state (`pass`, `breadthMultiplier`), which is why this is a
+ * StateGraph and not a linear pipeline.
  */
 
 export interface LlmPlanResult extends PlanResult {
@@ -157,7 +157,7 @@ function selectionOf(s: PlanStateType): PlanResult["selection"] {
  * Assemble the StateGraph. Exported so tests can drive it directly.
  *
  * Nodes carry an `Agent` suffix because LangGraph forbids a node name from colliding with a
- * state channel — `persona` and `critic` are both channels here.
+ * state channel, and `persona` and `critic` are both channels here.
  */
 export function buildGraph(deps: NodeDeps) {
   return new StateGraph(PlanState)

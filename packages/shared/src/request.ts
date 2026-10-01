@@ -2,9 +2,9 @@ import { z } from "zod";
 import { TrackedSchema } from "./common.js";
 
 /**
- * TripRequest — the structured output of prompt parsing + clarifying answers. Every field
- * tracks where it came from. Fields are both optional (not yet known) and nullable (the
- * parser can emit `origin: null` to mark a known-missing required field — see the
+ * TripRequest is the structured output of prompt parsing plus clarifying answers. Every field
+ * tracks where it came from. Fields are both optional (not yet known) and nullable: the
+ * parser can emit `origin: null` to mark a known-missing required field (see the
  * session-create fixture). See DATA_MODEL.md "TripRequest" and CONVERSATION_FLOW.md §1.
  */
 
@@ -73,8 +73,8 @@ export const TripRequestSchema = z
 export type TripRequest = z.infer<typeof TripRequestSchema>;
 
 /**
- * ClarifyQuestion — frozen shape (API_CONTRACT.md §1). The selector asks at most 4,
- * leverage-ranked, every one skippable with a stated default.
+ * The ClarifyQuestion shape is frozen (API_CONTRACT.md §1). The selector asks at most 4,
+ * ranked by leverage, each skippable with a stated default.
  */
 export const ClarifyFormatSchema = z.enum([
   "chips",

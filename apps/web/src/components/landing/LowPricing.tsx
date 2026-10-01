@@ -9,9 +9,8 @@ import type { SampleTrip } from '@/lib/content';
 import { Reveal, RevealGroup, Section, formatFrom } from './_shared';
 
 /**
- * "Big trips, small budgets" — a photo-rich grid of the cheapest trips, reusing the BudgetCard
- * style from the `/pricing` page. Shows the first six BUDGET_TRIPS; tapping a card seeds the
- * planner. A "See all budget trips" link routes to the full `/pricing` page.
+ * "Big trips, small budgets": a grid of the first six BUDGET_TRIPS, reusing the BudgetCard
+ * style from the `/pricing` page. Tapping a card seeds the planner.
  */
 export function LowPricing() {
   const trips = BUDGET_TRIPS.slice(0, 6);
@@ -21,7 +20,7 @@ export function LowPricing() {
         <div className="max-w-xl">
           <h2 className="font-display text-3xl font-semibold text-ink">Big trips, small budgets</h2>
           <p className="mt-2 text-ink-2">
-            The cheapest getaways worth taking right now — real places, low “from” prices, a plan
+            The cheapest getaways worth taking right now: real places, low “from” prices, a plan
             that adds up. Tap one to tailor it to your dates.
           </p>
         </div>
@@ -66,7 +65,7 @@ function BudgetCard({ trip, onClick }: { trip: SampleTrip; onClick: () => void }
         <Photo
           image={images.for(trip.imageKey)}
           imageKey={trip.imageKey}
-          alt={`${trip.place} — ${trip.vibe.toLowerCase()}`}
+          alt={`${trip.place}: ${trip.vibe.toLowerCase()}`}
           ratio="aspect-[16/10]"
           className={reduce ? undefined : 'transition-transform duration-300 group-hover:scale-[1.03]'}
         />

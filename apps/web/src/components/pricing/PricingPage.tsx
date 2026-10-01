@@ -11,10 +11,9 @@ import { BUDGET_TRIPS } from '@/lib/content';
 import type { SampleTrip } from '@/lib/content';
 
 /**
- * `/pricing` — a photo-rich showcase of the cheapest trips we'd point someone to. Mirrors the
- * landing TopNav + SiteFooter chrome and the azure/white design system. Cards render solid by
- * default (no opacity-from-0 entrance gating); only a subtle hover lift on the photo. Tapping
- * a card seeds the planner with that trip's prompt and auto-starts.
+ * `/pricing`: a showcase of the cheapest trips we'd point someone to. Uses the landing
+ * TopNav + SiteFooter chrome. Tapping a card seeds the planner with that trip's prompt and
+ * auto-starts.
  */
 export function PricingPage() {
   return (
@@ -35,7 +34,7 @@ export function PricingPage() {
           </div>
 
           <p className="mt-8 max-w-prose text-sm text-ink-3">
-            “From” prices are illustrative starting points for a short stay — flights and a
+            “From” prices are illustrative starting points for a short stay: flights and a
             simple place to sleep, per person unless noted. Tell us your dates and origin in the
             planner and we’ll price the whole thing honestly.
           </p>
@@ -57,7 +56,7 @@ function PricingHero() {
           Big trips, small budgets.
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-ink-2">
-          The cheapest getaways worth taking right now — real destinations, low “from” prices,
+          The cheapest getaways worth taking right now: real destinations, low “from” prices,
           and a plan that adds up. Tap one to start tailoring it to your dates and budget.
         </p>
       </div>
@@ -78,7 +77,7 @@ function BudgetCard({ trip, onClick }: { trip: SampleTrip; onClick: () => void }
         <Photo
           image={images.for(trip.imageKey)}
           imageKey={trip.imageKey}
-          alt={`${trip.place} — ${trip.vibe.toLowerCase()}`}
+          alt={`${trip.place}: ${trip.vibe.toLowerCase()}`}
           ratio="aspect-[16/10]"
           className={reduce ? undefined : 'transition-transform duration-300 group-hover:scale-[1.03]'}
         />
@@ -108,7 +107,7 @@ function PricingCTA() {
             Got a number in mind?
           </h2>
           <p className="mt-1.5 max-w-prose text-ink-2">
-            Tell the planner your budget and we’ll find the trip that fits it — and show the math.
+            Tell the planner your budget and we’ll find the trip that fits it, and show the math.
           </p>
         </div>
         <Button

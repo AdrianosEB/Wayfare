@@ -2,9 +2,8 @@ import type { ClarifyQuestion, TripRequest } from "@wayfare/shared";
 import { findCuratedPack } from "../integrations/curated/index.js";
 
 /**
- * The clarifying-question selector (CONVERSATION_FLOW.md §3). Never asks what's already known;
- * leverage-ranks the few high-impact missing things; caps at 4; every question is skippable
- * with a stated default. One batch, no drip-feed interrogation.
+ * Clarifying-question selector (CONVERSATION_FLOW.md §3). Asks only for what's missing, in one
+ * batch of at most 4, and every question is skippable with a stated default.
  */
 
 const Q = {
@@ -45,7 +44,7 @@ const Q = {
       { value: "very_flexible", label: "Very flexible" },
     ],
     skippable: true,
-    skipDefault: "Assume flexible — it usually finds better prices.",
+    skipDefault: "Assume flexible. It usually finds better prices.",
   }),
   party: (): ClarifyQuestion => ({
     id: "party",
@@ -107,12 +106,11 @@ function needsDestVibe(request: TripRequest): ClarifyQuestion | undefined {
 export function selectClarifyQuestions(request: TripRequest): ClarifyQuestion[] {
   const out: ClarifyQuestion[] = [];
 
-  // 1. origin — near-always top when missing
+  // 1. origin
   if (!has(request.origin)) out.push(Q.origin());
 
-  // 2. budget — governs everything. Ask for an amount if missing; otherwise only ask
-  // hard-vs-soft when the parse was low-confidence AND no firmness was stated (a confidently
-  // parsed "max €2,000" already implies hard, so don't re-interrogate).
+  // 2. budget. Ask for an amount if missing; otherwise only ask hard-vs-soft when the parse
+  // was low-confidence and no firmness was stated ("max €2,000" already implies hard).
   if (!has(request.budget)) out.push(Q.budget());
   else if (request.budget && request.budget.confidence < 0.85 && request.budget.value.type == null) {
     out.push(Q.budget_firmness());
@@ -122,17 +120,17 @@ export function selectClarifyQuestions(request: TripRequest): ClarifyQuestion[] 
   const destVibe = needsDestVibe(request);
   if (destVibe) out.push(destVibe);
 
-  // 4. dates exactness — only if a month/season was given without flexibility expressed
+  // 4. dates exactness, only if a month/season was given without flexibility expressed
   const d = request.dates?.value;
   if (d && !d.exact && d.flexibility == null) out.push(Q.dates_exact());
 
-  // 5. party — when missing
+  // 5. party
   if (!has(request.partySize)) out.push(Q.party());
 
-  // 6. interests — only when vibe is empty and there are no must-haves
+  // 6. interests, only when vibe is empty and there are no must-haves
   if (!(request.vibe?.value.length) && !(request.mustHaves?.value.length)) out.push(Q.interests());
 
-  // 7. avoid — value-seeking (hard budget) travelers, if a slot remains
+  // 7. avoid, for hard-budget travelers if a slot remains
   if (request.budget?.value.type === "hard" && out.length < 4) out.push(Q.avoid());
 
   return out.slice(0, 4);

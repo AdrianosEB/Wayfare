@@ -7,16 +7,12 @@ import { useChapterReveal } from './useChapterReveal';
 
 /**
  * One chapter: a full-bleed photograph that expands into place as you scroll, with the
- * headline set in front of it over a scrim, and the smaller frames arriving one after
- * another.
+ * headline in front of it over a scrim and the smaller frames arriving one after another.
  *
  * The section is two viewports tall and the stage inside it is `position: sticky`, so the
- * stage locks to the top and holds while the second viewport scrolls through. Scroll progress
- * drives a single timeline (see `useChapterReveal`) rather than the page simply moving past
- * the image — which is what made the earlier version feel like a slow drift.
- *
+ * stage holds while scroll progress drives a single timeline (see `useChapterReveal`).
  * Sticky does the holding, not a JS pin, so with scripting blocked each chapter is still a
- * legible full-bleed panel with its text over it; it just arrives already assembled.
+ * full-bleed panel with its text over it.
  */
 /**
  * Layout per alignment. The scrim always darkens the side the text is on, and the small
@@ -78,10 +74,8 @@ export function Chapter({ chapter, eager = false }: { chapter: ChapterDef; eager
         </div>
 
         {/*
-          Scrim. Kept deliberately light and, crucially, both gradients reach `transparent`.
-          The previous pair bottomed out at /25 and /70 and multiplied over each other, so
-          even the brightest photograph rendered as a flat blue-grey wash — and an image you
-          cannot see cannot be seen to move, which is exactly how this read.
+          Scrim. Both gradients reach `transparent`: a pair that bottoms out at a non-zero
+          alpha multiplies into a flat blue-grey wash over even the brightest photograph.
         */}
         <div className={cn('absolute inset-0', layout.scrim)} aria-hidden />
         <div
@@ -91,10 +85,8 @@ export function Chapter({ chapter, eager = false }: { chapter: ChapterDef; eager
 
         {/* Text, in front of the image. */}
         {/*
-          The text is vertically centred, but the small frames occupy a band across the
-          bottom of the stage. Without reserving that band the centred chapters printed
-          their headline straight through the frames. The padding shifts the optical centre
-          up by the height of the strip plus its offset.
+          The small frames occupy a band across the bottom of the stage. The bottom padding
+          reserves it, so a vertically centred headline doesn't print through the frames.
         */}
         <div className="relative flex h-full min-h-[88vh] items-center lg:min-h-0">
           <div className="mx-auto w-full max-w-[1400px] px-5 py-20 sm:px-8 lg:pb-[26vh] lg:pt-0">

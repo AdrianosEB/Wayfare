@@ -1,33 +1,20 @@
 #!/usr/bin/env python3
-"""Did an arm beat the reference predictors, and is the difference bigger than the noise?
+"""Compare each arm against the reference predictors, with bootstrap CIs.
 
     ./.venv/bin/python arm_stats.py --split test
 
-Round 1 established the two comparisons that matter, because both of the obvious ones failed:
-a constant predictor beat the student on MAE, and the student's top-dimension agreement equalled
-the majority-class prior *on the same rows*. Round 2 has to answer the same two questions with
-intervals, because the round-2 gaps are small enough that an unqualified "beats"/"loses" would
-be reading noise.
+Everything is paired row-by-row against the reference, on the rows that arm scored:
 
-Three things are computed per arm, all paired row-by-row against the reference on exactly the
-rows that arm scored:
-
-* **MAE vs the constant predictor** (teacher mean vector). Paired difference with a bootstrap
-  95% CI over rows. Paired, not two independent means: the same row is easy or hard for both
-  predictors, and pairing removes that shared variance.
-* **Top-dimension agreement vs the majority-class predictor.** Difference in proportions with a
-  bootstrap CI, again paired. This is argmax match on one dimension — not rank agreement.
-* **Rank agreement vs the constant predictor.** Mean Spearman's rho over the full
-  five-dimension ordering, paired against the constant predictor's rho on the same rows. Added
-  after round 2 because the document's claim that the arms "get the ordering right" was never
-  measured over the ordering — it was inferred from argmax match, which is a different claim.
+* MAE vs the constant predictor (teacher mean vector). Paired because the same row is easy
+  or hard for both predictors.
+* Top-dimension agreement vs the majority-class predictor. This is argmax match on one
+  dimension, not rank agreement.
+* Rank agreement vs the constant predictor: mean Spearman's rho over all five dimensions.
   Rows where either vector is flat have no ordering and are dropped from the pairing.
-* **Distinct weight vectors** emitted. Round 1's student produced 24 distinct vectors over 243
-  rows with one covering 93 of them, against the teacher's 157 — the collapse was visible here
-  before any metric caught it.
+* Distinct weight vectors emitted. Round 1's student produced 24 over 243 rows, one of them
+  covering 93, against the teacher's 157.
 
-The bootstrap is seeded so the CI is reproducible; resampling rows (not residuals) keeps it
-valid without assuming the per-row errors are anything in particular.
+The bootstrap resamples rows and is seeded, so the CIs are reproducible.
 """
 
 import argparse
@@ -61,7 +48,7 @@ def top(v):
 
 
 def boot_ci(pairs, stat, n=5000, seed=20260814):
-    """Bootstrap CI over resampled ROWS. `pairs` is a list of per-row (arm, ref) values."""
+    """Bootstrap CI over resampled rows. `pairs` is a list of per-row (arm, ref) values."""
     rng = random.Random(seed)
     k = len(pairs)
     if k < 2:
@@ -90,7 +77,7 @@ def main():
 
     mean_vec = [statistics.mean(v[i] for v in rows.values()) for i in range(len(DIMS))]
     modal = statistics.mode([top(v) for v in rows.values()])
-    print(f"## Against the reference predictors — `{args.split}`\n")
+    print(f"## Against the reference predictors: `{args.split}`\n")
     print(f"Constant predictor = teacher mean vector "
           f"{ {d: round(x, 3) for d, x in zip(DIMS, mean_vec)} }. "
           f"Majority-class predictor = always `{modal}`.\n")
@@ -114,9 +101,7 @@ def main():
             ref = rows[rec["index"]]
             pairs.append((mae(pred, ref), mae(mean_vec, ref),
                           top(pred) == top(ref), top(ref) == modal))
-            # Paired only where BOTH sides have an ordering to compare. Substituting 0 for an
-            # undefined rho would score a flat prediction as "no agreement" when the honest
-            # reading is "no ordering was expressed".
+            # Paired only where both sides have an ordering. An undefined rho is not 0.
             a_rho, c_rho = spearman_rho(pred, ref), spearman_rho(mean_vec, ref)
             if a_rho is not None and c_rho is not None:
                 rank_pairs.append((a_rho, c_rho))
@@ -152,14 +137,12 @@ def main():
     print(f"\nΔ MAE is arm minus constant, so **negative is better**. Δ top-dim is arm minus "
           f"majority-class, so **positive is better**; it is argmax match on one dimension. "
           f"Δ ρ is arm minus constant on Spearman's rho over all five dimensions, so **positive "
-          f"is better** — a different question from Δ top-dim, and it can point the other way. "
+          f"is better**. That is a different question from Δ top-dim, and it can point the other way. "
           f"A CI spanning zero means the arm is not distinguishable from that reference on this "
-          f"split — which is a finding, not a missing result.")
+          f"split, which is a finding, not a missing result.")
 
-    # ---- the ablation itself: A vs B, paired on rows both arms scored ----------------
-    # Comparing each arm to the references separately cannot answer "did removing `summary`
-    # help": two overlapping CIs against a third quantity is not a test of the difference.
-    # This pairs A and B on the same rows and bootstraps the difference directly.
+    # A vs B, paired on rows both arms scored. Two CIs against a third quantity do not test
+    # the difference between A and B, so bootstrap it directly.
     preds = {}
     for arm in ("student-A", "student-B"):
         p = Path(args.results_dir) / f"{arm}-{args.split}.json"
@@ -188,14 +171,14 @@ def main():
     lo_m, hi_m = boot_ci(pairs, lambda s: statistics.mean(a - b for a, b, _, _ in s))
     lo_t, hi_t = boot_ci(pairs, lambda s: 100 * statistics.mean(
         (1 if c else 0) - (1 if d else 0) for _, _, c, d in s))
-    print(f"\n### The ablation — student-A vs student-B, paired on {len(shared)} shared rows\n")
+    print(f"\n### The ablation: student-A vs student-B, paired on {len(shared)} shared rows\n")
     print("| measure | A | B | Δ (A − B) | 95% CI | reading |")
     print("|---|---|---|---|---|---|")
     a_mae = statistics.mean(a for a, _, _, _ in pairs)
     b_mae = statistics.mean(b for _, b, _, _ in pairs)
     a_top = 100 * statistics.mean(1 if c else 0 for _, _, c, _ in pairs)
     b_top = 100 * statistics.mean(1 if d else 0 for _, _, _, d in pairs)
-    verdict = lambda lo, hi: "**difference is real**" if (lo > 0) == (hi > 0) else "null — CI spans zero"
+    verdict = lambda lo, hi: "**difference is real**" if (lo > 0) == (hi > 0) else "null (CI spans zero)"
     print(f"| norm. MAE | {a_mae:.4f} | {b_mae:.4f} | {d_mae:+.4f} | ({lo_m:+.4f}, {hi_m:+.4f}) | "
           f"{verdict(lo_m, hi_m)} |")
     print(f"| top-dim agr. (argmax) | {a_top:.1f}% | {b_top:.1f}% | {d_top:+.1f}pp | ({lo_t:+.1f}, {hi_t:+.1f}) | "

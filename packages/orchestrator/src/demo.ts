@@ -3,10 +3,9 @@ import { mockProviderRegistry } from "./providers/mock.js";
 import type { TravelerProfile } from "./types.js";
 
 /**
- * Runnable walkthrough — `pnpm --filter @wayfare/orchestrator demo`. It plans a real trip end
- * to end against the procedural mock market and prints what each stage decided, including the
- * cross-check verdicts, the direct-vs-aggregator deals, and the staged (never executed)
- * bookings. Swap `mockProviderRegistry()` for real providers and nothing else changes.
+ * Runnable walkthrough: `pnpm --filter @wayfare/orchestrator demo`. Plans a trip end to end
+ * against the mock market and prints what each stage decided. Swap `mockProviderRegistry()`
+ * for real providers and nothing else changes.
  */
 
 async function main() {
@@ -45,12 +44,12 @@ async function main() {
   if (plan.itinerary) {
     console.log(
       `CHOSEN ITINERARY (${plan.itinerary.window?.label ?? "your dates"}): ` +
-        `${plan.itinerary.total} ${plan.itinerary.currency} — ${plan.itinerary.withinBudget ? "within budget" : "over budget"}`,
+        `${plan.itinerary.total} ${plan.itinerary.currency}, ${plan.itinerary.withinBudget ? "within budget" : "over budget"}`,
     );
   }
   if (plan.confirmation) {
     console.log(
-      `REPRICE  : ${plan.confirmation.confirmed ? "CONFIRMED bookable" : "unconfirmed"} — ` +
+      `REPRICE  : ${plan.confirmation.confirmed ? "CONFIRMED bookable" : "unconfirmed"}, ` +
         `re-checked ${plan.confirmation.lines.length} legs at source, drift ${plan.confirmation.drift} ${plan.confirmation.currency}`,
     );
   }
@@ -70,7 +69,7 @@ async function main() {
   }
 
   line();
-  console.log(`BUDGET  : ${plan.budget.total} ${plan.budget.currency} — ${plan.budget.status}`);
+  console.log(`BUDGET  : ${plan.budget.total} ${plan.budget.currency}, ${plan.budget.status}`);
   for (const l of plan.budget.lines) {
     console.log(`          ${l.category.padEnd(12)} ${l.amount} ${plan.budget.currency}`);
   }
@@ -79,9 +78,9 @@ async function main() {
   }
 
   line();
-  console.log("STAGED BOOKINGS (require human approval — nothing was booked or called):");
+  console.log("STAGED BOOKINGS (require human approval; nothing was booked or called):");
   for (const b of plan.bookingIntents) {
-    console.log(`  • [${b.channel}] ${b.entity.name} — ${b.status}`);
+    console.log(`  • [${b.channel}] ${b.entity.name}: ${b.status}`);
     for (const step of b.callScript) console.log(`      · ${step}`);
   }
 

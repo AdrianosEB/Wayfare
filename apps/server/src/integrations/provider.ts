@@ -2,10 +2,9 @@ import { z } from "zod";
 import type { Flight, Stay, Activity } from "@wayfare/shared";
 
 /**
- * The internal pricing interface — the ENTIRE contract between the agent and the world's
- * prices (INTEGRATIONS.md). The agent never talks to a provider directly; it calls these.
- * Every method returns `Listing`-wrapped results. `computeBudget` is deterministic and NOT a
- * provider method — it sums Listings locally (see ../agent/budget.ts).
+ * The internal pricing interface (INTEGRATIONS.md). The agent only reaches prices through
+ * these methods, which all return `Listing`-wrapped results. `computeBudget` is not a provider
+ * method: it sums Listings locally (see ../agent/budget.ts).
  */
 
 export const FlightQuerySchema = z

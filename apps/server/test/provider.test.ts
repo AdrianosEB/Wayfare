@@ -15,7 +15,7 @@ const flightQ: FlightQuery = {
   adults: 2,
 };
 
-describe("MockProvider — determinism (NFR-6)", () => {
+describe("MockProvider determinism (NFR-6)", () => {
   it("returns byte-identical results for identical queries", async () => {
     const a = new MockProvider(ctx);
     const b = new MockProvider(ctx);
@@ -46,7 +46,7 @@ describe("MockProvider — determinism (NFR-6)", () => {
   });
 });
 
-describe("CompositeProvider — graceful degradation (NFR-3)", () => {
+describe("CompositeProvider graceful degradation (NFR-3)", () => {
   it("falls back to mock and tags the category degraded when a provider throws", async () => {
     const mock = new MockProvider(ctx);
     const broken: PricingProvider = {

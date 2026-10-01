@@ -1,24 +1,9 @@
 import { cn } from '@/lib/cn';
 
 /**
- * ExploreRouteMotif — a purely decorative "flight route" accent for the `/explore` page.
- * A few gentle great-circle-style arcs drawn as thin DASHED azure lines, with small
- * "location" dots at their endpoints. Abstract and barely-there — evoking a map's flight
- * lines, not a literal map. Intended to sit very subtly behind a section (e.g. the closing
- * CTA band).
- *
- * Usage: place inside a `position: relative` (usually `overflow-hidden`) container and let the
- * caller own size + color + opacity, e.g.:
+ * Decorative "flight route" accent for the `/explore` page: a few dashed arcs with dots at
+ * their endpoints. The caller owns size, color (via `currentColor`) and opacity, e.g.:
  *   <ExploreRouteMotif className="absolute inset-0 h-full w-full text-azure-200 opacity-60" />
- * The svg fills its box via `preserveAspectRatio="xMidYMid slice"` and carries NO fixed pixel
- * width/height, so it scales to whatever the caller's className dictates and never causes overflow.
- *
- * Design-system notes:
- * - VISIBLE BY DEFAULT — no opacity-from-0 entrance gating, no animation. Static by design.
- * - Color comes from `currentColor`, so the caller sets it with a text-azure-* class
- *   (azure-200 recommended). Dots use a slightly stronger azure via per-element opacity.
- * - `aria-hidden` + `focusable="false"` + `pointer-events-none`: never focusable, never in the
- *   a11y tree, never intercepts clicks. Azure/white tokens only (no azure-300).
  */
 export function ExploreRouteMotif({ className }: { className?: string }) {
   return (
@@ -30,8 +15,7 @@ export function ExploreRouteMotif({ className }: { className?: string }) {
       preserveAspectRatio="xMidYMid slice"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Arcing "flight routes": thin, dashed, low-opacity lines that gently curve like
-          great-circle paths. Colors inherit from currentColor (caller's text-azure-*). */}
+      {/* Dashed arcs. Color inherits from currentColor. */}
       <g
         fill="none"
         stroke="currentColor"
@@ -44,7 +28,7 @@ export function ExploreRouteMotif({ className }: { className?: string }) {
         <path d="M250 250 Q 430 150 560 250" strokeDasharray="2 9" opacity={0.35} />
       </g>
 
-      {/* "Location" dots at the route endpoints — slightly stronger azure than the lines. */}
+      {/* Dots at the route endpoints, slightly stronger azure than the lines. */}
       <g fill="currentColor" opacity={0.75}>
         <circle cx={70} cy={210} r={3.5} />
         <circle cx={470} cy={130} r={4} />

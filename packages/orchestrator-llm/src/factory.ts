@@ -16,12 +16,9 @@ import { AGENT_TOOLS } from "./prompts.js";
 import { LlmOrchestrator } from "./graph.js";
 
 /**
- * `Planner` — the interface both orchestrators satisfy.
- *
- * Deliberately declared here rather than in @wayfare/shared: its signature needs `PlanResult`
- * and `TravelerProfile`, which live in @wayfare/orchestrator, and @wayfare/shared does not (and
- * should not) depend on @wayfare/orchestrator — that would invert the package graph. This
- * package already depends on both, so it is the correct home.
+ * The interface both orchestrators satisfy. Declared here and not in @wayfare/shared because it
+ * needs `PlanResult` and `TravelerProfile` from @wayfare/orchestrator, which @wayfare/shared
+ * must not depend on.
  */
 export interface Planner {
   plan(prompt: string, profile: TravelerProfile): Promise<PlanResult>;
@@ -36,11 +33,9 @@ export interface CreateOrchestratorOptions {
 }
 
 /**
- * Returns the LangGraph orchestrator when the flag is on **and** a key is present (or a model is
- * injected, or dry-run is on); otherwise the existing deterministic Orchestrator.
- *
- * The default is always the free path. With `WAYFARE_LLM_ORCHESTRATOR` unset, behaviour is
- * indistinguishable from today and not a single token is spent.
+ * Returns the LangGraph orchestrator when the flag is on and a key is present (or a model is
+ * injected, or dry-run is on). Otherwise returns the deterministic Orchestrator, which spends no
+ * tokens.
  */
 export function createOrchestrator(
   providers: SearchProvider[],
@@ -55,7 +50,7 @@ export function createOrchestrator(
 
   const model = opts.model ?? buildModel(config, env);
   if (!model) {
-    // flag on but nothing to talk to — degrade rather than throw
+    // flag on but nothing to talk to: degrade, don't throw
     return new Orchestrator(providers, opts.onEvent ? { onEvent: opts.onEvent } : {});
   }
 
@@ -69,8 +64,8 @@ export function createOrchestrator(
 
 function buildModel(config: LlmConfig, env: NodeJS.ProcessEnv): StructuredModel | undefined {
   if (config.dryRun) return new DryRunModel(AGENT_TOOLS);
-  // A local OpenAI-compatible server wins over Anthropic and needs no key: this is the seam
-  // the distilled student in `training/fused` plugs into.
+  // A local OpenAI-compatible server wins over Anthropic and needs no key. The distilled student
+  // in `training/fused` is served this way.
   if (config.localBaseUrl) return new LocalStructuredModel(config, config.localBaseUrl);
   const key = env.ANTHROPIC_API_KEY;
   if (!key) return undefined;

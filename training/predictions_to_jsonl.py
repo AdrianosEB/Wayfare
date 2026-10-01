@@ -4,21 +4,13 @@
     ./.venv/bin/python predictions_to_jsonl.py --arm student-A --split test
     ./.venv/bin/python diagnose_labels.py --data-dir ./preds/student-A --split test
 
-`diagnose_labels.py` measures whether a set of weight vectors is a function of its input — top-
-dimension entropy, chance agreement, the signal-dimension cross-tab, the price-polarity split.
-Nothing in it is specific to the teacher; it reads `messages[2].content` as "the label" and
-`meta.signals` as "the input". Point it at an arm's own outputs and it answers the question that
-actually sank round 1: *is this model reproducing the majority-class prior?*
+`diagnose_labels.py` reads `messages[2].content` as the label and `meta.signals` as the input,
+so pointing it at an arm's outputs shows whether the model is reproducing the majority-class
+prior. In round 1 the labels and the student both had 0.936 bits of top-dimension entropy.
 
-Entropy on the labels says the training target is healthy. Entropy on the **predictions** says
-the model learned it. Round 1 passed the first and failed the second — the labels were 0.936
-bits and so was the student, and it took a separate collapse analysis to see it. This script
-makes that one command instead.
-
-Rows whose output was not schema-valid are dropped, and the count is printed: a model that emits
-JSON for only a third of rows has a high-entropy *subset*, not high-entropy output, and the
-denominator has to travel with the number. `meta` is copied from the source split, so signals and
-the conflict flag stay attached to the row they came from.
+Rows whose output was not schema-valid are dropped and the count is printed, since the
+statistics then cover only the kept subset. `meta` is copied from the source split, so signals
+and the conflict flag stay attached to their row.
 """
 
 import argparse
@@ -65,7 +57,7 @@ def main():
     path.write_text("\n".join(out) + "\n")
     total = len(res["records"])
     print(f"{args.arm}/{args.split}: {len(out)}/{total} schema-valid rows -> {path}"
-          f"  ({dropped} dropped — every statistic downstream is over the {len(out)} kept)")
+          f"  ({dropped} dropped; every statistic downstream is over the {len(out)} kept)")
 
 
 if __name__ == "__main__":

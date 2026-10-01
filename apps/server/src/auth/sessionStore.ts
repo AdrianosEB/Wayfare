@@ -1,17 +1,16 @@
 import { randomUUID } from "node:crypto";
 
 /**
- * Auth session store: opaque sessionId → userId. In-memory Map behind an interface (swap to
- * Redis/DB later). The sessionId is a random UUID — never the user id/email/JWT — so the cookie
- * value carries no information and can't be forged from user data.
+ * Auth session store: opaque sessionId → userId. In-memory behind an interface so it can move
+ * to Redis or a DB. The sessionId is a random UUID, so the cookie carries no user data.
  */
 
 export interface AuthSessionStore {
-  /** Create a session for a user, returning the opaque session id. */
+  /** Returns the new session id. */
   create(userId: string): string;
-  /** Resolve a session id to its userId, or undefined if unknown. */
+  /** The session's userId, or undefined if unknown. */
   get(sessionId: string): string | undefined;
-  /** Remove a session. Idempotent — no-op if it doesn't exist. */
+  /** No-op if the session doesn't exist. */
   destroy(sessionId: string): void;
 }
 

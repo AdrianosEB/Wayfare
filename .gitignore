@@ -7,7 +7,7 @@ dist/
 *.tsbuildinfo
 .vite
 
-# env & secrets (keys live only in the server env — never commit them)
+# env & secrets
 .env
 .env.*
 !.env.example
@@ -26,9 +26,7 @@ pnpm-debug.log*
 # Claude Code local workspace (worktrees, memory, local settings)
 .claude/
 
-# persona distillation (packages/orchestrator-llm + training/)
-# Generated datasets and model weights are large and reproducible — the signal-pool
-# fixture and the scripts are the committed artefacts, not their output.
+# persona distillation: generated datasets and model weights
 training/data/*.jsonl
 training/data/.*.progress.json
 training/adapters/
@@ -37,10 +35,5 @@ training/**/*.safetensors
 training/**/*.npz
 .venv/
 
-# temporary orchestration scaffolding for the persona-distillation run (deleted at finish)
-
-# The hero frame set is committed as WebP only. `pnpm frames` also writes a jpg fallback for
-# pre-2020 browsers; that tripled git history for browsers nobody runs, so it is generated
-# locally and ignored here. `hero-manifest.json` declares formats: ["webp"] to match, and a
-# browser that cannot decode WebP gets the committed poster instead of the scrub.
+# jpg fallback frames from `pnpm frames` are generated locally; only WebP is committed
 apps/web/public/hero/*/frame*.jpg

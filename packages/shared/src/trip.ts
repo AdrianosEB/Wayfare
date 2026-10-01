@@ -4,7 +4,7 @@ import { PaceSchema, TripRequestSchema } from "./request.js";
 import { BudgetSchema } from "./budget.js";
 
 /**
- * Trip and its parts. Everything priced — Flight, Stay, Activity — wraps a Listing. The
+ * Trip and its parts. Everything priced (Flight, Stay, Activity) wraps a Listing, and the
  * Budget derives from those listings. See DATA_MODEL.md "Trip … Itinerary … Listing".
  */
 
@@ -125,7 +125,7 @@ export const StaySchema = z
     checkIn: z.string(),
     checkOut: z.string(),
     nights: z.number().int().min(1),
-    /** 0–5. */
+    /** 0-5. */
     rating: z.number().min(0).max(5).optional(),
     amenities: z.array(z.string()).optional(),
     distanceToFocus: z

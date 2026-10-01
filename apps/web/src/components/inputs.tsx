@@ -5,20 +5,12 @@ import { currencySymbol } from '@/lib/format';
 import { CheckIcon, MinusIcon, PlusIcon, MapPinIcon } from './icons';
 
 /**
- * The low-friction input primitives the clarifying-question cards render, one per
- * ClarifyQuestion `format` (see QuestionCardStack's QuestionInput switch):
- *   - ChipSelect       single-select (radiogroup) or multi-select (group) pill chips.
- *   - Stepper          party size — adults/children counters → PartySize.
- *   - CurrencyInput    a budget amount → Money ({ amount, currency }).
- *   - CityAutocomplete a short text field with a small curated city suggestion list.
- *   - ShortText        plain free text.
- *   - SkipControl      the visible Skip toggle that shows a question's default.
- *
- * Each is controlled and calls `onChange` with the typed AnswerValue for its format. No data
- * fetching or store access — these are dumb, reusable form atoms.
+ * Input primitives for the clarifying-question cards, one per ClarifyQuestion `format` (see
+ * QuestionCardStack's QuestionInput switch). Each is controlled and calls `onChange` with the
+ * typed AnswerValue for its format. No data fetching or store access.
  */
 
-/* ----------------------------------------------------------------- ChipSelect --- */
+// ChipSelect
 
 export interface ChipSelectProps {
   options: { value: string; label: string }[];
@@ -68,7 +60,7 @@ export function ChipSelect({ options, value, multi, onChange }: ChipSelectProps)
   );
 }
 
-/* -------------------------------------------------------------------- Stepper --- */
+// Stepper
 
 export interface StepperProps {
   value: PartySize | undefined;
@@ -182,10 +174,10 @@ function RoundBtn({
   );
 }
 
-/* ----------------------------------------------------------- CityAutocomplete --- */
+// CityAutocomplete
 
-// Client-only suggestions — the client never geocodes directly (no key, only /api).
-// A small built-in hub list keeps the input low-friction; free text is always allowed.
+// Client-only suggestions: the client never geocodes directly (no key, only /api).
+// Free text is always allowed.
 const HUBS = [
   'London',
   'Manchester',
@@ -264,7 +256,7 @@ export function CityAutocomplete({ value, placeholder, onChange }: CityAutocompl
   );
 }
 
-/* ------------------------------------------------------------------ ShortText --- */
+// ShortText
 
 export interface ShortTextProps {
   value: string | undefined;
@@ -284,7 +276,7 @@ export function ShortText({ value, placeholder, onChange }: ShortTextProps) {
   );
 }
 
-/* --------------------------------------------------------------- CurrencyInput --- */
+// CurrencyInput
 
 export interface CurrencyInputProps {
   value: Money | undefined;
@@ -317,7 +309,7 @@ export function CurrencyInput({
   );
 }
 
-/* ------------------------------------------------------------------ SkipControl --- */
+// SkipControl
 
 export interface SkipControlProps {
   skipped: boolean;
@@ -351,7 +343,7 @@ export function SkipControl({ skipped, skipDefault, onToggle }: SkipControlProps
       title={skipDefault}
       className="text-xs font-medium text-faint underline-offset-2 hover:text-muted hover:underline focus-visible:ring-2"
     >
-      Skip{skipDefault ? ` — ${skipDefault}` : ''}
+      Skip{skipDefault ? `: ${skipDefault}` : ''}
     </button>
   );
 }

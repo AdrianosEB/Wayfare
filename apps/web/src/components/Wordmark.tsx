@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 
-/** Wayfare wordmark — azure pin mark + name. Used in the planner top bar and landing nav. */
+/** Wayfare wordmark: azure pin mark + name. Used in the planner top bar and landing nav. */
 export function Wordmark({ className, onLight = false }: { className?: string; onLight?: boolean }) {
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>

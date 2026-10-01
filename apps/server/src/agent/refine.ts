@@ -15,10 +15,9 @@ import { Toolbox } from "./tools.js";
 import { planDeterministic, type PlanDeps, type PlanEmitter } from "./planner.js";
 
 /**
- * Refine-by-chat: classify the utterance into a scope (one structured step), re-plan ONLY the
- * affected slice with the rest of the trip frozen, then diff vs the current version and report a
- * budget delta (AGENT_DESIGN.md "Partial re-planning"; CONVERSATION_FLOW.md §5). This is what
- * makes exploration feel free — fewer tool calls, smaller footprint, byte-identical elsewhere.
+ * Refine-by-chat: classify the utterance into a scope, re-plan only that slice with the rest of
+ * the trip frozen, then diff against the current version and report a budget delta
+ * (AGENT_DESIGN.md "Partial re-planning"; CONVERSATION_FLOW.md §5).
  */
 
 export interface RefineResult {
@@ -39,11 +38,9 @@ const STATUS_BY_SCOPE: Record<RefinementScope, string> = {
 };
 
 /**
- * Map a free-text refinement utterance to a single scope. Order matters: question-detection
- * runs first (so "why this hotel?" is `info`, not `lodging`), then scopes are checked
- * most-impactful → least (destination/budget/dates trigger a full re-plan; lodging/flights/
- * activity_day touch one slice). Anything unmatched falls through to `info` — change nothing,
- * just answer — which is the safe default against over-eager re-planning.
+ * Map a refinement utterance to a single scope. Order matters: questions are detected first
+ * (so "why this hotel?" is `info`, not `lodging`), then full re-plan scopes, then single-slice
+ * ones. Anything unmatched is `info`, which changes nothing.
  */
 export function classifyScope(utterance: string): RefinementScope {
   const u = utterance.toLowerCase();
@@ -60,7 +57,7 @@ export function classifyScope(utterance: string): RefinementScope {
   return "info";
 }
 
-/** Walk a trip and collect every priced Listing (flights, stay, transit, day activities). */
+/** Every priced Listing in the trip (flights, stay, transit, day activities). */
 function gatherListings(trip: Trip): Listing[] {
   const out: Listing[] = [];
   for (const f of trip.itinerary.flights) out.push(f.listing);
@@ -140,8 +137,7 @@ function addDayTrip(trip: Trip, utterance: string, ctx: MockContext, diff: ItemD
     freshness: "mock",
     confidence: 0.7,
   };
-  // Drop the day trip on a mid-trip day (never day 1/arrival), capped at day index 4 so it
-  // lands in the heart of the stay even on long trips.
+  // Mid-trip day, never the arrival day, capped at index 4 for long trips.
   const dayIdx = Math.min(4, Math.max(1, Math.floor(trip.itinerary.days.length / 2)));
   const day = next.itinerary.days[dayIdx];
   if (!day) return next;
@@ -164,7 +160,7 @@ export async function refine(
 ): Promise<RefineResult> {
   const scope = classifyScope(utterance);
 
-  // info: answer in chat, change nothing (the safety valve against over-eager re-planning)
+  // info: answer in chat, change nothing
   if (scope === "info") {
     emit.message(answerInfo(prev, utterance));
     return { trip: prev, scope, diff: [], budgetDelta: 0 };
@@ -183,7 +179,7 @@ export async function refine(
     };
   }
 
-  // targeted slice scopes — freeze the rest of the trip. Bind to the trip's currency.
+  // Single-slice scopes: the rest of the trip stays frozen, in the trip's currency.
   const localCtx: MockContext = { now: deps.ctx.now, currency: prev.budget.currency };
   const diff: ItemDiff[] = [];
   let next = prev;
@@ -199,9 +195,8 @@ export async function refine(
     next = addDayTrip(structuredClone(prev), utterance, localCtx, diff);
   }
 
-  // re-cost (compute_budget is still the only summer) + over-budget trims.
-  // If a slice refiner couldn't make a change it returns `prev` unmodified; clone before we
-  // mutate budget/id/summary so we never write through to the stored previous version.
+  // Re-cost + over-budget trims. A slice refiner that made no change returns `prev` itself,
+  // so clone before mutating or we'd write through to the stored previous version.
   emit.status("compute_budget", "Re-costing…");
   const rebuilt: Trip = next === prev ? structuredClone(prev) : next;
   const newBudget = recomputeBudget(rebuilt);
@@ -217,7 +212,7 @@ export async function refine(
   }
   rebuilt.budget = newBudget;
   rebuilt.id = makeId("trip", prev.id, "refined", utterance);
-  rebuilt.summary = `${rebuilt.itinerary.days.length} days on ${rebuilt.itinerary.destinationResolved.split(",")[0]} — ${newBudget.currency} ${newBudget.total}`;
+  rebuilt.summary = `${rebuilt.itinerary.days.length} days on ${rebuilt.itinerary.destinationResolved.split(",")[0]}, ${newBudget.currency} ${newBudget.total}`;
   emit.partial({ budget: { total: newBudget.total, status: newBudget.status } });
 
   return { trip: rebuilt, scope, diff, budgetDelta: newBudget.total - prev.budget.total };
@@ -248,12 +243,12 @@ async function refineFlights(prev: Trip, ctx: MockContext, emit: PlanEmitter, di
   return next;
 }
 
-/** A tiny canned explainer for info-scope questions (no tools, no re-plan). */
+/** Canned answer for info-scope questions (no tools, no re-plan). */
 function answerInfo(trip: Trip, utterance: string): string {
   const dest = trip.itinerary.destinationResolved.split(",")[0];
   const stay = trip.itinerary.stays[0];
   if (/why/.test(utterance.toLowerCase())) {
-    return `${dest} fits what you asked for — ${trip.preferences.interests.join(", ") || "a good all-round trip"} — and the plan lands at ${trip.budget.currency} ${trip.budget.total}. ${stay ? `Your stay (${stay.name}) is ${stay.distanceToFocus ? `${stay.distanceToFocus.meters}m ${stay.distanceToFocus.label}` : "well located"}.` : ""} I won't change anything unless you say so.`;
+    return `${dest} fits what you asked for (${trip.preferences.interests.join(", ") || "a good all-round trip"}), and the plan lands at ${trip.budget.currency} ${trip.budget.total}. ${stay ? `Your stay (${stay.name}) is ${stay.distanceToFocus ? `${stay.distanceToFocus.meters}m ${stay.distanceToFocus.label}` : "well located"}.` : ""} I won't change anything unless you say so.`;
   }
   return `Happy to help with that. Your current plan is ${trip.itinerary.days.length} days in ${dest} at ${trip.budget.currency} ${trip.budget.total}. Tell me what to change and I'll update only that part.`;
 }

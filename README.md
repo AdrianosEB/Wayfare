@@ -21,8 +21,8 @@ wayfare/
 ├── apps/
 │   ├── server/              # @wayfare/server: API, planning agent, background orchestration
 │   └── web/                 # React client
-└── training/                # Python/MLX LoRA distillation of the persona agent into a
-                             #   local 1.5B model, plus the eval harness and results
+└── training/                # Python/MLX scripts that train the LoRA adapter for the local
+                             #   1.5B persona model
 ```
 
 The app is TypeScript on Node 20+ with pnpm workspaces. The model training in `training/` is
@@ -140,16 +140,16 @@ ranking itself. It calls a tool exported from `@wayfare/orchestrator`.
 This path is opt-in behind `WAYFARE_LLM_ORCHESTRATOR`, has a hard spending cap, and emits the
 same `PlanResult` as the default path.
 
-### Model distillation
+### Local LoRA model
 
-In [`training/`](training/README.md), the `persona` agent is distilled from a Claude teacher
-into a local 1.5B model (Qwen2.5-1.5B, LoRA via MLX) to cut inference cost. A Python eval
-harness scores schema validity, rank agreement (Spearman ρ and Kendall τ-b), and per-slice
-error against constant and majority-class baselines.
+The `persona` agent, which turns a traveller's free-text preferences into weights the rest of
+the pipeline uses, can run on a small local model in place of Claude. The model is
+Qwen2.5-1.5B fine-tuned with a LoRA adapter using MLX, and it exists to cut inference cost: it
+runs on your own machine and needs no API key.
 
-[`training/RESULTS.md`](training/RESULTS.md) reports what worked and what didn't. That includes
-a failed first round that was traced to one line in the teacher prompt, and two metrics that
-were retracted.
+Serve it with `pnpm serve:student`, then set `WAYFARE_LOCAL_MODEL_URL` to that server. When the
+variable is unset, the agent uses Anthropic as usual. The scripts that train and fuse the
+adapter are in [`training/`](training/README.md).
 
 ## What's next
 

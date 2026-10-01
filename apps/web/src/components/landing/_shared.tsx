@@ -4,14 +4,13 @@ import { cn } from '@/lib/cn';
 import { revealContainer, revealItem, revealViewport } from '@/lib/motion';
 
 /**
- * Small shared helpers for the marketing landing sections — price formatting and the
- * standard section wrapper that enforces the 64px-mobile / 96px-desktop vertical rhythm
- * inside a centered `max-w-site` container.
+ * Shared helpers for the marketing landing sections: price formatting and the standard
+ * section wrapper (64px-mobile / 96px-desktop vertical rhythm, centered `max-w-site`).
  */
 
 const SYMBOL: Record<string, string> = { EUR: '€', GBP: '£', USD: '$' };
 
-/** Symbol-first, grouped, no decimals — e.g. `€2,410`. Pair with the `.tnum` class. */
+/** Symbol-first, grouped, no decimals, e.g. `€2,410`. Pair with the `.tnum` class. */
 export function formatFrom(amount: number, currency: string): string {
   const symbol = SYMBOL[currency] ?? '';
   return `${symbol}${Math.round(amount).toLocaleString('en-US')}`;
@@ -62,7 +61,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
 
 /**
  * Staggers its children in. Children must be `motion` elements carrying
- * `variants={revealItem}` — variant state propagates through context, so ordinary wrapper
+ * `variants={revealItem}`. Variant state propagates through context, so ordinary wrapper
  * elements in between are fine.
  */
 export function RevealGroup({ children, className }: { children: ReactNode; className?: string }) {

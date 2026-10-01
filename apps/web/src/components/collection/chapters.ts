@@ -4,10 +4,10 @@ import { LQIP } from './lqip.generated';
 /**
  * The six chapters of /collection.
  *
- * Every `photo` key resolves through `images.for()` to a real, curated photograph that
- * `scripts/build-lqip.sh` has verified returns HTTP 200. Every `video` is a real clip cut
- * from footage in this repo. A slot with no real asset is declared as a `gap` and renders
- * as an empty, labelled frame — never a gradient, a solid block, or a decorative substitute.
+ * Every `photo` key resolves through `images.for()` to a curated photograph that
+ * `scripts/build-lqip.sh` has verified returns HTTP 200. Every `video` is a clip cut from
+ * footage in this repo. A slot with no asset is declared as a `gap` and renders as an empty,
+ * labelled frame.
  */
 
 export interface PhotoSlot {
@@ -19,7 +19,7 @@ export interface PhotoSlot {
 
 export interface VideoSlot {
   kind: 'video';
-  /** Basename under /collection — `<name>.mp4` + `<name>.webp` poster. */
+  /** Basename under /collection: `<name>.mp4` + `<name>.webp` poster. */
   name: string;
   alt: string;
 }
@@ -34,10 +34,7 @@ export interface GapSlot {
 
 export type Slot = PhotoSlot | VideoSlot | GapSlot;
 
-/**
- * How a chapter's headline arrives. Each chapter gets its own, so the page does not repeat
- * the same trick six times — see `useChapterReveal` for what each one does.
- */
+/** How a chapter's headline arrives, one style per chapter. See `useChapterReveal`. */
 export type RevealStyle = 'rise' | 'words' | 'slide' | 'wipe' | 'scatter' | 'center-out';
 
 /** Which side of the stage the text sits on. */
@@ -60,7 +57,7 @@ export interface ChapterDef {
   /** Two-tone headline: script word, then wide-tracked caps. Line breaks are manual. */
   script: string;
   caps: string[];
-  /** Short standfirst. Product truth only — no invented claims, prices or availability. */
+  /** Short standfirst. Product truth only: no invented claims, prices or availability. */
   body: string;
   reveal: RevealStyle;
   align: Align;
@@ -148,9 +145,8 @@ export const CHAPTERS: ChapterDef[] = [
       'We never claim an estimate is a bookable, guaranteed price.',
     reveal: 'scatter',
     align: 'center',
-    // A real photograph of the thing being priced — the stay — rather than the empty slot
-    // this used to be. A planner screenshot would still be the stronger frame here, because
-    // the chapter's claim is about the product; see the README's asset note.
+    // A photograph of the stay being priced. A planner screenshot would be the stronger
+    // frame here; see the README's asset note.
     large: {
       kind: 'photo',
       key: 'aegean_terrace',

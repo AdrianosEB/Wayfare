@@ -8,7 +8,7 @@ import { CollectionPage } from '@/components/collection/CollectionPage';
 import { AgentPage } from '@/components/agent/AgentPage';
 
 /**
- * Top-level route switch (lib/router.ts — tiny history-API router, no router dep):
+ * Top-level route switch (lib/router.ts is a small history-API router, no router dep):
  *   `/`            → the scroll narrative: scrubbed harbour hero → six chapters → booking
  *   `/collection`  → the same page, kept so existing links still resolve
  *   `/landing`     → the previous section-by-section marketing page (still intact)
@@ -31,10 +31,8 @@ function Route() {
 
 export default function App() {
   /*
-   * `reducedMotion="user"` makes Framer Motion drop transform/layout animations for anyone
-   * who asks for reduced motion, while still running opacity — which is exactly the
-   * degradation MOTION.md §5 describes. Setting it once here beats threading
-   * `useReducedMotion` through every component and forgetting it in one.
+   * `reducedMotion="user"` drops transform/layout animations for reduced-motion users but
+   * keeps opacity, which is the degradation MOTION.md §5 describes.
    */
   return (
     <MotionConfig reducedMotion="user">

@@ -1,7 +1,7 @@
 {
   "name": "@wayfare/server",
   "version": "0.1.0",
-  "description": "Wayfare API server — endpoints, planning agent, and mock integration layer.",
+  "description": "Wayfare API server: endpoints, planning agent, and mock integration layer.",
   "license": "UNLICENSED",
   "type": "module",
   "main": "./dist/index.js",

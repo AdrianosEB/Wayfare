@@ -8,9 +8,8 @@ import { mockListing, round, type MockContext, type MockTier } from "../listingF
 import { nightsBetween } from "../../dates.js";
 
 /**
- * Procedural stays — nightly rate from the destination cost tier × a style multiplier
- * (hostel < guesthouse < apartment < aparthotel < hotel) × a location multiplier (central /
- * near-beach cost more). Returns ~3 candidates spanning the price/quality spectrum.
+ * Procedural stays. Nightly rate = destination cost tier × style multiplier × location
+ * multiplier (central and near-beach cost more). Returns 3 candidates across the price range.
  */
 
 const STYLE_MULT: Record<StayType, number> = {
@@ -89,7 +88,7 @@ export function generateStays(
       listing: mockListing(ctx, {
         id: makeId("lst", "stay", q.location, type, i),
         kind: "stay",
-        title: `${name} — ${nights} night${nights === 1 ? "" : "s"}`,
+        title: `${name}, ${nights} night${nights === 1 ? "" : "s"}`,
         priceEur: totalEur,
         tier,
         confidence: 0.7,
@@ -98,9 +97,8 @@ export function generateStays(
     return stay;
   });
 
-  // Apply the per-night ceiling with a 5% tolerance (avoids dropping a stay that's a rounding
-  // hair over). If the cap filters everything out, fall back to the full set rather than
-  // returning nothing — a slightly-over stay beats no stay at all.
+  // Per-night ceiling with 5% tolerance. If nothing passes, return the full set rather than
+  // no stays.
   const capped = q.maxNightly
     ? candidates.filter((s) => s.listing.price.amount / s.nights <= q.maxNightly! * 1.05)
     : candidates;

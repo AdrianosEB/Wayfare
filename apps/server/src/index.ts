@@ -6,14 +6,12 @@ import { createInMemoryAuthDeps } from "./auth/index.js";
 import type { RouteDeps } from "./routes/session.js";
 
 /**
- * Entry point. Boots the API on :3000 (API_CONTRACT.md). The deterministic mock planner is the
- * default run mode (no key needed); when ANTHROPIC_API_KEY is set the live agent loop drives
- * planning. Keys live only here, server-side (NFR-4).
+ * Entry point. Boots the API on :3000 (API_CONTRACT.md). Runs the deterministic mock planner
+ * unless ANTHROPIC_API_KEY is set, in which case the agent loop drives planning.
  */
 const now = () => config.now;
-// useAgent() can return true for PLANNER_MODE=agent even without a key; we re-gate on an actual
-// key here so a misconfigured `agent` mode degrades to the deterministic planner instead of
-// constructing an Anthropic client with no credentials and failing at request time.
+// useAgent() is true for PLANNER_MODE=agent even without a key, so check for the key here and
+// fall back to the deterministic planner rather than fail at request time.
 const agentEnabled = useAgent(config) && Boolean(config.anthropicApiKey);
 
 const deps: RouteDeps = {
@@ -31,6 +29,6 @@ const app = createApp(deps);
 app.listen(config.port, () => {
   // eslint-disable-next-line no-console
   console.log(
-    `Wayfare API on :${config.port} — planner: ${agentEnabled ? `agent (${config.anthropicModel})` : "deterministic (mock)"}`,
+    `Wayfare API on :${config.port}, planner: ${agentEnabled ? `agent (${config.anthropicModel})` : "deterministic (mock)"}`,
   );
 });

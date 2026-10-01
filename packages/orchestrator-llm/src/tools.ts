@@ -26,20 +26,13 @@ import {
 import type { Budget } from "@wayfare/shared";
 
 /**
- * The tool layer — and the whole point of this package.
- *
- *   The agent decides. The tool computes.
- *
- * A model must never do arithmetic, ranking, or combinatorial enumeration in its own head. It
- * will eventually get it wrong, silently, and this product's entire claim is price honesty. So
- * every number that reaches a PlanResult is produced here, by a thin wrapper around a function
- * already exported from @wayfare/orchestrator — none of that logic is reimplemented.
- *
- * Each call is recorded on a ToolLedger, which is what lets the tool-boundary test assert that
- * no figure in the output was invented by a model.
+ * The agent decides, the tool computes. Models never do arithmetic, ranking or enumeration:
+ * every number that reaches a PlanResult comes from a thin wrapper here around a function
+ * exported from @wayfare/orchestrator. Each call is recorded on a ToolLedger, which the
+ * tool-boundary test uses to assert that no figure was invented by a model.
  */
 
-/** One recorded tool invocation — the audit trail behind every number in the plan. */
+/** One recorded tool invocation. */
 export interface ToolCallRecord {
   tool: string;
   agent: string;
@@ -79,9 +72,7 @@ export interface ToolContext {
   ledger: ToolLedger;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Tool input schemas — what the agent is allowed to decide                    */
-/* -------------------------------------------------------------------------- */
+// Tool input schemas: what the agent is allowed to decide
 
 export const BuildQueryInputSchema = z
   .object({ queries: z.array(SearchQuerySchema) })
@@ -102,14 +93,9 @@ export const ComputeTotalInputSchema = z
   })
   .strict();
 
-/* -------------------------------------------------------------------------- */
-/* The tools                                                                   */
-/* -------------------------------------------------------------------------- */
+// Tools
 
-/**
- * `build_query` — validates the agent's proposed queries against the real SearchQuerySchema.
- * The agent chooses what to shop for; the schema decides whether that is expressible.
- */
+/** `build_query`: validates the agent's proposed queries against SearchQuerySchema. */
 export function buildQueryTool(ctx: ToolContext, agent: string) {
   return (input: unknown): SearchQuery[] => {
     ctx.ledger.record("build_query", agent);
@@ -117,8 +103,10 @@ export function buildQueryTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `run_search` — wraps runSearch(), threading the shared SearchLimits so the LLM path gets the
- * same per-provider concurrency cap, coalescing, and TTL cache as the deterministic one. */
+/**
+ * `run_search`: wraps runSearch() with the shared SearchLimits, so the LLM path gets the same
+ * per-provider concurrency cap, coalescing and TTL cache as the deterministic one.
+ */
 export function runSearchTool(ctx: ToolContext, agent: string) {
   return async (queries: SearchQuery[]): Promise<Candidate[]> => {
     ctx.ledger.record("run_search", agent);
@@ -126,7 +114,7 @@ export function runSearchTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `cross_check` — wraps verify(); returns verdicts, flags, spreads, direct-deal findings. */
+/** `cross_check`: wraps verify(). Returns verdicts, flags, spreads and direct-deal findings. */
 export function crossCheckTool(ctx: ToolContext, agent: string) {
   return (candidates: Candidate[]): VerifiedOption[] => {
     ctx.ledger.record("cross_check", agent);
@@ -134,7 +122,7 @@ export function crossCheckTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `score_options` — wraps rankByKind(). All ranking arithmetic happens here, not in a prompt. */
+/** `score_options`: wraps rankByKind(). */
 export function scoreOptionsTool(ctx: ToolContext, agent: string) {
   return (
     optionsByKind: Record<string, VerifiedOption[]>,
@@ -145,7 +133,7 @@ export function scoreOptionsTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `compute_budget` — wraps buildBudget(). The ONLY way to total costs. */
+/** `compute_budget`: wraps buildBudget(). The only way to total costs. */
 export function computeBudgetTool(ctx: ToolContext, agent: string) {
   return (legs: ItineraryLeg[], request: TripRequest): Budget => {
     ctx.ledger.record("compute_budget", agent);
@@ -153,7 +141,7 @@ export function computeBudgetTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `enumerate_itineraries` — wraps composeItineraries(); the branch-and-bound fan-out. */
+/** `enumerate_itineraries`: wraps composeItineraries(), the branch-and-bound fan-out. */
 export function enumerateItinerariesTool(ctx: ToolContext, agent: string) {
   return (
     rankedByKind: Record<string, RankedOption[]>,
@@ -165,7 +153,7 @@ export function enumerateItinerariesTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `compute_total` — wraps computeItineraryTotal(); the single whole-trip cost formula. */
+/** `compute_total`: wraps computeItineraryTotal(), the whole-trip cost formula. */
 export function computeTotalTool(ctx: ToolContext, agent: string) {
   return (input: unknown): number => {
     ctx.ledger.record("compute_total", agent);
@@ -173,7 +161,7 @@ export function computeTotalTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `fetch_current_price` — wraps repriceItinerary(); the at-source re-check before surfacing. */
+/** `fetch_current_price`: wraps repriceItinerary(), the at-source re-check before surfacing. */
 export function fetchCurrentPriceTool(ctx: ToolContext, agent: string) {
   return async (args: {
     combo: ItineraryCombination;
@@ -195,7 +183,7 @@ export function fetchCurrentPriceTool(ctx: ToolContext, agent: string) {
   };
 }
 
-/** `itinerary_legs` — wraps itineraryLegs(); structural, but keeps leg derivation off the model. */
+/** `itinerary_legs`: wraps itineraryLegs(). Structural, but keeps leg derivation off the model. */
 export function itineraryLegsTool(ctx: ToolContext, agent: string) {
   return (combo: ItineraryCombination): ItineraryLeg[] => {
     ctx.ledger.record("itinerary_legs", agent);

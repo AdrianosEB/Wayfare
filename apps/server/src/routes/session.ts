@@ -28,14 +28,11 @@ export interface RouteDeps {
   useAgent: boolean;
   anthropic?: Anthropic;
   model: string;
-  /** Optional auth wiring. When omitted, createApp builds a fresh in-memory instance. */
+  /** Defaults to a fresh in-memory instance. */
   auth?: AuthDeps;
-  /** Optional background-orchestration job store. When omitted, createApp builds a fresh one. */
+  /** Defaults to a fresh in-memory store. */
   orchestration?: OrchestrationJobStore;
-  /**
-   * Optional path to the built web client. When omitted, createApp looks for apps/web/dist and
-   * serves it if present, so one process serves both the SPA and /api.
-   */
+  /** Path to the built web client. Defaults to apps/web/dist, served if it exists. */
   webDist?: string;
 }
 
@@ -50,9 +47,8 @@ function emitterFor(sse: SseStream): PlanEmitter {
 
 function planDeps(deps: RouteDeps): RunDeps {
   return {
-    // ctx.currency here is only a placeholder — the planner rebinds the provider to the
-    // currency it infers from origin/budget (see buildPlanContext → MockProvider), so every
-    // listing ends up in the resolved trip currency regardless of this "EUR".
+    // "EUR" is a placeholder: the planner rebinds the provider to the currency it infers
+    // from origin/budget (see buildPlanContext).
     ctx: { now: deps.now(), currency: "EUR" },
     year: deps.year,
     useAgent: deps.useAgent,
@@ -77,7 +73,7 @@ const wrap =
 export function createSessionRouter(deps: RouteDeps): Router {
   const router = Router();
 
-  // 1. POST /api/session — parse prompt, return clarifying questions (cheap, synchronous)
+  // 1. POST /api/session: parse the prompt, return clarifying questions
   router.post("/session", (req, res) => {
     const { prompt } = parseBody(SessionCreateRequestSchema, req.body);
     const { request, agentMessage } = parsePrompt(prompt);
@@ -92,7 +88,7 @@ export function createSessionRouter(deps: RouteDeps): Router {
     res.json(response);
   });
 
-  // 2. POST /api/session/:id/answers — merge answers, stream the initial plan
+  // 2. POST /api/session/:id/answers: merge answers, stream the initial plan
   router.post("/session/:id/answers", wrap(async (req, res) => {
     const session = deps.store.get(req.params.id ?? "");
     if (!session) throw notFound();
@@ -114,19 +110,19 @@ export function createSessionRouter(deps: RouteDeps): Router {
     }
   }));
 
-  // 3. POST /api/session/:id/refine — classify, partial re-plan, stream the delta
+  // 3. POST /api/session/:id/refine: classify, partial re-plan, stream the delta
   router.post("/session/:id/refine", wrap(async (req, res) => {
     const session = deps.store.get(req.params.id ?? "");
     if (!session) throw notFound();
     const current = deps.store.currentVersion(session.id);
-    if (!current) throw notReady("No plan yet — submit answers first.");
+    if (!current) throw notReady("No plan yet. Submit answers first.");
     const { utterance } = parseBody(RefineRequestSchema, req.body);
 
     const sse = new SseStream(res);
     try {
       const result = await refine(current.trip, session.request, utterance, planDeps(deps), emitterFor(sse));
       if (result.scope === "info") {
-        // info-scope changes nothing: complete with the unchanged trip, no new version, no diff
+        // info scope changes nothing: same trip, no new version, no diff
         sse.complete({ trip: result.trip, version: current.version });
       } else {
         const refinement = {
@@ -147,7 +143,7 @@ export function createSessionRouter(deps: RouteDeps): Router {
     }
   }));
 
-  // 4. GET /api/session/:id — fetch current state
+  // 4. GET /api/session/:id: fetch current state
   router.get("/session/:id", (req, res) => {
     const session = deps.store.get(req.params.id ?? "");
     if (!session) throw notFound();

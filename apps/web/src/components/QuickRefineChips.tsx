@@ -1,8 +1,8 @@
 import { cn } from '@/lib/cn';
 
 /**
- * Quick-action chips for common refinements (DESIGN_SYSTEM §6) — they lower the friction of
- * discovering what's possible. Tapping one sends it as a natural-language refinement.
+ * Quick-action chips for common refinements (DESIGN_SYSTEM §6). Tapping one sends it as a
+ * natural-language refinement.
  */
 const QUICK: { label: string; utterance: string }[] = [
   { label: 'Make it cheaper', utterance: 'make it cheaper' },

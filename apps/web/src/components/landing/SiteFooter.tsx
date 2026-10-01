@@ -3,11 +3,7 @@ import { Wordmark } from '@/components/Wordmark';
 import { navigate, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
-/**
- * SiteFooter — white footer with a hairline top border. Product / Company / Legal /
- * Top destinations link columns, a wordmark + social icons, and the signoff. Links that map
- * to real routes navigate; placeholders are inert anchors.
- */
+/** Site footer. Links that map to real routes navigate; placeholders are inert anchors. */
 
 interface FooterLink {
   label: string;

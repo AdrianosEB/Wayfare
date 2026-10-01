@@ -6,9 +6,8 @@ import { createInMemoryAuthDeps } from "../src/auth/index.js";
 import { NOW, YEAR } from "./helpers.js";
 
 /**
- * Email + password auth (docs/AUTH_CONTRACT.md). Each `app()` gets fresh stores so tests are
- * isolated; the shared auth deps persist across requests within a single app instance so a
- * signup's cookie resolves on a later /me.
+ * Email + password auth (docs/AUTH_CONTRACT.md). Each `app()` gets fresh stores, shared across
+ * requests to that app so a signup's cookie resolves on a later /me.
  */
 function app() {
   const now = () => NOW;
@@ -149,7 +148,7 @@ describe("auth (AUTH_CONTRACT.md)", () => {
     expect(shortPw.body.error.code).toBe("invalid_request");
   });
 
-  it("auth is additive — guests keep full planner access", async () => {
+  it("auth is additive: guests keep full planner access", async () => {
     const a = app();
     // no cookie at all; the planner create route must still work
     const res = await request(a)

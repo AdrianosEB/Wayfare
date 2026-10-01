@@ -1,12 +1,6 @@
 import { BookingForm } from './BookingForm';
 
-/**
- * The real booking section near the foot of the page, so anyone who reads to the end lands
- * on it rather than having to scroll back up to the navbar.
- *
- * It is the same `BookingForm` the modal uses — one implementation, so the two can never
- * drift out of sync.
- */
+/** The booking section near the foot of the page. Uses the same `BookingForm` as the modal. */
 export function BookingSection() {
   return (
     <section

@@ -1,28 +1,22 @@
 /**
- * gen-persona-data — build the MLX chat-format dataset that distils the persona agent into a
+ * gen-persona-data: builds the MLX chat-format dataset that distils the persona agent into a
  * local small model.
  *
- * The shape of the thing:
- *
- *   1. Synthesize a TravelerProfile + prompt sentence from the committed signal pool (cheap,
- *      deterministic, no API).
- *   2. Run the *real* deterministic `intake()` to get a real TripRequest — same call the graph
- *      makes when intake isn't LLM-routed.
- *   3. Run `personaNode` ALONE (never the graph) against a recording model that wraps
+ *   1. Synthesize a TravelerProfile + prompt sentence from the committed signal pool (no API).
+ *   2. Run the deterministic `intake()` to get a TripRequest, as the graph does when intake
+ *      isn't LLM-routed.
+ *   3. Run `personaNode` alone (never the graph) against a recording model that wraps
  *      AnthropicStructuredModel. One model call per example.
  *   4. Write {system, user, assistant} exactly as the node sent/received it.
  *
- * Why a recording *wrapper* rather than rebuilding the prompt here: `personaNode` owns the user
- * string, and duplicating that construction would let the two drift. The wrapper captures what
- * was actually sent, so the student always learns the prompt the production node uses.
+ * The recording wrapper captures the prompt `personaNode` actually sent, so this script never
+ * duplicates the prompt construction. It also catches fallbacks: `decide()` in nodes.ts swallows
+ * non-schema errors (network, timeout) and falls back to the deterministic `derivePersona`. The
+ * wrapper records only when the model answered, so a fallback shows up as "no record" and is
+ * discarded instead of being written as a teacher label.
  *
- * It also closes a real trap. `decide()` in nodes.ts swallows non-schema errors (network,
- * timeout) and silently falls back to the deterministic `derivePersona`. Without detection those
- * heuristic labels would land in the dataset wearing the teacher's clothes. The wrapper records
- * only when the model actually answered, so a fallback shows up as "no record" → discarded.
- *
- * Safety rails, all on by default: --limit 25, --max-cost-usd 5, and --dry-run to see prompts
- * without spending anything. Progress is checkpointed to a sidecar so a crash costs nothing.
+ * Defaults: --limit 25, --max-cost-usd 5. --dry-run prints prompts without spending anything.
+ * Progress is checkpointed to a sidecar file, so a crashed run resumes.
  */
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -58,15 +52,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(HERE, "..");
 const REPO_ROOT = resolve(PKG_ROOT, "..", "..");
 
-/* -------------------------------------------------------------------------- */
-/* Plan: 3,000 examples. Test draws from a disjoint signal pool.               */
-/* -------------------------------------------------------------------------- */
+// Splits. Test draws from a disjoint signal pool.
 
 type Split = "train" | "valid" | "test" | "test-adversarial";
 
-// 1,550 rows total. Cut from 2400/300/300 on the reasoning that this is a narrow task and 1,000
-// train rows may already be past convergence; the generator is resumable, so if the Phase 3
-// validation curve is still falling we extend train THEN instead of paying up front.
+// 1,550 rows total, cut from 2400/300/300: this is a narrow task and 1,000 train rows may
+// already be past convergence. The generator is resumable, so train can be extended later if
+// the Phase 3 validation curve is still falling.
 const SPLIT_SIZES: Record<Split, number> = { train: 1000, valid: 150, test: 250, "test-adversarial": 150 };
 /** Distinct seed offsets so no two splits ever draw the same profile. */
 const SPLIT_SEED_OFFSET: Record<Split, number> = {
@@ -80,10 +72,9 @@ type Dimension = "price" | "quality" | "location" | "vibe" | "flexibility";
 const DIMENSIONS: readonly Dimension[] = ["price", "quality", "location", "vibe", "flexibility"];
 
 /**
- * A tagged signal from the authored pools. `p` is a direction WITHIN the dimension (see the
- * fixture description), so a (+1, -1) pair on one dimension is a genuine contradiction. The
- * adversarial pool is untagged (`d`/`p` absent) — no deliberate conflicts are constructed
- * there; its whole point is messy, adversarially-phrased free text.
+ * A tagged signal from the authored pools. `p` is a direction within the dimension (see the
+ * fixture description), so a (+1, -1) pair on one dimension is a contradiction. The adversarial
+ * pool is untagged (`d`/`p` absent) and gets no constructed conflicts.
  */
 interface Signal {
   s: string;
@@ -91,15 +82,14 @@ interface Signal {
   p?: 1 | -1;
 }
 
-/** Fraction of authored-pool profiles that get a deliberately contradictory pair. */
+/** Fraction of authored-pool profiles that get a contradictory pair. */
 const CONFLICT_RATE = 0.3;
 
 /**
- * Per-model list price, USD per million tokens (in, out) — used by the --max-cost-usd counter.
+ * Per-model list price, USD per million tokens (in, out), used by the --max-cost-usd counter.
  * Verified against the Claude API reference, 2026-08. Sonnet 5 is at its introductory rate
- * ($2/$10, sticker $3/$15) through 2026-08-31 — re-check after that date. Unknown models must
- * pass --price-in/--price-out explicitly; guessing a price under a cost ceiling is how a budget
- * quietly stops meaning anything.
+ * ($2/$10, sticker $3/$15) through 2026-08-31, so re-check after that date. Unknown models must
+ * pass --price-in/--price-out explicitly.
  */
 const MODEL_PRICES: Record<string, readonly [number, number]> = {
   "claude-opus-4-8": [5, 25],
@@ -108,9 +98,7 @@ const MODEL_PRICES: Record<string, readonly [number, number]> = {
   "claude-haiku-4-5": [1, 5],
 };
 
-/* -------------------------------------------------------------------------- */
-/* CLI                                                                         */
-/* -------------------------------------------------------------------------- */
+// CLI
 
 interface Options {
   splits: Split[];
@@ -164,7 +152,7 @@ function parseArgs(argv: string[]): Options {
   const priceOutRaw = get("--price-out");
   if (!known && (priceInRaw == null || priceOutRaw == null)) {
     die(
-      `no known pricing for model "${model}" — pass --price-in and --price-out ($/MTok) so the ` +
+      `no known pricing for model "${model}". Pass --price-in and --price-out ($/MTok) so the ` +
         `--max-cost-usd ceiling stays meaningful. Known models: ${Object.keys(MODEL_PRICES).join(", ")}`,
     );
   }
@@ -191,9 +179,7 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Deterministic sampling — same seed, same dataset, so resume is consistent.  */
-/* -------------------------------------------------------------------------- */
+// Deterministic sampling: same seed, same dataset, so resume is consistent.
 
 /** mulberry32: small, fast, good enough, and reproducible across runs and machines. */
 function rng(seed: number): () => number {
@@ -217,9 +203,7 @@ function sampleN<T>(r: () => number, xs: readonly T[], n: number): T[] {
   return [...idx].map((i) => xs[i]!);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Input synthesis                                                             */
-/* -------------------------------------------------------------------------- */
+// Input synthesis
 
 const HOME_CITIES = [
   "London", "Manchester", "Dublin", "Edinburgh", "Berlin", "Munich", "Paris", "Lyon",
@@ -243,9 +227,8 @@ const CURRENCIES = ["EUR", "GBP", "USD"] as const;
 
 /**
  * Trip-style words the deterministic intake recognises (VIBE_KEYWORDS in agents/intake.ts).
- * Sprinkling them into the sentence varies `request.vibe` in the persona's user prompt —
- * without them every example reads `Trip vibe: ["budget"]` and the student never sees the field
- * carry information.
+ * They vary `request.vibe` in the persona's user prompt. Without them every example reads
+ * `Trip vibe: ["budget"]`.
  */
 const TRIP_STYLES = [
   "foodie", "beach", "culture", "relaxed", "adventure", "romantic",
@@ -253,10 +236,10 @@ const TRIP_STYLES = [
 ] as const;
 
 /**
- * Budget phrasings, chosen against BOTH intake regexes at once: the amount only parses after
+ * Budget phrasings, chosen against both intake regexes: the amount only parses after
  * `under|around|about|~|budget of|<|up to`, and hardness is a separate `/under|max|no more
- * than|hard/` test on the whole sentence. Every phrase below parses an amount; the hard ones
- * additionally trip the hardness test.
+ * than|hard/` test on the whole sentence. Every phrase parses an amount, and the hard ones also
+ * trip the hardness test.
  */
 const SOFT_BUDGET_PHRASES = ["budget around", "budget of about", "around", "budget of ~"] as const;
 const HARD_BUDGET_PHRASES = ["under", "max budget of", "up to (max)"] as const;
@@ -273,7 +256,7 @@ const AVOIDS = [
 
 /** Per-example metadata, written alongside `messages` so the eval can slice on it. */
 interface ExampleMeta {
-  /** true only for deliberately-constructed contradictions, not incidental ones. */
+  /** true only for constructed contradictions, not incidental ones. */
   conflict: boolean;
   /** the dimension the contradictory pair sits on, when conflict is true. */
   dimension?: Dimension;
@@ -286,11 +269,9 @@ interface SynthInput {
 }
 
 /**
- * Draw this profile's signals. In CONFLICT_RATE of tagged-pool profiles, deliberately pair one
- * +1 with one -1 on the SAME dimension — reconciling "counts every euro" against "money is
- * genuinely not the constraint here" is the hard judgment the student has to learn, and left to
- * uniform sampling that tension appears too rarely to train or measure. The pair's position is
- * shuffled so the contradiction isn't always the first two signals.
+ * Draws this profile's signals. In CONFLICT_RATE of tagged-pool profiles, one +1 is paired with
+ * one -1 on the same dimension, because uniform sampling produces that tension too rarely to
+ * train or measure. The result is shuffled so the pair isn't always the first two signals.
  */
 function drawSignals(r: () => number, pool: readonly Signal[]): { signals: string[]; meta: ExampleMeta } {
   const tagged = pool.every((x) => x.d != null && x.p != null);
@@ -307,7 +288,7 @@ function drawSignals(r: () => number, pool: readonly Signal[]): { signals: strin
       const rest = pool.filter((x) => x.s !== plus.s && x.s !== minus.s);
       const extras = sampleN(r, rest, pickInt(r, 0, 3));
       const all = [plus, minus, ...extras].map((x) => x.s);
-      // Fisher–Yates on the assembled list so ordering carries no signal.
+      // Fisher-Yates on the assembled list so ordering carries no signal.
       for (let i = all.length - 1; i > 0; i--) {
         const j = Math.floor(r() * (i + 1));
         [all[i], all[j]] = [all[j]!, all[i]!];
@@ -322,10 +303,7 @@ function drawSignals(r: () => number, pool: readonly Signal[]): { signals: strin
   };
 }
 
-/**
- * Build one profile + sentence. Every axis varies independently; signals come from the split's
- * own pool via drawSignals, which owns the deliberate-conflict construction.
- */
+/** Builds one profile + sentence. Every axis varies independently. */
 function synthesize(r: () => number, pool: readonly Signal[], index: number): SynthInput {
   const homeCity = pick(r, HOME_CITIES);
   const destination = pick(r, DESTINATIONS);
@@ -361,8 +339,8 @@ function synthesize(r: () => number, pool: readonly Signal[], index: number): Sy
   const symbol = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
   const money = `${symbol}${amount.toLocaleString("en-GB")}`;
 
-  // Phrase the budget so intake actually derives the type we rolled — otherwise every example
-  // would read type:"soft" and the student would never see hard constraints.
+  // Phrase the budget so intake derives the type we rolled. Otherwise every example would
+  // read type:"soft".
   const budgetPhrase =
     type === "hard"
       ? (() => {
@@ -391,9 +369,7 @@ function synthesize(r: () => number, pool: readonly Signal[], index: number): Sy
   return { prompt, profile, meta };
 }
 
-/* -------------------------------------------------------------------------- */
-/* The recording model                                                         */
-/* -------------------------------------------------------------------------- */
+// Recording model
 
 interface Recorded {
   system: string;
@@ -405,11 +381,11 @@ interface Recorded {
 
 /**
  * Wraps the real model and remembers the last call. `last` is cleared before every example, so
- * a null `last` afterwards is an unambiguous signal that `decide()` fell back to the heuristic
- * and the example must be discarded rather than written as teacher output.
+ * a missing `last` afterwards means `decide()` fell back to the heuristic and the example must
+ * be discarded.
  *
- * With `inner: null` it records the prompt and throws DryRunSkip — the --dry-run path, which
- * exercises the identical prompt-building code without spending anything.
+ * With `inner: null` it records the prompt and throws DryRunSkip. That is the --dry-run path,
+ * which runs the same prompt-building code without spending anything.
  */
 class RecordingModel implements StructuredModel {
   last: Recorded | undefined;
@@ -439,10 +415,8 @@ class RecordingModel implements StructuredModel {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Resume state — the jsonl format is fixed by the spec, so progress lives in  */
-/* a sidecar rather than an extra field on each line.                          */
-/* -------------------------------------------------------------------------- */
+// Resume state. The jsonl format is fixed by the spec, so progress lives in a sidecar file
+// instead of an extra field on each line.
 
 interface ResumeState {
   version: 1;
@@ -479,9 +453,7 @@ function loadState(outDir: string, split: Split, seed: number, fresh: boolean): 
 const saveState = (outDir: string, split: Split, s: ResumeState): void =>
   writeFileSync(statePath(outDir, split), `${JSON.stringify(s, null, 2)}\n`);
 
-/* -------------------------------------------------------------------------- */
-/* Main                                                                        */
-/* -------------------------------------------------------------------------- */
+// Main
 
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
@@ -504,15 +476,15 @@ async function main(): Promise<void> {
     }
   }
 
-  // The disjointness the eval depends on is an invariant, not a comment — check it.
+  // The eval depends on the pools being disjoint.
   const trainTexts = new Set(pools.train.map((x) => x.s));
   const overlap = pools.test.filter((x) => trainTexts.has(x.s));
   if (overlap.length) {
     die(`signal pools overlap on ${overlap.length} entries (test must be disjoint): ${overlap[0]!.s}`);
   }
 
-  // Adversarial pool: model-authored, deliberately messy phrasing, untagged, feeds ONLY
-  // test-adversarial. It measures distribution shift, not a human baseline.
+  // Adversarial pool: model-authored, messy phrasing, untagged. Feeds only test-adversarial.
+  // It measures distribution shift, not a human baseline.
   const adversarialPath = join(PKG_ROOT, "fixtures", "persona-signals-adversarial.json");
   const adversarialRaw = existsSync(adversarialPath)
     ? (JSON.parse(readFileSync(adversarialPath, "utf8")) as { signals: string[] })
@@ -522,7 +494,7 @@ async function main(): Promise<void> {
   const adversarialOverlap = adversarialPool.filter((x) => authoredTexts.has(x.s));
   if (adversarialOverlap.length) {
     die(
-      `persona-signals-adversarial.json duplicates ${adversarialOverlap.length} authored signal(s) — the ` +
+      `persona-signals-adversarial.json duplicates ${adversarialOverlap.length} authored signal(s). The ` +
         `adversarial pool must be disjoint from the authored pools: "${adversarialOverlap[0]!.s}"`,
     );
   }
@@ -537,7 +509,7 @@ async function main(): Promise<void> {
   mkdirSync(opts.outDir, { recursive: true });
 
   console.log(
-    `gen-persona-data — ${opts.dryRun ? "DRY RUN (no API calls)" : `teacher: ${model}`}\n` +
+    `gen-persona-data: ${opts.dryRun ? "DRY RUN (no API calls)" : `teacher: ${model}`}\n` +
       `  splits      ${opts.splits.join(", ")}\n` +
       `  limit       ${opts.limit} example(s) per split\n` +
       `  max cost    $${opts.maxCostUsd.toFixed(2)} (in $${opts.priceIn}/MTok, out $${opts.priceOut}/MTok)\n` +
@@ -563,7 +535,7 @@ async function main(): Promise<void> {
         const msg =
           `test-adversarial needs at least 40 signals in fixtures/persona-signals-adversarial.json ` +
           `(found ${adversarialPool.length}). The pool is adversarially-phrased, model-authored ` +
-          `input — messy, typo-ridden, contradictory free text — used to measure how the student ` +
+          `input (messy, typo-ridden, contradictory free text) used to measure how the student ` +
           `holds up under distribution shift from the clean authored pools.`;
         if (opts.splitsExplicit) die(msg);
         console.warn(`[test-adversarial] skipped: ${msg}`);
@@ -574,8 +546,8 @@ async function main(): Promise<void> {
       pool = split === "test" ? pools.test : pools.train;
     }
 
-    // A dry run must never touch progress: advancing nextIndex here would make the next real run
-    // skip the examples it only ever printed, silently shrinking the dataset.
+    // A dry run must not touch progress: advancing nextIndex would make the next real run skip
+    // the examples it only printed.
     const state = opts.dryRun
       ? loadState(opts.outDir, split, opts.seed, true)
       : loadState(opts.outDir, split, opts.seed, opts.fresh);
@@ -601,8 +573,8 @@ async function main(): Promise<void> {
       dryRun: false,
       maxPasses: 1,
       model,
-      // Labels come from the Anthropic teacher by definition — never route this script at the
-      // local student, or it would be distilling from itself.
+      // Labels come from the Anthropic teacher. Never route this script at the local student, or
+      // it would be distilling from itself.
       localBaseUrl: undefined,
       localModel: "unused",
     };
@@ -613,12 +585,11 @@ async function main(): Promise<void> {
     const endIndex = Math.min(target, state.nextIndex + opts.limit);
 
     /*
-     * Concurrent scheduling. The Limiter (from @wayfare/orchestrator) caps in-flight teacher
-     * calls; completions land out of order, so correctness under crash/resume comes from one
-     * rule: `state.nextIndex` only ever advances past a CONTIGUOUS prefix of finished indices.
-     * Outcomes buffer in a map (bounded by the concurrency window) and a single synchronous
-     * flusher applies them in index order — which also means the jsonl is append-only in index
-     * order, lines can never interleave, and a crash merely re-runs the in-flight window.
+     * The Limiter (from @wayfare/orchestrator) caps in-flight teacher calls. Completions land
+     * out of order, so `state.nextIndex` only advances past a contiguous prefix of finished
+     * indices. Outcomes buffer in a map (bounded by the concurrency window) and a synchronous
+     * flusher applies them in index order. That keeps the jsonl append-only in index order, and
+     * a crash only re-runs the in-flight window.
      */
     type Outcome =
       | { kind: "written"; line: string; inputTokens: number; outputTokens: number }
@@ -628,9 +599,9 @@ async function main(): Promise<void> {
     const outcomes = new Map<number, Outcome>();
     const discardCauses: Record<string, number> = {};
     const RATE_LIMIT_RE = /429|rate[ _-]?limit|overloaded|529/i;
-    // Terminal account states: retrying or continuing is pure waste, and worse — each further
-    // index gets marked processed-and-discarded, so a later resume would silently skip real
-    // rows. (Exactly this happened once: credit exhaustion burned 121 adversarial rows.)
+    // Terminal account states. Continuing would mark each further index processed-and-discarded,
+    // so a later resume would skip real rows. Credit exhaustion once burned 121 adversarial rows
+    // this way.
     const FATAL_RE = /credit balance|authentication_error|invalid x-api-key|billing/i;
     const BACKOFF_MS = 20_000;
     let backoffUntil = 0;
@@ -671,12 +642,12 @@ async function main(): Promise<void> {
 
       let { rec, err } = await attempt(prompt, profile);
 
-      // Rate-limited? Back off globally (launches wait too) and retry this row ONCE rather than
-      // discarding it. Backing off — not raising the cap — is the correct response to 429s.
+      // Rate-limited: back off globally (launches wait too) and retry this row once instead of
+      // discarding it.
       if (!opts.dryRun && !rec && err && RATE_LIMIT_RE.test(err)) {
         rateLimitHits++;
         backoffUntil = Math.max(backoffUntil, Date.now() + BACKOFF_MS);
-        console.warn(`[${split}] index ${index}: rate-limited — backing off ${BACKOFF_MS / 1000}s and retrying once`);
+        console.warn(`[${split}] index ${index}: rate-limited, backing off ${BACKOFF_MS / 1000}s and retrying once`);
         await sleep(Math.max(0, backoffUntil - Date.now()));
         ({ rec, err } = await attempt(prompt, profile));
       }
@@ -694,24 +665,23 @@ async function main(): Promise<void> {
         };
       }
 
-      // Terminal account errors poison every subsequent index — flag and let the scheduler stop.
-      // The outcome is still "discard" for THIS row, but flush() will not advance past it.
+      // Terminal account errors affect every later index, so flag it and let the scheduler stop.
+      // This row's outcome is still "discard", but flush() will not advance past it.
       if (!rec && err && FATAL_RE.test(err)) {
         fatal = err.slice(0, 160);
         return { kind: "discard", reason: `fatal: ${fatal}` };
       }
 
       // No record means decide() swallowed an error and used derivePersona. That output is the
-      // heuristic, not the teacher — discard it rather than poison the training set.
+      // heuristic, not the teacher, so discard it.
       if (!rec) {
-        // 100 chars was too short to diagnose anything: a structured-output failure embeds the
-        // model's own text in the error, and the useful part (where the JSON actually goes
-        // wrong) is past the first line. GEN_ERR_CHARS widens it when investigating.
+        // A structured-output failure embeds the model's own text in the error, and the useful
+        // part is past the first line. Set GEN_ERR_CHARS to widen the cap when investigating.
         const cap = Number(process.env.GEN_ERR_CHARS ?? 100);
         return { kind: "discard", reason: err ? `model-error: ${err.slice(0, cap)}` : "no-output" };
       }
 
-      // Belt and braces: AnthropicStructuredModel already validates, but a dataset is forever.
+      // AnthropicStructuredModel already validates. Re-check before writing to the dataset.
       const parsed = PersonaSchema.safeParse(rec.value);
       if (!parsed.success) return { kind: "discard", reason: "schema-invalid" };
 
@@ -739,8 +709,8 @@ async function main(): Promise<void> {
       while (outcomes.has(state.nextIndex)) {
         const index = state.nextIndex;
         const o = outcomes.get(index)!;
-        // A fatal-account outcome must NOT advance progress: the row wasn't labelled, it was
-        // unreachable. Leave nextIndex pointing at it so resume retries it once the account works.
+        // A fatal-account outcome must not advance progress, since the row was never labelled.
+        // Leave nextIndex pointing at it so resume retries it once the account works.
         if (o.kind === "discard" && o.reason.startsWith("fatal:")) {
           outcomes.delete(index);
           break;
@@ -765,7 +735,7 @@ async function main(): Promise<void> {
           state.written++;
           if (state.written % 50 === 0) {
             console.log(
-              `[${split}] ${state.written} written / ${state.discarded} discarded — ` +
+              `[${split}] ${state.written} written / ${state.discarded} discarded, ` +
                 `${state.inputTokens.toLocaleString()} in + ${state.outputTokens.toLocaleString()} out tokens, ` +
                 `$${costSoFar.toFixed(4)} spent`,
             );
@@ -780,7 +750,7 @@ async function main(): Promise<void> {
 
     for (let index = state.nextIndex; index < endIndex; index++) {
       if (fatal) {
-        console.error(`\n[${split}] FATAL account error — stopping launches: ${fatal}`);
+        console.error(`\n[${split}] FATAL account error, stopping launches: ${fatal}`);
         aborted = true;
         break;
       }
@@ -820,7 +790,7 @@ async function main(): Promise<void> {
     }
     if (rateLimitHits > 0) {
       console.warn(
-        `[${split}] ${rateLimitHits} rate-limit hit(s) — if these recur, LOWER --concurrency; do not raise it.`,
+        `[${split}] ${rateLimitHits} rate-limit hit(s). If these recur, LOWER --concurrency; do not raise it.`,
       );
     }
     if (Object.keys(discardCauses).length > 0) {
@@ -829,7 +799,7 @@ async function main(): Promise<void> {
 
     if (!opts.dryRun) saveState(opts.outDir, split, state);
     console.log(
-      `\n[${split}] ${doneThisRun.count} processed this run — ` +
+      `\n[${split}] ${doneThisRun.count} processed this run, ` +
         `${state.written}/${target} written, ${state.discarded} discarded, ` +
         `at index ${state.nextIndex}/${target}.`,
     );
@@ -837,15 +807,15 @@ async function main(): Promise<void> {
 
   if (!opts.dryRun) {
     console.log(`\nTotal spend this run: $${costSoFar.toFixed(4)} of $${opts.maxCostUsd.toFixed(2)} allowed.`);
-    // A repaired row is valid training data, but the rate is a finding: it says how often
-    // the model misplaced `reasoning` inside `preferences`. Reported, never buried.
+    // A repaired row is valid training data, but report the rate: it says how often the model
+    // misplaced `reasoning` inside `preferences`.
     const hoists = personaHoistCount();
     if (hoists > 0) console.log(`Shape repairs (reasoning hoisted out of preferences): ${hoists}`);
   }
   console.log("Re-run the same command to continue; completed examples are skipped.");
 }
 
-/** personaNode never touches the toolbox, but NodeDeps requires one. Keep it real and cheap. */
+/** personaNode never uses the tools, but NodeDeps requires a ToolContext. */
 function toolContext(tracer: Tracer): ToolContext {
   const providers = mockProviderRegistry();
   return {

@@ -1,49 +1,32 @@
 #!/usr/bin/env python3
-"""Is the teacher's label actually a function of the input? Run this on ANY teacher pass.
+"""Check whether the teacher's labels depend on the input. Works on any teacher pass.
 
     ./.venv/bin/python diagnose_labels.py                     # all splits
     ./.venv/bin/python diagnose_labels.py --split train --gate
 
-Phase 4 found a student whose predicted weights were independent of its input. The student was
-not the problem: it faithfully reproduced labels that are themselves near-independent of the
-input. This script measures that directly, on the labels alone, with no model involved — so it
-can run *before* any training spend rather than after.
-
 Each authored signal in `fixtures/persona-signals.json` carries `d`, the PersonaWeights
-dimension it is meant to move. Join a row's signals back to those tags and you know which
-dimension the input is *about*; the teacher's argmax weight says which dimension the label is
-about. If the teacher is reading the input, those agree well above chance and the cross-tab has
-a strong diagonal. If it is answering from a prior, the diagonal is flat and the marginal is
-concentrated.
+dimension it is meant to move. The dominant `d` across a row's signals is what the input is
+about, and the teacher's argmax weight is what the label is about. The script cross-tabulates
+the two. A teacher that reads its input gives a strong diagonal; one answering from a prior
+gives a flat diagonal and a concentrated marginal.
 
-Two numbers matter most:
+Main outputs:
 
-* **Top-dimension entropy** (bits, max log2(5) = 2.32). Low entropy means the label barely
-  varies no matter what goes in.
-* **Chance agreement** = the sum of squares of the top-dimension marginal — the rate at which
-  two independent draws from that marginal agree by luck. Any observed agreement between two
-  labellers must be read against THIS, not against zero. A "noise floor" that merely reproduces
-  the chance rate is not measuring labeller noise at all.
+* Top-dimension entropy in bits (max log2(5) = 2.32). Low means the label barely varies.
+* Chance agreement: the sum of squares of the top-dimension marginal, i.e. how often two
+  independent draws from it agree. Agreement between two labellers has to be read against
+  this, not against zero.
 
-`--gate` turns it into a pass/fail check (non-zero exit on failure) for use before a full pass.
+`--gate` exits non-zero when the thresholds are not met.
 
-WHY THE DIAGONAL GATE EXCLUDES `flexibility` — do not re-add it
----------------------------------------------------------------
-`flexibility` is not a scoring axis. In `packages/orchestrator/src/agents/match.ts` the ranked
-score is `price + quality + location + vibe + verification`; the flexibility weight appears
-nowhere in it except as a multiplier folded into price:
+The diagonal gate excludes `flexibility` because it is not a scoring axis. In
+`packages/orchestrator/src/agents/match.ts` it only appears folded into price:
 
     const priceWeight = w.price + w.flexibility * 0.5;
 
-So a "flexibility-top" label is not a meaningful target. A persona with flexibility 0.40 and
-price 0.15 yields an effective price weight of 0.35 — gating on a flexibility diagonal would
-manufacture price-led rankings, which is the exact bias this diagnostic exists to detect. The
-diagonal is therefore checked only for the four dimensions the ranker actually scores, while
-the cross-tab still *displays* flexibility so the asymmetry stays visible.
-
-This is a deliberate decision recorded in training/RESULTS.md, not an oversight. Whether a
-five-dimension PersonaWeights is the right shape at all is a separate open question; it is not
-resolved by narrowing this gate.
+Gating on a flexibility diagonal would push labels toward price-led rankings, which is the
+bias this script is meant to catch. The cross-tab still displays flexibility. See
+training/RESULTS.md.
 """
 
 import argparse
@@ -54,13 +37,12 @@ import statistics
 from pathlib import Path
 
 DIMS = ["price", "quality", "location", "vibe", "flexibility"]
-# The four dimensions match.ts actually scores. See the module docstring: flexibility is a
-# multiplier on price, not an axis, so its diagonal is displayed but never gated.
+# The four dimensions match.ts scores. Flexibility is displayed but never gated (see the
+# module docstring).
 SCORED_DIMS = ["price", "quality", "location", "vibe"]
 # Gated subset. `vibe` is reported but does not block: at the gate sample size (n~25 rows in
 # its cross-tab row) the bar carries roughly +/-19pp, and it read 31%, 48%, 32% across three
-# rounds of otherwise-improving labels. That is noise, and blocking on it costs a $0.75 run to
-# resolve nothing. The full pass gives n~200, where it is actually measurable.
+# rounds. The full pass gives n~200.
 GATED_DIMS = ["price", "quality", "location"]
 REPO = Path(__file__).resolve().parent.parent
 FIXTURES = REPO / "packages/orchestrator-llm/fixtures"
@@ -90,9 +72,8 @@ def load_signal_dims():
 def price_polarity(signals, sigs):
     """How this row's signals talk about price: frugal / freely / mixed / none.
 
-    `none` is the interesting bucket. A teacher that reads its input should treat the absence
-    of any price signal as *no information about price* — not as evidence of frugality. If the
-    `none` bucket looks like the `frugal` bucket, the model is answering from a prior.
+    If the `none` bucket looks like the `frugal` bucket, the teacher is treating a missing
+    price signal as frugality, i.e. answering from a prior.
     """
     pol = [sigs[s][1] for s in signals if s in sigs and sigs[s][0] == "price"]
     if not pol:
@@ -118,7 +99,7 @@ def polarity_report(rows, sigs):
         top = max(DIMS, key=lambda d: nvals[d])
         groups[price_polarity(r["meta"]["signals"], sigs)].append((nvals["price"], top))
 
-    print("Price-polarity split — does the label move with explicit price evidence?\n")
+    print("Price-polarity split: does the label move with explicit price evidence?\n")
     print("| price signal | n | mean price weight | price-top |")
     print("|---|---|---|---|")
     none_pct = frugal_pct = None
@@ -136,14 +117,14 @@ def polarity_report(rows, sigs):
     mean_max = statistics.mean(maxw) if maxw else 0.0
     mean_min = statistics.mean(minw) if minw else 0.0
     print(f"\n- weight shape: mean max-weight **{mean_max:.3f}**, mean min-weight {mean_min:.3f}")
-    print(f"  (a fix that flattens every vector toward uniform 0.200 is not a fix — it would "
+    print(f"  (a fix that flattens every vector toward uniform 0.200 is not a fix: it would "
           f"raise entropy while carrying just as little information. Mean max-weight below "
           f"~0.28 means the vectors have gone flat.)")
     if none_pct is not None:
-        print(f"- **no-price-signal rows are price-top {none_pct:.1f}%** — the sharpest single "
+        print(f"- **no-price-signal rows are price-top {none_pct:.1f}%**: the sharpest single "
               f"test of the default-to-price prior")
     if frugal_pct is not None:
-        print(f"- **explicitly frugal rows are price-top {frugal_pct:.1f}%** — the response must "
+        print(f"- **explicitly frugal rows are price-top {frugal_pct:.1f}%**: the response must "
               f"stay symmetric; removing a prior must not become a reversed prior")
     print()
     return none_pct, mean_max, frugal_pct
@@ -152,8 +133,8 @@ def polarity_report(rows, sigs):
 def dominant_dim(signals, sigdims):
     """The dimension most of a row's signals point at.
 
-    Returns (dim, 'unique') or (None, 'tie'/'untagged'). Ties are never broken silently — a
-    forced tiebreak would invent a diagonal that the data does not contain.
+    Returns (dim, 'unique') or (None, 'tie'/'untagged'). Ties are not broken, since a forced
+    tiebreak would invent a diagonal.
     """
     dims = [sigdims[s] for s in signals if s in sigdims]
     if not dims:
@@ -210,17 +191,15 @@ def analyse(rows, sigdims):
 def print_report(name, rows, sigdims, sigs=None):
     xtab, marg, skipped, appears = analyse(rows, sigdims)
     n = sum(marg.values())
-    print(f"### {name} — {len(rows)} rows ({n} with usable weights)\n")
+    print(f"### {name}: {len(rows)} rows ({n} with usable weights)\n")
 
     if not any(sum(xtab[d].values()) for d in DIMS):
-        # The adversarial pool is deliberately untagged plain strings, so there is no input
-        # dimension to cross-tabulate against. The marginal still is meaningful and is the
-        # part that shows label degeneracy, so report that and say plainly why the rest is
-        # absent rather than printing an empty grid.
+        # The adversarial pool is untagged plain strings, so there is nothing to cross-tabulate.
+        # Report the marginal only.
         h = entropy_bits(marg)
         ss = sum((marg[d] / n) ** 2 for d in DIMS) if n else 0.0
         print("No cross-tab: none of this split's signals carry `d` tags (the adversarial pool "
-              "is deliberately untagged free text). Marginal statistics still apply.\n")
+              "is untagged free text). Marginal statistics still apply.\n")
         if n:
             print("- top-dimension marginal: " +
                   ", ".join(f"`{d}` {100 * marg[d] / n:.1f}%" for d in DIMS))
@@ -253,7 +232,7 @@ def print_report(name, rows, sigdims, sigs=None):
     print(f"- top-dimension marginal: " +
           ", ".join(f"`{d}` {100 * marg[d] / n:.1f}%" for d in DIMS if n) if n else "")
     print(f"- **top-dimension entropy: {h:.3f} bits** of a possible {math.log2(len(DIMS)):.3f}")
-    print(f"- **chance agreement (sum of squares of the marginal): {ss:.3f}** — two independent "
+    print(f"- **chance agreement (sum of squares of the marginal): {ss:.3f}**: two independent "
           f"draws from this marginal agree {100 * ss:.1f}% of the time")
     if diagonals:
         lo = min(diagonals.items(), key=lambda kv: kv[1])
@@ -265,7 +244,7 @@ def print_report(name, rows, sigdims, sigs=None):
         print(f"    - `{d}`: {hit}/{tot} = {100 * hit / tot:.1f}%" if tot else f"    - `{d}`: n/a")
     if skipped:
         print(f"- excluded from the cross-tab: {dict(skipped)} "
-              f"(ties are never broken silently — see `dominant_dim`)")
+              f"(ties are never broken silently, see `dominant_dim`)")
     print()
     none_pct, mean_max, frugal_pct = polarity_report(rows, sigs) if sigs else (None, None, None)
     return h, diagonals, none_pct, mean_max, frugal_pct
@@ -279,7 +258,7 @@ def main():
     ap.add_argument("--min-entropy", type=float, default=1.5)
     ap.add_argument("--min-diagonal", type=float, default=35.0)
     ap.add_argument("--max-price-top-no-signal", type=float, default=40.0,
-                    help="ceiling on price-top%% among rows with NO price signal (was 87.1%%)")
+                    help="ceiling on price-top%% among rows with no price signal (was 87.1%%)")
     ap.add_argument("--min-mean-max-weight", type=float, default=0.28,
                     help="floor on mean max-weight; below this the vectors have gone flat")
     ap.add_argument("--min-frugal-price-top", type=float, default=65.0,
@@ -300,17 +279,15 @@ def main():
     for s in splits:
         p = Path(args.data_dir) / f"{s}.jsonl"
         if not p.is_file():
-            print(f"### {s} — file not found, skipped\n")
+            print(f"### {s}: file not found, skipped\n")
             continue
         rows = [json.loads(l) for l in p.open()]
         if not rows:
-            print(f"### {s} — empty, skipped\n")
+            print(f"### {s}: empty, skipped\n")
             continue
         h, diags, none_pct, mean_max, frugal_pct = print_report(s, rows, sigdims, sigs)
 
-        # Discards never reach the .jsonl, so the rate has to come from the sidecar the
-        # generator writes. A pass that silently drops a fifth of its rows is not a clean pass
-        # even when every row it kept looks good.
+        # Discards never reach the .jsonl, so the rate comes from the generator's sidecar file.
         discard_pct = None
         prog = Path(args.data_dir) / f".{s}.progress.json"
         if prog.is_file():
@@ -324,7 +301,7 @@ def main():
         if args.gate:
             if h < args.min_entropy:
                 failures.append(f"{s}: entropy {h:.3f} < {args.min_entropy}")
-            # Only the dimensions match.ts scores — see the module docstring on flexibility.
+            # Only the dimensions match.ts scores (see the module docstring on flexibility).
             weak = {d: v for d, v in diags.items() if d in GATED_DIMS and v < args.min_diagonal}
             vibe = diags.get("vibe")
             if vibe is not None:
@@ -334,19 +311,18 @@ def main():
                                 ", ".join(f"{d} ({v:.0f}%)" for d, v in weak.items()))
             if frugal_pct is not None and frugal_pct < args.min_frugal_price_top:
                 failures.append(f"{s}: explicitly frugal rows are price-top {frugal_pct:.1f}% "
-                                f"< {args.min_frugal_price_top}% — overcorrected into a "
-                                f"reversed prior")
+                                f"< {args.min_frugal_price_top}% (overcorrected into a "
+                                f"reversed prior)")
             if discard_pct is not None and discard_pct >= args.max_discard_pct:
                 failures.append(f"{s}: discard rate {discard_pct:.1f}% "
                                 f">= {args.max_discard_pct}%")
             if none_pct is not None and none_pct >= args.max_price_top_no_signal:
                 failures.append(f"{s}: no-price-signal rows are price-top {none_pct:.1f}% "
-                                f">= {args.max_price_top_no_signal}% — still defaulting to price")
-            # Checked even when the others pass: flattening every vector toward uniform would
-            # satisfy entropy and the diagonal while destroying the signal it is meant to prove.
+                                f">= {args.max_price_top_no_signal}% (still defaulting to price)")
+            # Flattening every vector toward uniform would pass the entropy and diagonal checks.
             if mean_max is not None and mean_max < args.min_mean_max_weight:
                 failures.append(f"{s}: mean max-weight {mean_max:.3f} < "
-                                f"{args.min_mean_max_weight} — vectors collapsed toward uniform")
+                                f"{args.min_mean_max_weight} (vectors collapsed toward uniform)")
 
     if args.gate:
         print("---\n")
@@ -355,7 +331,7 @@ def main():
             for f in failures:
                 print(f"- {f}")
             raise SystemExit(1)
-        print(f"**GATE PASSED** — entropy >= {args.min_entropy} bits; diagonal >= "
+        print(f"**GATE PASSED**: entropy >= {args.min_entropy} bits; diagonal >= "
               f"{args.min_diagonal}% for {', '.join(GATED_DIMS)} (vibe reported non-blocking, flexibility excluded by "
               f"design); no-price-signal price-top < {args.max_price_top_no_signal}%; frugal "
               f"price-top >= {args.min_frugal_price_top}%; mean max-weight >= "

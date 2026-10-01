@@ -4,10 +4,9 @@ import type { PricingProvider, FlightQuery, StayQuery, ActivityQuery } from "./p
 export type ProviderCategory = "flights" | "stays" | "activities";
 
 /**
- * CompositeProvider wraps per-category providers and applies the fallback policy: try the
- * real provider; on error/rate-limit, fall back to mock and tag the category degraded
- * (NFR-3). This is what makes "MVP on mock, swap in real per category later" a config change,
- * not a rewrite (NFR-7). In MVP every category is the mock provider, so nothing degrades.
+ * Wraps per-category providers with the fallback policy: try the real provider and, on error,
+ * fall back to mock and mark the category degraded (NFR-3, NFR-7). In MVP every category is
+ * the mock provider, so nothing degrades.
  */
 export class CompositeProvider implements PricingProvider {
   readonly name = "composite";

@@ -1,7 +1,6 @@
 /**
- * Server configuration, read from the environment. The ONLY required secret is
- * ANTHROPIC_API_KEY (and even that is optional — without it the deterministic planner runs).
- * Keys live here, server-side, and are never sent to the client (NFR-4).
+ * Server configuration, read from the environment. ANTHROPIC_API_KEY is the only secret and is
+ * optional: without it the deterministic planner runs. Keys stay server-side (NFR-4).
  */
 
 export type PlannerMode = "auto" | "deterministic" | "agent";
@@ -28,10 +27,7 @@ export const config: Config = {
   now: process.env.WAYFARE_NOW ?? "2026-06-16T10:00:00Z",
 };
 
-/**
- * Resolve whether the live Anthropic agent should drive planning.
- * `auto` → agent iff a key is present; otherwise the explicit mode wins (agent w/o key throws).
- */
+/** Whether the Anthropic agent should drive planning. `auto` means agent iff a key is present. */
 export function useAgent(cfg: Config = config): boolean {
   if (cfg.plannerMode === "deterministic") return false;
   if (cfg.plannerMode === "agent") return true;

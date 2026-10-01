@@ -16,23 +16,21 @@ import tripComplete from './fixtures/trip-complete.json';
 import refineComplete from './fixtures/refine-complete.json';
 
 /**
- * MSW handlers that replay the four fixtures over the frozen wire (API_CONTRACT.md), so the
- * whole UX is buildable before the server exists. Enabled only when VITE_USE_MOCKS=1.
- * Pointing at the live `/api` is a config flip — no shape changes (everything here matches
- * the contract exactly).
+ * MSW handlers that replay the fixtures over the wire contract (API_CONTRACT.md). Enabled
+ * only when VITE_USE_MOCKS=1.
  */
 
 const BASE_TRIP = tripComplete.trip as unknown as Trip;
 const REFINE = refineComplete.refinement as unknown as RefinementRecord;
 
-/* ----------------------------------------------------- POST /api/session (synchronous) --- */
+// POST /api/session (synchronous)
 
 const createHandler = http.post('/api/session', async () => {
   await delay(450);
   return HttpResponse.json(sessionCreate as unknown as SessionCreateResponse);
 });
 
-/* --------------------------- POST /api/session/:id/answers — stream the initial plan --- */
+// POST /api/session/:id/answers: stream the initial plan
 
 const answersHandler = http.post('/api/session/:id/answers', ({ request }) => {
   // Replays docs/fixtures/sse-stream.example.txt, then `complete` carries the full Trip.
@@ -122,7 +120,7 @@ const answersHandler = http.post('/api/session/:id/answers', ({ request }) => {
   return sseResponse(buildSseStream(frames, request.signal));
 });
 
-/* ----------------------------- POST /api/session/:id/refine — stream the delta --- */
+// POST /api/session/:id/refine: stream the delta
 
 /** Build the full v2 Trip the refine `complete` event must carry (contract: full Trip). */
 function buildRefinedTrip(): Trip {
@@ -140,7 +138,7 @@ function buildRefinedTrip(): Trip {
     stay.listing = {
       ...stay.listing,
       id: 'lst_stay_2',
-      title: 'Studio Thalassa — 8 nights',
+      title: 'Studio Thalassa, 8 nights',
       price: { amount: 1040, currency: 'EUR' },
     };
   }
@@ -182,7 +180,7 @@ const refineHandler = http.post('/api/session/:id/refine', async ({ request }) =
     {
       kind: 'event',
       event: 'status',
-      data: { step: 'resolve', message: 'Got it — re-planning the stay and adding a day trip…' },
+      data: { step: 'resolve', message: 'Got it. Re-planning the stay and adding a day trip…' },
     },
     { kind: 'delay', ms: 550 },
     {
@@ -217,7 +215,7 @@ const refineHandler = http.post('/api/session/:id/refine', async ({ request }) =
   return sseResponse(buildSseStream(frames, request.signal));
 });
 
-/* ------------------------------------------- GET /api/session/:id — current state --- */
+// GET /api/session/:id: current state
 
 const getHandler = http.get('/api/session/:id', ({ params }) => {
   return HttpResponse.json({
@@ -229,11 +227,10 @@ const getHandler = http.get('/api/session/:id', ({ params }) => {
   });
 });
 
-/* =================================================================== auth (AUTH_CONTRACT) ===
- * A tiny in-memory backend for email + password: a fake users store + a single "current
- * session" flag (the mock stand-in for the httpOnly cookie). Conforms to AUTH_CONTRACT.md so
- * the whole app works in mock mode (the dev default). Guest mode is the default — /me returns
- * `{ user: null }` at 200 until someone signs up or logs in.
+/*
+ * Auth (AUTH_CONTRACT.md): an in-memory users store plus a single "current session" flag
+ * standing in for the httpOnly cookie. /me returns `{ user: null }` at 200 until someone
+ * signs up or logs in.
  */
 
 interface StoredUser extends User {

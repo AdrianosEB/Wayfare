@@ -3,16 +3,9 @@ import { cn } from '@/lib/cn';
 import { EASE } from '@/lib/motion';
 
 /**
- * Transform-only stagger — deliberately NOT the shared `staggerContainer`/`staggerIn` pair.
- *
- * Those start children at `opacity: 0`, and lib/motion.ts warns that the stagger orchestration
- * can stall (backgrounded tab, double-mount), freezing children invisible — the "disappearing
- * UI" bug. The shared variants are only safe when driven by `whileInView`, which self-heals via
- * IntersectionObserver; here they're driven by `animate`, which does not.
- *
- * These chips are the only alternative call-to-action on an otherwise empty planner screen, so
- * they must never be able to vanish. Opacity is never touched: a stalled animation leaves them
- * visible, merely un-nudged.
+ * Transform-only stagger instead of the shared `staggerContainer`/`staggerIn`. Those start
+ * children at `opacity: 0` and are only safe under `whileInView`. Driven by `animate`, a
+ * stalled stagger (backgrounded tab, double-mount) would leave the chips invisible.
  */
 const CHIPS_CONTAINER: Variants = {
   hidden: {},
@@ -24,11 +17,7 @@ const CHIP_ITEM: Variants = {
   show: { y: 0, transition: { duration: 0.28, ease: EASE } },
 };
 
-/**
- * Tappable starter prompts on the empty state (US-1.3). Three examples spanning the
- * personas — a tight-budget solo trip, the Greek couple's trip, a family city break — so
- * users see the range and the expected "shape" of a prompt.
- */
+/** Starter prompts on the empty state (US-1.3), one per persona. */
 const EXAMPLES: { label: string; prompt: string; tag: string }[] = [
   {
     tag: 'Couple · beach',

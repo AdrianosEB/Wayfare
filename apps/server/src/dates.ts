@@ -1,6 +1,6 @@
 /**
- * Date helpers. All dates are `YYYY-MM-DD` (calendar) or ISO-8601 UTC (timestamps). Date math
- * is pure and deterministic — no `Date.now()` in planning paths (NFR-6).
+ * Date helpers. Dates are `YYYY-MM-DD` (calendar) or ISO-8601 UTC (timestamps). No `Date.now()`
+ * in planning paths (NFR-6).
  */
 
 const MS_DAY = 86400000;
@@ -47,8 +47,8 @@ export interface ResolvedDates {
 
 /**
  * Resolve concrete dates from a constraint. Exact dates win; otherwise anchor within the
- * month/part for the given year. `durationDays` is the number of nights (an "8-day trip" =
- * 8 nights, return on the following day), matching the Greek fixture (Aug 23 → Aug 31).
+ * month/part for the given year. `durationDays` counts nights: an "8-day trip" is 8 nights,
+ * matching the Greek fixture (Aug 23 → Aug 31).
  */
 export function resolveDates(opts: {
   exact?: { start: string; end: string };

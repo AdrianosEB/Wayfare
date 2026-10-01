@@ -3,21 +3,15 @@
 
     ./.venv/bin/python make_variants.py --src ./data --out-a ./data-A --out-b ./data-B
 
-The labels are fixed by the teacher; the *training target* is a separate choice, and it is the
-second root cause. `summary` is prose the ranker never reads, and it dominates the label by
-token count — so under a token-level cross-entropy loss the weights, which are the only part
-anything downstream consumes, receive a small fraction of the gradient. A student can drive the
-loss down convincingly by learning to write like a travel consultant while leaving the weights
-at their marginal distribution, which is exactly what the first one did.
+  A (full label):      reasoning, weights, preferences, summary
+  B (summary removed): reasoning, weights, preferences
 
-  A — full label:      reasoning, weights, preferences, summary
-  B — summary removed: reasoning, weights, preferences
+`summary` is prose the ranker never reads, and it dominates the label by token count. Under
+token-level cross-entropy the weights then get a small fraction of the gradient, so a student
+can lower the loss by learning the prose while leaving the weights at their marginal
+distribution. Training A and B on identical labels isolates that effect.
 
-Training both on identical labels isolates that effect from the label-quality fix, which is why
-the two causes were kept in separate commits.
-
-Token counts come from the actual base-model tokenizer, not a character heuristic: the share is
-the whole point of the exercise and an approximation would undercut the conclusion.
+Token counts come from the base-model tokenizer, not a character heuristic.
 """
 
 import argparse
@@ -59,7 +53,7 @@ def main():
     ap.add_argument("--splits", default="train,valid,test,test-adversarial")
     args = ap.parse_args()
 
-    # Same loader mlx_lm.load uses, so the counts are the ones training will actually see.
+    # Same loader mlx_lm.load uses, so the counts are the ones training will see.
     from mlx_lm import load as load_model
     _, tok = load_model(args.model)
 
@@ -90,7 +84,7 @@ def main():
 
         shares_a, med_a = field_token_share(rows, tok)
         shares_b, med_b = field_token_share([json.loads(l) for l in b_lines], tok)
-        print(f"\n### {split} — {len(rows)} rows")
+        print(f"\n### {split}: {len(rows)} rows")
         print(f"| field | share of label tokens, A | share, B |")
         print(f"|---|---|---|")
         for f in FIELDS:

@@ -8,17 +8,11 @@ import { navigate, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
 /**
- * Sticky marketing nav. Transparent over the hero at the very top; becomes white with a
- * hairline border once the page scrolls. Below `md` it collapses into a hamburger that
- * reveals a slide-down menu.
- *
- * Minimal by design: the logo, a single "Explore" jump-link to the trips hub, the "Plan my
- * trip" CTA, and auth. The rest of the marketing content (how it works, trip types) is still
- * explored by scrolling the page — Explore is the one destination worth a tab.
+ * Sticky marketing nav. Transparent over the hero at the very top, white with a hairline
+ * border once the page scrolls. Below `md` it collapses into a hamburger menu.
  *
  * Pages without a dark full-bleed hero behind the nav (e.g. `/pricing`) must pass
- * `alwaysSolid` — otherwise the transparent-at-top state renders white text on the white
- * page background and the bar reads as invisible until you scroll down.
+ * `alwaysSolid`, or the transparent state renders white text on a white page.
  */
 
 export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
@@ -80,10 +74,7 @@ export function TopNav({ alwaysSolid = false }: { alwaysSolid?: boolean }) {
           >
             Explore
           </button>
-          {/*
-            The pale-azure primary, matching the home bar: azure-700 on azure-100 rather than
-            white on azure-500. One 36px height across the whole row.
-          */}
+          {/* Pale-azure primary, matching the home bar: azure-700 on azure-100. */}
           <button
             type="button"
             onClick={goPlan}

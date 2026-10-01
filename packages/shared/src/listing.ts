@@ -2,9 +2,9 @@ import { z } from "zod";
 import { MoneySchema } from "./common.js";
 
 /**
- * Listing — the uniform priced unit. Every price in Wayfare is a Listing, so the agent,
- * budget, and UI treat mock and real prices identically, including their honesty about
- * source. See DATA_MODEL.md "Listing".
+ * Listing is the uniform priced unit. Every price in Wayfare is a Listing, so the agent,
+ * budget, and UI treat mock and real prices the same way, including where they came from.
+ * See DATA_MODEL.md "Listing".
  */
 
 /** How fresh/reliable a price is. In MVP every Listing is `mock`. */
@@ -37,16 +37,16 @@ export const ListingSchema = z
     kind: ListingKindSchema,
     title: z.string(),
     price: MoneySchema,
-    // --- transparency: required on EVERY listing (US-3.4, US-5.1) ---
+    // transparency: required on every listing (US-3.4, US-5.1)
     source: PriceSourceSchema,
     /** ISO timestamp the price was obtained. */
     fetchedAt: z.string(),
     freshness: FreshnessSchema,
-    /** 0–1, how reliable the number is. */
+    /** 0-1, how reliable the number is. */
     confidence: z.number().min(0).max(1),
     /** where to book it (v1). */
     deepLink: z.string().optional(),
-    /** provider payload, server-side only — never sent raw to the client. */
+    /** provider payload, server-side only. Never sent raw to the client. */
     raw: z.unknown().optional(),
   })
   .strict();

@@ -13,13 +13,12 @@ import type { ItineraryLeg, Persona, RankedOption, VerifiedOption } from "../typ
 import type { Tracer } from "../trace.js";
 
 /**
- * MatchAgent — scores the verified market against the person and their money. It ranks each
- * option on the persona's own weights (a cost-led traveler ranks cheap-and-verified to the
- * top) and keeps suspect options from leading. Ranking is exposed on its own (`rankByKind`) so
- * the supervisor can reuse the scores when it composes whole itineraries.
+ * Ranks verified options on the persona's weights and keeps suspect options from leading.
+ * `rankByKind` is exported separately so the supervisor can reuse the scores when composing
+ * itineraries.
  *
- * "Low end of the market" isn't hardcoded: it falls out of the default price weight plus the
- * trust gate, so the cheapest *trustworthy* option wins, not the cheapest bait.
+ * Cheap options win through the default price weight plus the trust gate, so the cheapest
+ * trustworthy option leads, not the cheapest one.
  */
 
 const KIND_TO_CATEGORY: Record<string, BudgetCategory> = {
@@ -36,7 +35,7 @@ const KIND_TO_SCOPE: Record<string, RefinementScope> = {
   transit: "lodging",
 };
 
-/** per-leg cost multiplier — a stay is per-night, a flight is per-traveler. */
+/** per-leg cost multiplier: a stay is per-night, a flight is per-traveler. */
 export function legMultiplier(kind: string, nights: number, travelers: number): number {
   if (kind === "stay") return Math.max(1, nights);
   if (kind === "flight") return travelers;
@@ -123,9 +122,9 @@ function vibeMatch(tags: string[], interests: Set<string>): number {
 }
 
 /**
- * Build an honest Budget from the chosen itinerary's legs. The total is the sum of the lines —
- * this is the only place per-category amounts are summed — plus a buffer, and direct-vs-
- * aggregator savings are surfaced as tradeoffs.
+ * Build the Budget from the chosen itinerary's legs. This is the only place per-category
+ * amounts are summed. The total is the lines plus a buffer, and direct-vs-aggregator savings
+ * go in `savings`.
  */
 export function buildBudget(
   legs: ItineraryLeg[],
@@ -185,7 +184,7 @@ export function buildBudget(
     else if (total > target.amount) {
       status = "over";
       if (target.type === "hard") {
-        overageNote = `Over the hard cap by ${total - target.amount} ${currency} — tighten a category or relax the cap.`;
+        overageNote = `Over the hard cap by ${total - target.amount} ${currency}. Tighten a category or relax the cap.`;
       }
     }
   }

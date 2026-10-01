@@ -6,7 +6,7 @@ import type { TravelerProfile } from "../src/index.js";
 /**
  * End-to-end: a full plan against the mock market must (1) conform to PlanResultSchema, (2)
  * never lead with a suspect option, (3) keep the budget total equal to the sum of its lines,
- * and (4) stage every booking as approval-required — the orchestration never books on its own.
+ * and (4) stage every booking as approval-required.
  */
 
 const traveler: TravelerProfile = {

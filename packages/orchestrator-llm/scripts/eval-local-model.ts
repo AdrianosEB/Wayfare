@@ -1,7 +1,7 @@
 /**
- * eval-local-model — measure how often the locally served student's answer actually satisfies
- * the strict PersonaSchema, exercising the REAL runtime path (LocalStructuredModel, the wire
- * schema, and repairPersonaShape) rather than a reimplementation of it.
+ * eval-local-model: measures how often the locally served student's answer satisfies the strict
+ * PersonaSchema, using the runtime path (LocalStructuredModel, the wire schema, and
+ * repairPersonaShape).
  *
  * Usage: WAYFARE_LOCAL_MODEL_URL=http://localhost:8080 tsx scripts/eval-local-model.ts [n]
  */

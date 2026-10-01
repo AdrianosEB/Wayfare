@@ -17,8 +17,7 @@ import { PlaneIcon, BedIcon, MapPinIcon } from './icons';
 
 /**
  * Container for the whole plan (DESIGN_SYSTEM §4). Reads the authoritative `trip` when
- * present, otherwise the in-progress `workingTrip` so the itinerary fills in progressively
- * during streaming (flights → stay → days), skeleton→content, never a blank spinner.
+ * present, otherwise the in-progress `workingTrip`, so the itinerary fills in as it streams.
  */
 export function ItineraryPanel() {
   const trip = useSession((s) => s.trip);

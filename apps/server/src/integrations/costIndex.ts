@@ -1,9 +1,8 @@
 import { hashStr } from "../rng.js";
 
 /**
- * A tiny cost-of-living / tourism index. Nightly stay rates, flight per-km rates, and activity
- * prices derive from a destination's tier so a €78 Berlin→Valencia and a €620 London→Greece
- * fall out of the same model. Base numbers are EUR; the provider converts to the trip currency.
+ * A small cost-of-living index. Stay, flight and activity prices all derive from a
+ * destination's tier. Base numbers are EUR; the provider converts to the trip currency.
  */
 
 /** Tier 1 (cheap) … 5 (expensive). Default 3 for unknown places. */
@@ -41,7 +40,6 @@ export function nightlyBaseEur(tier: number): number {
 
 /** Per-km flight rate in EUR (per one-way km; round trip is priced as ×2 in the generator). */
 export function flightPerKmEur(tier: number): number {
-  // budget-carrier economics: a few cents per km, slightly higher for pricier markets.
   return [0, 0.05, 0.055, 0.06, 0.065, 0.07][Math.max(1, Math.min(5, tier))]!;
 }
 
@@ -55,7 +53,7 @@ export function foodPerDayEur(tier: number): number {
   return [0, 14, 19, 26, 34, 46][Math.max(1, Math.min(5, tier))]!;
 }
 
-/* ----- currency conversion (deterministic static FX; MVP only) ----- */
+// Currency conversion (static FX rates, MVP only)
 
 const FX_FROM_EUR: Record<string, number> = {
   EUR: 1,

@@ -14,10 +14,7 @@ import {
 } from "../src/index.js";
 import { StubModel, primeStub, PROFILE, PROMPT, providers } from "./stub.js";
 
-/**
- * The whole suite runs offline with no ANTHROPIC_API_KEY. Every model interaction goes through
- * StubModel; the only "real" work is the deterministic tools from @wayfare/orchestrator.
- */
+/** Runs offline with no ANTHROPIC_API_KEY. Every model interaction goes through StubModel. */
 
 function config(over: Partial<LlmConfig> = {}): LlmConfig {
   return {
@@ -63,7 +60,7 @@ describe("LangGraph orchestrator", () => {
     expect(Number(retries[0]?.detail?.breadthMultiplier)).toBeGreaterThan(1);
   });
 
-  it("(3) honours the call ceiling — past the cap, agents fall back deterministically", async () => {
+  it("(3) honours the call ceiling: past the cap, agents fall back deterministically", async () => {
     const { plan, stub } = await run({ maxCalls: 2 });
     expect(stub.calls.length).toBe(2);
     expect(plan.usage.calls).toBe(2);
@@ -123,7 +120,7 @@ describe("LangGraph orchestrator", () => {
     await expect(orch.plan(PROMPT, PROFILE)).rejects.toBeInstanceOf(SchemaValidationError);
   });
 
-  it("(9) tool boundary — every arithmetic result traces to a tool call, not to model text", async () => {
+  it("(9) tool boundary: every arithmetic result traces to a tool call, not to model text", async () => {
     const calls: string[] = [];
     const orch = new LlmOrchestrator({
       providers: providers(),
@@ -144,7 +141,7 @@ describe("LangGraph orchestrator", () => {
     expect(calls).toContain("fetch_current_price"); // reprice came from repriceItinerary()
     expect(calls.every((c) => (TOOL_NAMES as readonly string[]).includes(c))).toBe(true);
 
-    // and the budget really is the sum of its lines — computed, not narrated
+    // and the budget is the sum of its lines
     const sum = plan.budget.lines.reduce((a, l) => a + l.amount, 0);
     expect(plan.budget.total).toBe(sum);
   });

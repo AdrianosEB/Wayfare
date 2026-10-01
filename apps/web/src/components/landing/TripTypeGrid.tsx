@@ -7,8 +7,8 @@ import { TRIP_TYPES } from '@/lib/content';
 import { Section } from './_shared';
 
 /**
- * "Plan any kind of trip" — small photo tiles for each trip-type preset. Selecting one seeds
- * the tailored prompt via `/plan/:type` and enters the app.
+ * "Plan any kind of trip": photo tiles for each trip-type preset. Selecting one seeds the
+ * tailored prompt via `/plan/:type` and enters the app.
  */
 export function TripTypeGrid() {
   return (

@@ -9,10 +9,8 @@ import { CATEGORY_ORDER, statusMeta } from './budgetMeta';
 import { InfoIcon } from './icons';
 
 /**
- * The always-present running budget (DESIGN_SYSTEM §5). Headline total vs target with
- * under/on/over state + progress bar; category breakdown that rolls up to the total (tap a
- * line to highlight its itinerary items); saving-hint chips; and a calm over-budget state
- * with the overage and offered trims. Color is never the only signal — text + icons too.
+ * The running budget (DESIGN_SYSTEM §5): total vs target, category breakdown, saving hints
+ * and the over-budget state. Status is shown with text and icons as well as color.
  */
 export function BudgetPanel({ compact = false }: { compact?: boolean }) {
   const trip = useSession((s) => s.trip);
@@ -34,8 +32,7 @@ export function BudgetPanel({ compact = false }: { compact?: boolean }) {
   const status = statusMeta(budget.status);
   const currency = budget.currency;
   const over = budget.status === 'over';
-  // During streaming a `partial` budget may carry only total+status (no breakdown yet),
-  // so default the derived arrays — the headline total can grow before the lines land.
+  // A streaming `partial` budget may carry only total+status, with no breakdown yet.
   const lines = budget.lines ?? [];
   const savings = budget.savings ?? [];
 

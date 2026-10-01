@@ -5,10 +5,8 @@ import type { TripRequest } from "@wayfare/shared";
 import * as greece from "./greece.js";
 
 /**
- * Curated "hero" destinations — hand-authored data packs with rich, realistic listings. They
- * power the best demos and act as ground-truth (the Greek-islands journey lives here). For
- * everything else, the procedural generator takes over (see ../mock/*). This is how we square
- * "global" with "mock-first": curated where it shines, procedural everywhere else.
+ * Curated destinations: hand-authored data packs with realistic listings (the Greek-islands
+ * journey lives here). Everything else goes to the procedural generator in ../mock/*.
  */
 
 /** An intra-region transfer (e.g. a ferry) the assembler places on arrival/departure days. */

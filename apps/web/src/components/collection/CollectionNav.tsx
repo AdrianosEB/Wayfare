@@ -5,25 +5,15 @@ import { AuthControls } from '@/components/AuthControls';
 import { navigate, planHref } from '@/lib/router';
 import { MARKETING } from '@/lib/content';
 
-/** Height of the fixed bar, in px — the line the sentinel has to cross. */
+/** Height of the fixed bar, in px: the line the sentinel has to cross. */
 const BAR_HEIGHT_PX = 64;
 
 /**
- * Fixed bar, present at every breakpoint.
+ * Fixed site nav, present at every breakpoint. Uses the same <Wordmark> and <AuthControls>
+ * as TopNav. Light over the footage, dark once you scroll past the hero.
  *
- * This is the site nav, not a bespoke one: it uses the same <Wordmark> and <AuthControls> as
- * TopNav, so the home page carries the familiar Explore / Plan my trip / Log in / Sign up
- * controls. They are light over the footage and go dark once you scroll past the hero.
- *
- * Every control in the bar is the same 36px height, so the row has one baseline instead of
- * the 36/44/38 mix it had when "Plan my trip" and "Sign up" were both full-size primaries.
- *
- * Booking is not in the bar. It is reached from the two chapter-boundary prompts and the real
+ * Booking is not in the bar. It is reached from the two chapter-boundary prompts and the
  * booking section at the end of the page.
- *
- * Only the background and border animate when you pass the first chapter — the bar never
- * changes its positioning, height or layout, so nothing below it shifts and the logo and
- * buttons never move under the cursor mid-click.
  */
 export function CollectionNav({
   contentRef,
@@ -36,16 +26,12 @@ export function CollectionNav({
 
   /*
    * Observe the whole post-hero content block, not a thin sentinel at the hero's end.
-   *
-   * IntersectionObserver only notifies when `isIntersecting` actually changes. A 1px
-   * sentinel goes from "below the viewport" to "above the viewport" — false to false — so
-   * jumping past it (an anchor link, a restored scroll position) fires no callback at all
-   * and the bar stays stuck in its previous state. The content block spans the rest of the
-   * page, so it is intersecting for every scroll position after the hero and cannot be
-   * skipped over.
+   * IntersectionObserver only notifies when `isIntersecting` changes, so jumping past a 1px
+   * sentinel (an anchor link, a restored scroll position) fires no callback and the bar
+   * stays stuck in its previous state.
    *
    * The negative top margin pulls the root's edge down to the underside of the bar, so the
-   * state flips exactly when content reaches it.
+   * state flips when content reaches it.
    */
   useEffect(() => {
     const el = contentRef.current;
@@ -61,11 +47,7 @@ export function CollectionNav({
   /** Shared geometry: one height for every control in the bar. */
   const control = 'inline-flex h-9 items-center rounded-pill text-sm font-medium transition focus-visible:ring-2';
 
-  /*
-   * Explore is a lighter blue than the ink it used to share with the rest of the bar.
-   * On the light state that is azure-600 rather than azure-700 — brighter, and still 4.7:1
-   * on this background, so lightening it does not cost legibility.
-   */
+  /* Explore is azure-600 on the light state, which is still 4.7:1 on this background. */
   const linkClass = cn(
     control,
     'px-3.5',
@@ -107,11 +89,7 @@ export function CollectionNav({
               Explore
             </button>
 
-            {/*
-              The primary action, in the lighter blue: a pale azure fill with azure-700 text
-              instead of white-on-azure-500. It reads as the softer blue asked for and, at
-              4.9:1, is actually more legible than the white-on-saturated pill it replaces.
-            */}
+            {/* The primary action: a pale azure fill with azure-700 text (4.9:1). */}
             <button
               type="button"
               onClick={go(planHref())}
@@ -181,7 +159,7 @@ export function CollectionNav({
   );
 }
 
-/** Two bars that cross into an X — same affordance TopNav uses. */
+/** Two bars that cross into an X, the same affordance TopNav uses. */
 function Burger({ open }: { open: boolean }) {
   return (
     <span aria-hidden className="relative block h-3.5 w-4">

@@ -2,26 +2,16 @@ import type { Money, PartySize } from "@wayfare/shared";
 import type { SearchQuery } from "./types.js";
 
 /**
- * Concurrency + dedupe primitives for the provider fan-out. Standard library only — the whole
- * point of these three is their behaviour under failure, so they are built here rather than
- * pulled from p-limit / async-sema / lru-cache.
- *
- * Composition and rationale live on `SearchLimits` at the bottom.
+ * Concurrency and dedupe primitives for the provider fan-out, standard library only.
+ * `SearchLimits` at the bottom composes them.
  */
 
-// ---------------------------------------------------------------------------
-// Limiter — bounded concurrency with a FIFO queue
-// ---------------------------------------------------------------------------
-
 /**
- * Caps how many `fn`s run at once. Extra callers park on a FIFO queue and are woken, one per
- * freed slot, when a running task settles.
+ * Caps how many `fn`s run at once. Extra callers wait on a FIFO queue.
  *
- * Two invariants the tests pin down:
- *  - the slot handover is *synchronous* (Trap 1): a freed slot is claimed inside `#release()` in
- *    the same turn, so a caller arriving in the gap can't double-book it and overshoot `max`;
- *  - the slot is freed in `finally` (Trap 2), so a rejected task returns its slot instead of
- *    bleeding capacity until throughput hits zero.
+ * The slot handover is synchronous: a freed slot is claimed inside `#release()` in the same
+ * turn, so a caller arriving in the gap can't double-book it and exceed `max`. The slot is
+ * released in `finally`, so a rejected task gives its slot back.
  */
 export class Limiter {
   readonly max: number;
@@ -54,8 +44,7 @@ export class Limiter {
       return this.#invoke(fn);
     }
     return new Promise<T>((resolve, reject) => {
-      // A queued waiter takes its slot *inside* this callback, invoked synchronously from
-      // #release — never on promise-resolution timing, which would leak the slot (Trap 1).
+      // The waiter takes its slot inside this callback, which #release calls synchronously.
       this.#queue.push(() => {
         this.#take();
         this.#invoke(fn).then(resolve, reject);
@@ -76,7 +65,7 @@ export class Limiter {
     } catch (err) {
       p = Promise.reject(err);
     }
-    // Release in finally so a failure returns its slot too (Trap 2).
+    // Release in finally so a failure returns its slot too.
     return p.finally(() => this.#release());
   }
 
@@ -87,16 +76,11 @@ export class Limiter {
   }
 }
 
-// ---------------------------------------------------------------------------
-// SingleFlight — coalesce identical in-flight calls
-// ---------------------------------------------------------------------------
-
 /**
  * De-duplicates concurrent calls sharing a key: the first starts the work, the rest await the
- * same promise. The key is dropped in `finally` (Trap 3) — a rejected promise left in the map
- * would be handed to every future caller of that key forever, turning one transient blip into a
- * permanent outage. `fn` is invoked inside try/catch (Trap 4) so a synchronous throw still
- * registers and cleans up rather than desyncing state.
+ * same promise. The key is dropped in `finally`, otherwise a rejected promise would stay in the
+ * map and be handed to every later caller of that key. `fn` runs inside try/catch so a
+ * synchronous throw is cleaned up the same way.
  */
 export class SingleFlight<T> {
   readonly #inflight = new Map<string, Promise<T>>();
@@ -134,19 +118,14 @@ export class SingleFlight<T> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TTLCache — short-lived memo with lazy expiry + oldest-first eviction
-// ---------------------------------------------------------------------------
-
 interface Entry<T> {
   value: T;
   expires: number;
 }
 
 /**
- * A bounded, time-limited memo. Expiry is lazy (checked on read); over `maxEntries` the
- * oldest-inserted key is evicted — JS `Map` preserves insertion order, and `set` deletes before
- * re-inserting so insertion order tracks recency. `ttlMs <= 0` disables caching entirely.
+ * Bounded memo with a TTL. Expiry is lazy (checked on read). Over `maxEntries` the
+ * oldest-inserted key is evicted. `ttlMs <= 0` disables caching.
  */
 export class TTLCache<T> {
   readonly ttlMs: number;
@@ -206,18 +185,13 @@ export class TTLCache<T> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// queryKey — a stable, collision-free cache/coalesce key for a (provider, query)
-// ---------------------------------------------------------------------------
-
 // A separator that cannot occur inside any normalized part.
 const SEP = "�";
 
 /**
- * Build the key by hand in a fixed field order (Trap 5): `JSON.stringify(query)` would vary with
- * property-insertion order and with the order `hints` happens to arrive in, so two identical
- * queries could hash differently — the cache and coalescer would then silently never hit, with
- * no error anywhere.
+ * Cache/coalesce key for a (provider, query). Built by hand in a fixed field order:
+ * `JSON.stringify(query)` would vary with property-insertion order and with the order of
+ * `hints`, so identical queries could get different keys and never hit.
  */
 export function queryKey(providerId: string, query: SearchQuery): string {
   return [
@@ -252,10 +226,6 @@ function hintsPart(hints: string[]): string {
   return hints.map((h) => h.trim().toLowerCase()).sort().join(",");
 }
 
-// ---------------------------------------------------------------------------
-// SearchLimits — compose cache → coalesce → limiter around each upstream call
-// ---------------------------------------------------------------------------
-
 export interface SearchLimitsOptions {
   /** per-provider concurrency cap; `Infinity` disables the cap. */
   maxConcurrencyPerProvider?: number;
@@ -272,7 +242,7 @@ export interface SearchStats {
   coalesced: number;
   /** peak concurrent upstream calls at the busiest single provider. */
   maxConcurrency: number;
-  /** deepest a single provider's wait queue got — proof backpressure engaged. */
+  /** deepest a single provider's wait queue got. */
   queuedPeak: number;
 }
 
@@ -290,17 +260,15 @@ function parseIntEnv(raw: string | undefined): number | undefined {
 }
 
 /**
- * The fan-out governor. `run` layers, in this order and for these reasons:
+ * Wraps each upstream call. `run` does, in order:
  *
- *   1. cache.get     — free; skip all work if we already have the answer.
- *   2. singleflight  — the cache can't help a call that hasn't returned yet; that window is
- *                      exactly where a herd forms, so coalesce identical in-flight calls next.
- *   3. limiter       — otherwise take a per-provider slot; cached and coalesced callers never
- *                      consume one, so only real upstream work counts against a provider.
- *   4. fn            — the real call.
- *   5. cache.set     — on success only; a failure is never cached.
+ *   1. cache.get: return early on a hit.
+ *   2. singleflight: join an identical call that is already in flight.
+ *   3. limiter: take a per-provider slot. Cached and coalesced callers never take one.
+ *   4. fn: the real call.
+ *   5. cache.set: on success only.
  *
- * Limiters are per-provider (independent limits; a slow provider must not starve a fast one).
+ * Limiters are per provider so a slow provider can't starve a fast one.
  */
 export class SearchLimits<T = unknown> {
   readonly #maxPerProvider: number;

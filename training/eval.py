@@ -1,35 +1,26 @@
 #!/usr/bin/env python3
-"""Phase 4 — score an arm (baseline / student) against the teacher's stored labels.
+"""Score an arm (baseline / student) against the teacher's stored labels.
 
-Writes one JSON file of per-row records per arm/split; `report.py` aggregates them into the
-RESULTS.md tables. Splitting generation from aggregation means a re-run of the tables costs
-nothing and never silently re-generates with different settings.
+Writes one JSON file of per-row records per arm/split. `report.py` aggregates them into the
+RESULTS.md tables.
 
     ./.venv/bin/python eval.py --arm student  --model ./fused --split test
     ./.venv/bin/python eval.py --arm baseline --model mlx-community/Qwen2.5-1.5B-Instruct-4bit --split test
 
-    # re-score predictions that already exist — no model load, no generation, no API spend
+    # re-score existing predictions without loading a model
     ./.venv/bin/python eval.py --arm student-A --split test --rescore-from results/student-A-test.json
 
-What the numbers mean, and what they deliberately do NOT do:
+Notes on the metrics:
 
-* Two different agreement metrics are reported over the weight vector and they are NOT the same
-  claim. **Top-dimension agreement** (`top_match`) is argmax match: did the arm name the same
-  single highest dimension as the teacher. **Rank agreement** (`spearman_rho`, `kendall_tau`) is
-  ordinal correlation over all five dimensions: did it reproduce the teacher's whole ordering.
-  An arm can score 100% on the first while ordering the remaining four dimensions at random.
-
-* The teacher's stored `assistant` message is the reference. Rows are scored against it, so
-  "MAE" is student-vs-teacher, never student-vs-truth — there is no ground truth here, only a
-  teacher whose own schema-valid rate is 99.5% and whose top-dimension self-agreement ceiling
-  is 17/25 (see RESULTS.md measurement notes). Both belong beside any number this produces.
-* Weight metrics are computed ONLY over rows that produced schema-valid output. An arm that
-  emits no JSON has an undefined MAE, not a good one — `n_scored` is recorded next to every
-  metric so a small denominator can never masquerade as a strong result.
-* Slices are tagged per row (`clean` / `conflict`) and never merged here. Aggregation keeps
-  them apart; the measurement notes forbid averaging them.
-* Latency from batched generation is meaningless per-request, so throughput mode records no
-  latency at all. `--latency-sample N` re-runs N rows one at a time for honest p50/p95.
+* `top_match` is argmax match on the top dimension. `spearman_rho` and `kendall_tau` are rank
+  correlation over all five dimensions. An arm can score 100% on the first while ordering the
+  other four at random.
+* The reference is the teacher's stored `assistant` message, so MAE is student-vs-teacher.
+  There is no ground truth.
+* Weight metrics cover schema-valid rows only. `n_scored` is recorded next to every metric.
+* Rows are tagged `clean` / `conflict` and the slices are never merged.
+* Batched generation records no latency. `--latency-sample N` re-runs N rows one at a time
+  for p50/p95.
 """
 
 import argparse
@@ -49,7 +40,7 @@ def parse_output(text):
     """Return (obj, mode) where mode is 'bare' | 'extracted' | None.
 
     'extracted' means valid JSON was recovered from surrounding prose. The production path
-    expects bare JSON, so the distinction is kept rather than smoothed over.
+    expects bare JSON.
     """
     try:
         return json.loads(text), "bare"
@@ -67,10 +58,8 @@ def parse_output(text):
 def avg_ranks(vals):
     """Average ranks, 1 = smallest. Tied values share the mean of the ranks they span.
 
-    Ties are not a corner case here: five weights that must sum to 1 land on equal values
-    often (0.20/0.20 is the single most common pair in the round-2 labels). Assigning tied
-    dimensions an arbitrary order would manufacture agreement or disagreement out of the sort
-    order, so both correlations below are computed on these averaged ranks.
+    Ties are common here (0.20/0.20 is the most common pair in the round-2 labels), and
+    breaking them arbitrarily would make the correlations depend on sort order.
     """
     order = sorted(range(len(vals)), key=lambda i: vals[i])
     ranks = [0.0] * len(vals)
@@ -87,11 +76,10 @@ def avg_ranks(vals):
 
 
 def spearman_rho(a, b):
-    """Spearman's rho — Pearson correlation of the average ranks of the two weight vectors.
+    """Spearman's rho: Pearson correlation of the average ranks of the two weight vectors.
 
-    Returns None, never 0.0, when either side is entirely tied: a flat vector expresses no
-    ordering, so there is nothing for the other side to agree or disagree with. Rows where it
-    is undefined are counted separately rather than folded in as neutral agreement.
+    Returns None, not 0.0, when either side is entirely tied, since a flat vector has no
+    ordering to compare.
     """
     ra, rb = avg_ranks(a), avg_ranks(b)
     ma, mb = sum(ra) / len(ra), sum(rb) / len(rb)
@@ -101,21 +89,15 @@ def spearman_rho(a, b):
     nb = math.sqrt(sum(x * x for x in db))
     if na == 0 or nb == 0:
         return None
-    # Clamped: the float division puts an exact match at 1.0000000000000002, and a correlation
-    # printed above 1 invites a reader to distrust the rest of the column.
+    # Clamp: float division can put an exact match at 1.0000000000000002.
     return max(-1.0, min(1.0, sum(x * y for x, y in zip(da, db)) / (na * nb)))
 
 
 def kendall_tau(a, b):
-    """Kendall's tau-b over the 10 dimension pairs — concordant minus discordant, tie-corrected.
+    """Kendall's tau-b over the 10 dimension pairs.
 
-    tau-b rather than tau-a for the same reason rho is computed on averaged ranks: pairs tied on
-    either side are excluded from the numerator and shrink the denominator, instead of counting
-    as disagreements. Undefined (None) on the same flat-vector case as rho.
-
-    Reported beside rho because they answer slightly different questions on five points: rho
-    weights how far a dimension moved in the ordering, tau counts how many pairwise
-    relationships survived. A large gap between them on the same arm is informative.
+    tau-b (not tau-a) so pairs tied on either side shrink the denominator instead of counting
+    as disagreements. Returns None on the same flat-vector case as rho.
     """
     n = len(a)
     n0 = n * (n - 1) / 2
@@ -157,17 +139,13 @@ def score_row(pred, teacher):
     if pn is None or tn is None:
         return None
     return {
-        # Mean absolute error across the five dims after normalising both sides, so an arm is
-        # not punished twice for a raw sum that drifts off 1.0 — that is reported separately.
+        # Both sides are normalised first, so a raw sum off 1.0 is not penalised twice.
+        # The drift is reported separately as raw_sum_drift.
         "norm_mae": sum(abs(a - b) for a, b in zip(pn, tn)) / len(DIMS),
         "top_pred": DIMS[max(range(len(DIMS)), key=lambda i: pn[i])],
         "top_teacher": DIMS[max(range(len(DIMS)), key=lambda i: tn[i])],
         "top_match": DIMS[max(range(len(DIMS)), key=lambda i: pn[i])]
                      == DIMS[max(range(len(DIMS)), key=lambda i: tn[i])],
-        # Rank agreement over the WHOLE five-dimension ordering, which `top_match` above does
-        # not measure: an arm can name the same top dimension and order the other four
-        # backwards, and an arm can miss the top by a hair while reproducing the ordering
-        # exactly. Both are reported; neither is a substitute for the other.
         "spearman_rho": spearman_rho(pn, tn),
         "kendall_tau": kendall_tau(pn, tn),
         "raw_sum": sum(float(pw[d]) for d in DIMS),
@@ -180,16 +158,15 @@ def score_row(pred, teacher):
 def build_records(rows, texts, require_summary=True):
     """Score each prediction against the teacher's stored label for the same row.
 
-    Two validity verdicts are recorded, never one:
+    Two validity verdicts are recorded:
 
-    * `schema_valid_production` — against `PersonaSchema` exactly as the orchestrator enforces
-      it, `summary` required. This is the only verdict that says a model is deployable.
-    * `schema_valid` — against the schema the arm was *trained for*, which for student-B is
-      PersonaSchema minus `summary` (`make_variants.py` strips it). This is what gates whether
-      weight metrics are computed, so arm B's MAE is measurable at all.
+    * `schema_valid_production`: against `PersonaSchema` as the orchestrator enforces it,
+      `summary` required.
+    * `schema_valid`: against the schema the arm was trained for. For student-B that is
+      PersonaSchema minus `summary` (`make_variants.py` strips it). This one gates whether
+      weight metrics are computed.
 
-    They are identical for every arm except B. Keeping both means B's headline validity can
-    never be read as a production pass, and B's MAE can never be silently undefined.
+    They differ only for student-B.
     """
     records = []
     for r, text in zip(rows, texts):
@@ -217,13 +194,8 @@ def build_records(rows, texts, require_summary=True):
 
 
 def write_out(args, records, wall, latencies, inherit=None):
-    """`inherit` carries a prior run's generation metadata through a re-score.
-
-    A re-scored file describes the same generation it always did — same model, same wall clock,
-    same latency sample. Recomputing those fields from a run that generated nothing would
-    silently zero them, and a p50 of `null` beside real numbers reads as "not measured" rather
-    than "not re-measured". They are copied forward; only the scores change.
-    """
+    """`inherit` carries a prior run's generation metadata (model, wall clock, latency sample)
+    through a re-score, so those fields are copied forward instead of being zeroed."""
     out = {
         "arm": args.arm,
         "model": args.model or args.from_jsonl or (inherit or {}).get("model") or "",
@@ -235,8 +207,8 @@ def write_out(args, records, wall, latencies, inherit=None):
         "batched_wall_seconds": round(wall, 1),
         "latency_sample_n": len(latencies),
         "latency_p50_s": round(statistics.median(latencies), 2) if latencies else None,
-        # ceil, not int: at small n, int(n*0.95)-1 indexes the SMALLEST sample and reports a p95
-        # below p50. Caught by a 2-row test run.
+        # ceil, not int: at small n, int(n*0.95)-1 indexes the smallest sample and reports a
+        # p95 below p50.
         "latency_p95_s": round(sorted(latencies)[min(len(latencies) - 1,
                                                      math.ceil(0.95 * len(latencies)) - 1)], 2)
         if latencies else None,
@@ -265,11 +237,8 @@ def write_out(args, records, wall, latencies, inherit=None):
 def self_test():
     """Hand-checkable cases for the two rank statistics. `eval.py --self-test`.
 
-    There is no scipy in this environment (`requirements.txt` is mlx-lm only), so the
-    correlations are implemented here and have to be checked against cases whose answers are
-    known by hand rather than against a reference library. Every case below is one of those:
-    perfect agreement, perfect inversion, the tie cases the five-dimension shape makes routine,
-    and the flat vector that must come back undefined rather than 0.
+    There is no scipy here (`requirements.txt` is mlx-lm only), so the correlations are
+    checked against cases with known answers.
     """
     a = [0.4, 0.3, 0.2, 0.06, 0.04]
     cases = [
@@ -293,7 +262,7 @@ def self_test():
         if spearman_rho(x, y) is not None or kendall_tau(x, y) is not None:
             fails.append(f"{name}: expected undefined, got {spearman_rho(x, y)}/{kendall_tau(x, y)}")
         else:
-            print(f"  ok  {name}: undefined (not 0 — a flat vector expresses no ordering)")
+            print(f"  ok  {name}: undefined (not 0: a flat vector has no ordering)")
     # Ranking must not depend on the scale, only the order: normalised() divides by the sum.
     if abs(spearman_rho([4, 3, 2, 1, 0], a) - 1.0) > 1e-9:
         fails.append("scale invariance: same ordering at a different scale did not score +1")
@@ -304,7 +273,7 @@ def self_test():
         for f in fails:
             print(f"  - {f}")
         raise SystemExit(1)
-    print("\nPASS — rank statistics behave as specified.")
+    print("\nPASS: rank statistics behave as specified.")
 
 
 def build_prompt(tok, system, user):
@@ -328,18 +297,13 @@ def main():
                          "elsewhere. Rows are matched on meta.index, not position.")
     ap.add_argument("--rescore-from",
                     help="re-score the stored predictions in a previous eval.py output file "
-                         "instead of generating anything. Nothing is regenerated and no model "
-                         "is loaded: the `output` string of every record is re-parsed and "
-                         "re-scored against the same split's teacher labels, so a metric added "
-                         "after a run costs nothing to backfill. Rows are matched on "
-                         "meta.index; a mismatch aborts rather than scoring against the wrong "
-                         "labels. Target schema is taken from the stored file unless "
-                         "--no-require-summary is passed explicitly.")
+                         "without loading a model or generating anything. Rows are matched "
+                         "on meta.index and a mismatch aborts. Target schema is taken from "
+                         "the stored file unless --no-require-summary is passed.")
     ap.add_argument("--allow-validity-change", action="store_true",
                     help="permit --rescore-from to write a file whose schema verdicts differ "
-                         "from the stored ones. Off by default: a changed verdict means the "
-                         "validator moved under the predictions, which is a different claim "
-                         "from adding a metric to them.")
+                         "from the stored ones. Off by default, because a changed verdict "
+                         "means the validator changed since the predictions were scored.")
     ap.add_argument("--split", default="test")
     ap.add_argument("--data-dir", default="./data")
     ap.add_argument("--out-dir", default="./results")
@@ -347,7 +311,7 @@ def main():
     ap.add_argument("--batch-size", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0, help="0 = all rows (use for smoke-checking this script)")
     ap.add_argument("--latency-sample", type=int, default=20,
-                    help="rows re-run one at a time for honest p50/p95; 0 disables")
+                    help="rows re-run one at a time for p50/p95; 0 disables")
     ap.add_argument("--no-require-summary", action="store_true",
                     help="score against the arm-B target (PersonaSchema minus `summary`), which "
                          "is what make_variants.py trains student-B to emit. Validity against "
@@ -367,17 +331,14 @@ def main():
         blob = json.loads(src.read_text())
         blob["_path"] = str(src)
 
-        # The stored file records which schema its arm was scored against. Re-deriving it from
-        # the CLI would score student-B against `PersonaSchema`, report 0% valid, and leave its
-        # weight metrics undefined — the exact confusion `--no-require-summary` exists to avoid.
+        # Use the schema recorded in the stored file. Taking it from the CLI would score
+        # student-B against `PersonaSchema` and report 0% valid.
         if blob.get("target_schema") == "no-summary" and not args.no_require_summary:
             args.no_require_summary = True
             print(f"target schema taken from {src}: no-summary (arm trained without `summary`)")
 
-        # Every guard here is a refusal to infer. A predictions file that is short, reordered,
-        # or from a different split cannot be silently aligned against these labels: the whole
-        # point of re-scoring is that the outputs are fixed, so any disagreement about which row
-        # is which is a defect in the file, not something to paper over.
+        # A predictions file that is short, reordered, or from a different split is rejected,
+        # never aligned by guesswork.
         preds, dupes = {}, []
         for rec in blob.get("records", []):
             if "output" not in rec or "index" not in rec:
@@ -400,18 +361,16 @@ def main():
         if problems:
             print(f"REFUSING to re-score {src} against {args.split}: " + "; ".join(problems))
             print("The stored predictions do not align with this split's labels. Skipping this "
-                  "arm — scoring it would attribute one row's output to another row's label.")
+                  "arm: scoring it would attribute one row's output to another row's label.")
             raise SystemExit(2)
 
         records = build_records(rows, [preds[r["meta"]["index"]] for r in rows],
                                 require_summary=not args.no_require_summary)
 
-        # A re-score must reproduce the stored verdicts exactly. If it does not, the schema this
-        # file was scored under is not the schema `validate_persona` enforces today, and the run
-        # is comparing predictions against a moved goalpost rather than adding a metric. Caught
-        # for real: round 1's predictions predate the `reasoning` field, so re-scoring them under
-        # the round-2 validator reported 0/248 schema-valid against a stored 243/248 — and would
-        # have overwritten the round-1 record with it.
+        # A re-score must reproduce the stored verdicts. If it does not, the file was scored
+        # under a different schema than `validate_persona` enforces now. Round 1's predictions
+        # predate the `reasoning` field: re-scoring them under the round-2 validator reported
+        # 0/248 schema-valid against a stored 243/248.
         was = {r["index"]: (r.get("schema_valid"), r.get("schema_valid_production"))
                for r in blob.get("records", [])}
         changed = [r["index"] for r in records
@@ -427,16 +386,15 @@ def main():
                   "--allow-validity-change only if the restatement is the intent.")
             raise SystemExit(3)
 
-        print(f"re-scored {len(records)} stored predictions from {src} — nothing regenerated"
+        print(f"re-scored {len(records)} stored predictions from {src}, nothing regenerated"
               + (f"; {len(changed)} validity verdict(s) restated (--allow-validity-change)"
                  if changed else "; every stored schema verdict reproduced exactly"))
         write_out(args, records, wall=0.0, latencies=[], inherit=blob)
         return
 
     if args.from_jsonl:
-        # No model, no latency: the predictions already exist. Matched on meta.index so a
-        # predictions file that is reordered or partial cannot silently misalign rows against
-        # the wrong teacher label.
+        # The predictions already exist, so no model and no latency. Matched on meta.index so
+        # a reordered or partial file cannot misalign rows.
         preds = {}
         for line in open(args.from_jsonl):
             r = json.loads(line)
@@ -471,7 +429,7 @@ def main():
 
     records = build_records(rows, texts, require_summary=not args.no_require_summary)
 
-    # Latency, measured one row at a time — batched timings say nothing about per-request cost.
+    # Latency is measured one row at a time. Batched timings say nothing about per-request cost.
     latencies = []
     if args.latency_sample:
         n = min(args.latency_sample, len(prompts))

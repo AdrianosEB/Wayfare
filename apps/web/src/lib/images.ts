@@ -1,17 +1,14 @@
 /**
- * Frontend-supplied imagery — docs/design/COMPONENTS.md "Imagery".
+ * Frontend-supplied imagery. See docs/design/COMPONENTS.md "Imagery".
  *
- * The wire contract carries NO image fields and we are not adding any this pass. The
- * photo-rich look comes entirely from the client: components take a plain `image: string`
- * prop, and the data/screen layer fills it by calling `images.for(key)`.
+ * The wire contract carries no image fields. Components take a plain `image: string` prop
+ * and the screen layer fills it with `images.for(key)`. If the backend later carries
+ * `imageUrl`, only this file and the call sites change. Do not add an image field to
+ * @wayfare/shared, the server or the fixtures.
  *
- * This is the swap seam: when the backend later carries `imageUrl`, only this file + the
- * call sites change — components stay identical. Do NOT read an image field off Listing/Trip
- * (there isn't one) and do NOT add one to @wayfare/shared / the server / the fixtures.
- *
- * Keys are loose (destination name, trip vibe, stay/activity category). Everything is
- * normalized and resolved against a curated set; any unknown key deterministically falls
- * back to an on-brand, sun-soaked photo so a component always renders something.
+ * Keys are loose (destination name, trip vibe, stay/activity category). They are normalized
+ * and resolved against a curated set; unknown keys fall back deterministically to one of a
+ * few default photos.
  */
 
 const W = 1200;
@@ -19,7 +16,7 @@ const Q = 70;
 const u = (id: string) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${W}&q=${Q}`;
 
-/** Curated, tasteful destination / lifestyle photography (sun-soaked, azure-friendly). */
+/** Curated destination / lifestyle photography. */
 const CURATED: Record<string, string> = {
   // destinations
   greece: u('1533105079780-92b9be482077'),
@@ -33,8 +30,8 @@ const CURATED: Record<string, string> = {
   paris: u('1502602898657-3e91760cbb34'),
   barcelona: u('1583422409516-2895a77efded'),
   valencia: u('1583422409516-2895a77efded'),
-  // Aegean set added for the /collection chapters. Each verified 200 before committing —
-  // scripts/build-lqip.sh re-checks them and fails the build if one ever rots.
+  // Aegean set for the /collection chapters. scripts/build-lqip.sh checks that each one
+  // still returns 200.
   aegean_port: u('1603182673190-4270225080e0'),
   aegean_table: u('1639244132045-94c307ff4bfc'),
   cyclades_alley: u('1630490866118-5805daf1954d'),
@@ -42,9 +39,8 @@ const CURATED: Record<string, string> = {
 
   // budget showcase destinations
   sofia: u('1601581875309-fafbf2d3ed3a'),
-  // The previously curated ID (…-799462dc3b3a) 404s — a corrupted hash suffix; the real
-  // photo is …-799462dacd65. Verified 200 before swapping, because the deterministic
-  // fallback silently served Kraków a Santorini photo, which looks like working code.
+  // The previous ID (…-799462dc3b3a) had a corrupted suffix and 404'd, so the fallback
+  // served Kraków a Santorini photo.
   krakow: u('1606992894456-799462dacd65'),
   budapest: u('1565426873118-a17ed65d74b9'),
   prague: u('1541849546-216549ae216d'),
@@ -71,7 +67,7 @@ const CURATED: Record<string, string> = {
   boat: u('1544551763-46a013bb70d5'),
   food: u('1414235077428-338989a2e8c0'),
   meal: u('1414235077428-338989a2e8c0'),
-  // Previous ID 404'd (same corrupted-suffix failure as krakow). Verified 200 before swap.
+  // Previous ID 404'd (same corrupted suffix as krakow).
   museum: u('1498473956271-69e18b4dde5a'),
   ruins: u('1555993539-1732b0258235'),
   viewpoint: u('1502602898657-3e91760cbb34'),
@@ -84,7 +80,7 @@ const CURATED: Record<string, string> = {
   walk: u('1502602898657-3e91760cbb34'),
 };
 
-/** Deterministic on-brand fallback pool (no key collisions with branded surfaces). */
+/** Deterministic fallback pool. */
 const DEFAULT_IMG = u('1507525428034-b723cf961d3e'); // sun-soaked beach
 const FALLBACKS: string[] = [
   CURATED.beach ?? DEFAULT_IMG,
@@ -118,9 +114,8 @@ export const images = {
   },
 
   /**
-   * Pick an image key for an itinerary item from its free-text title (and kind fallback).
-   * Used for the small activity thumbnails in the day timeline. Keyword-matched against the
-   * curated category set; falls back to the item kind so `for()` always resolves something.
+   * Pick an image key for an itinerary item by keyword-matching its title, falling back to
+   * the item kind. Used for the activity thumbnails in the day timeline.
    */
   categoryFor(title: string, kind: string): string {
     const t = title.toLowerCase();
@@ -145,7 +140,7 @@ export const images = {
     return 'city';
   },
 
-  /** A deterministic azure gradient — used as a CLS-safe placeholder / onError fallback. */
+  /** Deterministic azure gradient, used as a CLS-safe placeholder / onError fallback. */
   gradient(key: string): string {
     const hues = [
       'linear-gradient(135deg, #5C9CF0, #2F80ED)',

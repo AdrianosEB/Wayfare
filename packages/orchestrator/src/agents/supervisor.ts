@@ -11,16 +11,9 @@ import type {
 import type { Tracer } from "../trace.js";
 
 /**
- * SupervisorAgent — composes whole trips, not parts. It fans out across the cross-product of
- * flight × stay × date-window candidates and runs branch-and-bound: each branch is priced on
- * its flight+stay partial and **pruned against budget before it is expanded** with activities,
- * so the expensive expansion only happens for branches that can still come in on budget. The
- * survivors (a bounded beam) are expanded, scored on the persona's weights, and returned
- * best-first.
- *
- * This is the "supervisor fans out async agents across flight/stay/date combinations and prunes
- * branches against budget before expanding" behavior, implemented as a supervisor pattern in
- * TypeScript (not a third-party graph runtime).
+ * Composes whole trips. Branches over the flight × stay × date-window cross-product and prunes
+ * each branch on its flight+stay partial cost before expanding it with activities. The
+ * surviving beam is expanded, scored on the persona's weights, and returned best-first.
  */
 
 export interface SupervisorOptions {
@@ -34,7 +27,7 @@ export interface SupervisorOptions {
   maxActivities?: number;
 }
 
-/** The single cost formula for a whole itinerary — shared with the reprice check. */
+/** The cost formula for a whole itinerary, shared with the reprice check. */
 export function computeItineraryTotal(args: {
   flightUnit?: number;
   stayUnit?: number;
@@ -82,7 +75,7 @@ export function composeItineraries(
   const budgetCap = target ? target * (1 + budgetSlack) : Number.POSITIVE_INFINITY;
 
   const windows = deriveWindows(request, nights);
-  // exclude suspect legs from composition entirely — never build a trip on a bait price.
+  // suspect legs are left out of composition entirely.
   const flights = pickAxis(rankedByKind.flight, candidatesPerAxis);
   const stays = pickAxis(rankedByKind.stay, candidatesPerAxis);
   const activities = (rankedByKind.activity ?? []).filter((r) => r.option.verdict !== "suspect");
@@ -117,7 +110,7 @@ export function composeItineraries(
           travelers,
           priceFactor: window.priceFactor,
         });
-        // BRANCH-AND-BOUND: prune before expanding with activities.
+        // prune before expanding with activities.
         if (partial > budgetCap) {
           prunedOnBudget++;
           continue;
@@ -215,8 +208,8 @@ function firstCurrency(ranked: Record<string, RankedOption[]>): string | undefin
 }
 
 /**
- * Candidate travel windows. Fixed dates → one window. Flexible dates → early/mid/late variants
- * whose seasonal price factor makes the date axis a real cost lever the supervisor prunes on.
+ * Candidate travel windows. Fixed dates → one window. Flexible dates → early/mid/late variants,
+ * each with a seasonal price factor.
  */
 export function deriveWindows(request: TripRequest, nights: number): DateWindow[] {
   const dates = request.dates?.value;

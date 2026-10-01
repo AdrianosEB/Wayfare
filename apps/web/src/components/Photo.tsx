@@ -3,15 +3,9 @@ import { cn } from '@/lib/cn';
 import { images } from '@/lib/images';
 
 /**
- * A photo with a CLS-safe aspect box and an on-brand azure-gradient fallback if the image
- * fails to load. Components feed it a plain `image` URL (from `images.for(key)`) plus the
- * `imageKey` so the fallback gradient is deterministic. Always pass a meaningful `alt`
- * (empty string for decorative imagery).
- *
- * The gradient is painted as the *placeholder* too, not only on error. Every photo on the
- * landing page is lazily loaded, so without it scrolling into a section shows a row of empty
- * grey boxes that snap to photos — which reads as broken rather than loading. Now the box is
- * on-brand immediately and the photo crossfades over it.
+ * A photo in a fixed-ratio box over an azure gradient keyed by `imageKey`. The gradient is
+ * the loading placeholder as well as the error fallback, so lazy-loaded photos don't show as
+ * empty grey boxes first. Pass a meaningful `alt` (empty string for decorative imagery).
  */
 export interface PhotoProps {
   image: string;
@@ -19,7 +13,7 @@ export interface PhotoProps {
   /** key used for the deterministic gradient fallback. */
   imageKey?: string;
   className?: string;
-  /** e.g. 'aspect-[16/10]' — reserve ratio to avoid layout shift. */
+  /** e.g. 'aspect-[16/10]'. Reserves the ratio to avoid layout shift. */
   ratio?: string;
   eager?: boolean;
   style?: CSSProperties;

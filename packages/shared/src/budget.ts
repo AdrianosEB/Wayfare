@@ -4,9 +4,8 @@ import { BudgetTypeSchema } from "./request.js";
 import { RefinementScopeSchema } from "./refinement.js";
 
 /**
- * Budget — derived, categorized, honest. It is never free-floating: the total is the sum of
- * the chosen listings (computed by `compute_budget`, the only place totals are summed). See
- * DATA_MODEL.md "Budget" and AGENT_DESIGN.md.
+ * Budget is derived: the total is the sum of the chosen listings, computed by `compute_budget`
+ * (the only place totals are summed). See DATA_MODEL.md "Budget" and AGENT_DESIGN.md.
  */
 
 export const BudgetCategorySchema = z.enum([

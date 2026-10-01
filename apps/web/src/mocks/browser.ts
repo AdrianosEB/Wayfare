@@ -4,9 +4,8 @@ import { handlers } from './handlers';
 export const worker = setupWorker(...handlers);
 
 /**
- * Start MSW when mocks are enabled. Controlled by VITE_USE_MOCKS (defaults to on in dev,
- * off in prod) — see main.tsx. `onUnhandledRequest: 'bypass'` so anything we don't mock
- * (assets, the live API later) passes straight through to the network / Vite proxy.
+ * Start MSW when mocks are enabled (VITE_USE_MOCKS, see main.tsx). Anything we don't mock
+ * passes through to the network / Vite proxy.
  */
 export async function startMocks(): Promise<void> {
   await worker.start({

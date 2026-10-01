@@ -5,11 +5,9 @@ import { cn } from '@/lib/cn';
 import { freshnessNote } from '@/lib/format';
 
 /**
- * The price-provenance badge — Wayfare's trust surface. It renders ENTIRELY from
- * `listing.source.label` + `listing.freshness` (+ `fetchedAt`), so the same component shows
- * "Estimated price" today and "Amadeus · 2h ago" later with zero changes. We never hardcode
- * the word "mock" — the dot color and explainer are derived from `freshness`, the visible
- * text from `source.label`.
+ * The price-provenance badge. Renders entirely from `listing.source.label` +
+ * `listing.freshness` (+ `fetchedAt`), so a real provider needs no changes here. Never
+ * hardcode the word "mock".
  */
 
 const freshnessMeta: Record<
@@ -24,12 +22,12 @@ const freshnessMeta: Record<
   cached: {
     dot: 'bg-ontarget',
     ring: 'ring-ontarget/30',
-    explain: 'A recently cached price — may have shifted slightly since it was fetched.',
+    explain: 'A recently cached price. It may have shifted slightly since it was fetched.',
   },
   estimate: {
     dot: 'bg-faint',
     ring: 'ring-faint/30',
-    explain: 'An estimate to plan against — not a live, bookable quote yet.',
+    explain: 'An estimate to plan against, not a live, bookable quote yet.',
   },
   mock: {
     dot: 'bg-faint',

@@ -1,9 +1,9 @@
 import type { AgentName } from "./config.js";
 
 /**
- * System prompts — one per agent, each stating the role, the judgment it owns, and (critically)
- * the arithmetic it does NOT own. The last rule is the same one `apps/server/src/agent/prompts.ts`
- * already enforces about compute_budget, generalized to every computation in the pipeline.
+ * One system prompt per agent: its role, the judgment it owns, and the arithmetic it does not
+ * own. The arithmetic rule is the compute_budget rule from `apps/server/src/agent/prompts.ts`,
+ * applied to every computation in the pipeline.
  */
 
 const SHARED_RULES = `
@@ -135,7 +135,7 @@ a soft target overshot. For each issue name a remedy the orchestrator can act on
 target; never eyeball it. Passing a bad plan is the expensive failure here.`,
 };
 
-/** Which tools each agent is expected to use — surfaced in the dry-run transcript. */
+/** Which tools each agent is expected to use. Shown in the dry-run transcript. */
 export const AGENT_TOOLS: Record<AgentName, string[]> = {
   intake: [],
   persona: [],

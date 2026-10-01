@@ -6,11 +6,9 @@ import { useAuth } from './store/auth';
 import './index.css';
 
 /**
- * Mounts the app. We:
- *  1. Optionally start MSW fixture mocks (dev default; flip VITE_USE_MOCKS=0 to hit /api).
- *  2. Provide React Query for server reads (the SSE streams are driven imperatively in the
- *     session store via fetch + ReadableStream).
- * Light theme only (docs/design/TOKENS.md) — no theme bootstrap needed.
+ * Mounts the app. MSW fixture mocks start first when enabled (dev default; set
+ * VITE_USE_MOCKS=0 to hit /api). React Query handles server reads; the SSE streams are
+ * driven from the session store.
  */
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -29,14 +27,12 @@ async function bootstrap() {
     await startMocks();
   }
 
-  // Resolve the auth session exactly once (GET /api/auth/me). Guest mode is the default, so
-  // this never blocks rendering — it only personalizes the TopBar once it returns.
+  // Resolve the auth session once (GET /api/auth/me). It does not block rendering; it only
+  // personalizes the TopBar once it returns.
   void useAuth.getState().hydrate();
 
-  // NOTE: StrictMode intentionally omitted. Its dev-only double-mount stalls Framer Motion's
-  // staggered entrance orchestration (staggerChildren), leaving cards/itinerary items frozen
-  // near opacity:0 — the "disappearing UI" bug. StrictMode is a no-op in production, so this
-  // only affects dev; removing it makes dev match prod. (See lib/motion.ts stagger variants.)
+  // StrictMode is omitted. Its dev-only double-mount stalls Framer Motion's `staggerChildren`
+  // orchestration and leaves cards/itinerary items frozen near opacity 0. See lib/motion.ts.
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

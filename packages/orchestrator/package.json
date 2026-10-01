@@ -1,7 +1,7 @@
 {
   "name": "@wayfare/orchestrator",
   "version": "0.1.0",
-  "description": "Wayfare agent orchestration — independent agents that search in parallel, cross-check listings for authenticity + price honesty, match to a traveler's budget and personality, and self-verify before returning options at the low end of the market. The base for an AI-native travel agency.",
+  "description": "Wayfare agent orchestration: agents that search providers in parallel, cross-check listings and prices across sources, match options to a traveler's budget and preferences, and re-check the plan before returning it.",
   "license": "UNLICENSED",
   "type": "module",
   "main": "./dist/index.js",

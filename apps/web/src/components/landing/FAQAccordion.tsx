@@ -5,9 +5,8 @@ import { FAQ } from '@/lib/content';
 import { Section } from './_shared';
 
 /**
- * FAQ — an accordion with real disclosure semantics (button headers with aria-expanded /
- * aria-controls), a smooth height animation, hairline dividers, and an azure chevron that
- * rotates. One panel open at a time.
+ * FAQ accordion with disclosure semantics (button headers with aria-expanded /
+ * aria-controls). One panel open at a time.
  */
 export function FAQAccordion() {
   const [open, setOpen] = useState<number | null>(0);

@@ -6,9 +6,8 @@ import { InMemorySessionStore } from "../src/session/store.js";
 import { NOW, YEAR } from "./helpers.js";
 
 /**
- * Background orchestration endpoints. A job is kicked off async and its progress + final plan
- * are observable by polling and over SSE. These assert the full round-trip against the mock
- * market wired into the default in-memory job store.
+ * Background orchestration endpoints: start a job, then follow it by polling and over SSE.
+ * Runs against the mock market in the default in-memory job store.
  */
 
 const PROMPT = "5 day foodie trip to Naxos in September, budget around €1800 for two";
@@ -115,7 +114,7 @@ describe("Background orchestration API", () => {
       if (res.body.status === "done") { result = res.body.result; break; }
       await new Promise((r) => setTimeout(r, 5));
     }
-    // "luxury / will splurge" should NOT leave price as the dominant axis.
+    // "luxury / will splurge" should not leave price as the dominant axis.
     const weights = result?.persona?.weights ?? {};
     const top = Object.entries(weights).sort((a, b) => b[1] - a[1])[0]?.[0];
     expect(top).not.toBe("price");

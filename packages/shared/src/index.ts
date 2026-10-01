@@ -1,10 +1,10 @@
 /**
- * @wayfare/shared — the single source of truth for the Wayfare wire contract.
+ * @wayfare/shared
  *
- * TypeScript types + Zod schemas that serialize to exactly the JSON in API_CONTRACT.md and
- * docs/fixtures/. Imported verbatim by both the API server (which produces these shapes)
- * and the web client (which renders them). Do not invent or rename wire fields here without
- * first changing API_CONTRACT.md + the fixtures.
+ * Types and Zod schemas for the Wayfare wire contract. They serialize to the JSON in
+ * API_CONTRACT.md and docs/fixtures/, and are imported by both the API server and the web
+ * client. Do not add or rename wire fields here without first changing API_CONTRACT.md and
+ * the fixtures.
  */
 export * from "./common.js";
 export * from "./listing.js";

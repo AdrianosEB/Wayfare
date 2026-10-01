@@ -2,11 +2,8 @@ import type { Tracer } from "@wayfare/orchestrator";
 import type { AgentName, LlmConfig } from "./config.js";
 
 /**
- * LlmBudget — the spend gate every node checks before it is allowed to call a model.
- *
- * Both ceilings **degrade, never throw**. When either is reached the remaining nodes complete
- * deterministically and the plan still lands: a half-finished trip is a worse outcome than a
- * fully deterministic one, and an exception mid-graph would produce exactly that.
+ * The spend gate every node checks before calling a model. Reaching either ceiling never throws:
+ * the remaining nodes complete deterministically and the plan still lands.
  */
 export interface AgentUsage {
   agent: AgentName;
@@ -47,9 +44,9 @@ export class LlmBudget {
   ) {}
 
   /**
-   * May `agent` call a model right now? False when the agent isn't in the allowlist, when
-   * dry-run is on, or when either ceiling is spent. Emits a trace event the first time a
-   * ceiling bites so the reason is visible in the plan's own audit trail.
+   * Whether `agent` may call a model right now. False when the agent isn't in the allowlist,
+   * when dry-run is on, or when either ceiling is spent. Emits a trace event the first time a
+   * ceiling is hit.
    */
   allows(agent: AgentName): boolean {
     if (!this.config.agents.has(agent)) return false;

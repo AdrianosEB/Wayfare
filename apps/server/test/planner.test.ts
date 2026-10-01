@@ -26,7 +26,7 @@ describe("prompt parsing + clarify (US-1.2, US-2.1)", () => {
   });
 });
 
-describe("deterministic plan — canonical Greek journey (Journey 2)", () => {
+describe("deterministic plan: canonical Greek journey (Journey 2)", () => {
   function planCanonical() {
     const { request: parsed } = parsePrompt(CANONICAL);
     const request = mergeAnswers(parsed, { origin: "London", vibe_dest: "quieter" }, []);
@@ -86,7 +86,7 @@ describe("deterministic plan — canonical Greek journey (Journey 2)", () => {
     expect(captured.assumptions.some((a) => a.field === "dates")).toBe(true);
   });
 
-  it("is deterministic — same inputs yield the same plan (NFR-6)", async () => {
+  it("is deterministic: same inputs yield the same plan (NFR-6)", async () => {
     const a = await planCanonical().run;
     const b = await planCanonical().run;
     expect(a).toEqual(b);

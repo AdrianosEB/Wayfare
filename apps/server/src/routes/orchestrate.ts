@@ -6,17 +6,15 @@ import { makeId } from "../ids.js";
 import type { OrchestrationJobStore } from "../orchestration/jobStore.js";
 
 /**
- * Background orchestration endpoints. Unlike the synchronous planner (POST /answers streams
- * inline and blocks the request), these decouple kickoff from progress:
+ * Background orchestration endpoints. Unlike the planner, which streams inline from
+ * POST /answers, kickoff and progress are separate requests:
  *
  *   POST /api/orchestrate            → start a job, return { jobId } immediately (202)
  *   GET  /api/orchestrate/:id        → poll status + result
  *   GET  /api/orchestrate/:id/events → SSE: replay + live trace, then the final plan
  *
- * The SSE framing matches the rest of the app (named `event:` + single-line JSON `data:`); the
- * payloads are orchestration-native (`trace` events carry each agent's step, `complete` carries
- * the full PlanResult). We don't reuse the Trip-shaped `status`/`complete` schema because the
- * orchestrator emits verified *options* + booking intents, not a single assembled Trip.
+ * SSE framing matches the rest of the app. Payloads differ: `trace` carries each agent's step
+ * and `complete` carries the full PlanResult (verified options + booking intents), not a Trip.
  */
 
 export interface OrchestrateDeps {
@@ -36,36 +34,32 @@ function resolveProfile(
   prompt: string,
   partial: z.infer<typeof OrchestrateRequestSchema>["profile"],
 ): TravelerProfile {
-  // fill defaults (signals/mustHaves/avoid default to []) and guarantee an id.
+  // the schema fills defaults; make sure there's an id
   return TravelerProfileSchema.parse({
     id: partial?.id ?? makeId("trav", prompt),
     ...partial,
   });
 }
 
-/** Humanized label per agent, so a UI can show progress without knowing the trace vocabulary. */
+/** User-facing progress label for a trace event. */
 function labelFor(event: TraceEvent): string {
   switch (event.agent) {
     case "intake": return "Reading your request…";
     case "persona": return "Learning your travel style…";
     case "search": return "Searching sources in parallel…";
     case "verify": return "Cross-checking listings for real prices…";
-    // supervisor + reprice were missing, so two of the nine agents reported the generic
-    // "Working…" and the trace read as if the pipeline had stalled twice.
     case "supervisor": return "Composing whole-trip combinations…";
     case "reprice": return "Re-checking prices before staging…";
     case "match": return "Matching to your budget…";
     case "critic": return "Double-checking the plan…";
     case "booking": return "Staging bookings for your approval…";
-    // The LangGraph path brackets its run as `llm` rather than `orchestrator`, and also emits
-    // per-agent `agent_usage` bookkeeping. Same wording as the deterministic bookends so the
-    // two paths read alike; `agent_usage` is telemetry the UI reads from `usage`, not a step.
+    // The LangGraph path brackets its run as `llm` rather than `orchestrator`. Its
+    // `agent_usage` events are telemetry, not steps.
     case "llm":
     case "orchestrator":
-      // The orchestrator brackets the run and drives retries, so its label is per-event.
       if (event.event === "retry") return "Refining and trying again…";
       if (event.event === "start") return "Starting the pipeline…";
-      if (event.event === "done") return "Finished — everything below needs your approval.";
+      if (event.event === "done") return "Finished. Everything below needs your approval.";
       return "Working…";
     default: return "Working…";
   }
@@ -90,7 +84,7 @@ function sseSend(res: Response, event: string, data: unknown): void {
 export function createOrchestrateRouter(deps: OrchestrateDeps): Router {
   const router = Router();
 
-  // 1. start a background orchestration job.
+  // start a background job
   router.post("/orchestrate", (req, res) => {
     const parsed = OrchestrateRequestSchema.safeParse(req.body);
     if (!parsed.success) throw invalid("Request body failed validation.", parsed.error.issues);
@@ -99,7 +93,7 @@ export function createOrchestrateRouter(deps: OrchestrateDeps): Router {
     res.status(202).json({ jobId: job.id, status: job.status });
   });
 
-  // 2. poll status + result.
+  // poll status + result
   router.get("/orchestrate/:id", (req, res) => {
     const job = deps.store.get(req.params.id ?? "");
     if (!job) throw notFound();
@@ -112,15 +106,14 @@ export function createOrchestrateRouter(deps: OrchestrateDeps): Router {
     });
   });
 
-  // 3. stream trace + final plan over SSE.
+  // stream trace + final plan over SSE
   router.get("/orchestrate/:id/events", (req, res) => {
     const id = req.params.id ?? "";
     if (!deps.store.get(id)) throw notFound();
 
     sseInit(res);
-    // Mutable holder: subscribe() may deliver a terminal update *synchronously* (a job that has
-    // already finished replays then emits done), so `cleanup` must be callable before subscribe
-    // returns its real unsubscribe fn.
+    // subscribe() can deliver a terminal update synchronously for a finished job, so `cleanup`
+    // has to be callable before subscribe returns the real unsubscribe fn.
     let unsubscribe: () => void = () => {};
     const cleanup = () => unsubscribe();
     req.on("close", cleanup);

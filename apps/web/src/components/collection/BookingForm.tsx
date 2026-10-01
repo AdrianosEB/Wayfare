@@ -3,13 +3,10 @@ import { cn } from '@/lib/cn';
 import { navigate, planHref } from '@/lib/router';
 
 /**
- * The booking fields, shared by the modal panel and the in-page section near the foot of the
- * page, so the two can never drift apart.
+ * The booking fields, shared by the modal panel and the in-page section.
  *
- * There is no date picker. What is booked here is a plan; the dates come out of the planning
- * conversation. A calendar would imply live availability this page has no source for, and
- * showing dates as bookable when they are not is the one thing the product promises not to
- * do. `when` is free text for that reason.
+ * There is no date picker: the dates come out of the planning conversation, and a calendar
+ * would imply live availability this page has no source for. `when` is free text.
  */
 export interface BookingFormProps {
   /** Distinguishes the two instances' input ids. */
@@ -78,7 +75,7 @@ export const BookingForm = forwardRef<HTMLInputElement, BookingFormProps>(functi
             placeholder="Flexible"
             className={field}
           />
-          <span className="text-xs text-ink-3">Free text — “flexible”, “March”.</span>
+          <span className="text-xs text-ink-3">Free text, e.g. “flexible”, “March”.</span>
         </label>
       </div>
 

@@ -7,9 +7,9 @@ import { generateActivities } from "./mock/activities.js";
 import { findCuratedPack, type TransitLeg } from "./curated/index.js";
 
 /**
- * The two-tier mock provider: curated hero packs where they exist, deterministic procedural
- * generation everywhere else (INTEGRATIONS.md). Every result is honestly labeled mock. Bound
- * to a trip currency + a fixed clock so the same request always yields the same listings.
+ * Two-tier mock provider: curated packs where they exist, procedural generation everywhere
+ * else (INTEGRATIONS.md). Bound to a trip currency and a fixed clock, so the same request
+ * always yields the same listings.
  */
 export class MockProvider implements PricingProvider {
   readonly name = "mock";
@@ -31,8 +31,8 @@ export class MockProvider implements PricingProvider {
   }
 
   /**
-   * Intra-region transit (ferries/transfers). Not part of the PricingProvider interface — it's
-   * only meaningful for some curated destinations (e.g. the Greek islands). Empty otherwise.
+   * Intra-region transit (ferries/transfers). Not part of PricingProvider: only some curated
+   * destinations have it, e.g. the Greek islands. Empty otherwise.
    */
   transit(location: string, partySize: number): TransitLeg[] {
     const pack = findCuratedPack(location);

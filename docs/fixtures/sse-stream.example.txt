@@ -32,7 +32,7 @@ event: partial
 data: {"patch":{"budget":{"currency":"EUR","total":2410,"status":"under"}}}
 
 event: complete
-data: {"trip":{"id":"trip_naxos_v1","summary":"8 days on Naxos — €2,410 for two","status":"complete"},"version":1}
+data: {"trip":{"id":"trip_naxos_v1","summary":"8 days on Naxos, €2,410 for two","status":"complete"},"version":1}
 
-Note: the `complete` event's `trip` is the FULL Trip object (see trip-complete.json) — it is
+Note: the `complete` event's `trip` is the FULL Trip object (see trip-complete.json). It is
 authoritative and replaces whatever the working copy accumulated from `partial` patches.

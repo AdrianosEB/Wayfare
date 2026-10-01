@@ -1,14 +1,12 @@
 import type { SseEvent } from '@/types';
 
 /**
- * Parse a POST SSE response (`text/event-stream`) via fetch + ReadableStream.
+ * Parse a POST SSE response (`text/event-stream`) via fetch + ReadableStream. `EventSource`
+ * is GET-only, so it cannot be used here (FRONTEND_BRIEF / API_CONTRACT).
  *
- * Per FRONTEND_BRIEF / API_CONTRACT we deliberately do NOT use `EventSource` (GET-only).
- * We read the body stream, split on blank-line frame boundaries, and yield each
- * `event:`/`data:` frame. Lines starting with `:` (heartbeats/comments) are ignored.
- *
- * Each frame is one `event:` line + one single-line-JSON `data:` line. We tolerate
- * multi-line `data:` (spec allows it — concatenated with newlines) for robustness.
+ * Each frame is one `event:` line and one single-line-JSON `data:` line. Multi-line `data:`
+ * is tolerated and joined with newlines. Lines starting with `:` (heartbeats/comments) are
+ * ignored.
  */
 export async function* parseSseStream(
   response: Response,
@@ -77,7 +75,7 @@ function parseFrame(raw: string): SseEvent | null {
 
     if (field === 'event') event = val;
     else if (field === 'data') dataLines.push(val);
-    // ignore `id:` and `retry:` — not used by this contract
+    // `id:` and `retry:` are not used by this contract
   }
 
   if (!event || dataLines.length === 0) return null;
@@ -87,7 +85,7 @@ function parseFrame(raw: string): SseEvent | null {
   try {
     data = JSON.parse(dataStr);
   } catch {
-    // Malformed data frame — skip rather than crash the stream.
+    // Malformed data frame: skip it instead of crashing the stream.
     return null;
   }
 

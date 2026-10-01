@@ -1,29 +1,26 @@
 /**
- * Run `derivePersona` — the deterministic fallback production actually uses when the LLM path
- * is off — over a dataset split, and write its output in the same MLX chat format the teacher
- * pass produces. That makes the heuristic a first-class eval arm and, more usefully, lets
- * `diagnose_labels.py` be pointed straight at it: the same degeneracy test, same thresholds.
+ * Run `derivePersona` (the deterministic fallback production uses when the LLM path is off)
+ * over a dataset split and write its output in the same MLX chat format as the teacher pass,
+ * so the heuristic can be scored as an eval arm and checked with `diagnose_labels.py`.
  *
- *   pnpm tsx training/heuristic_labels.ts training/data/test.jsonl /tmp/heur
+ *   pnpm tsx training/heuristic_labels.mts training/data/test.jsonl /tmp/heur
  *
- * `derivePersona` reads exactly three things — `profile.signals`, `request.vibe.value` and
- * `request.budget.value.type` — all of which are recoverable from the row the generator wrote,
- * so the reconstruction below is faithful rather than approximate. Anything it does not read is
- * left minimal on purpose; inventing fields would risk changing its behaviour silently.
+ * `derivePersona` reads only `profile.signals`, `request.vibe.value` and
+ * `request.budget.value.type`, all recoverable from the row the generator wrote. Other fields
+ * are left out.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-// Imported from the built output by relative path rather than by package name: this file lives
-// outside any workspace package, so the `@wayfare/orchestrator` specifier does not resolve from
-// here. Run `pnpm -r build` first.
+// Imported from the built output by relative path: this file lives outside any workspace
+// package, so `@wayfare/orchestrator` does not resolve from here. Run `pnpm -r build` first.
 import { derivePersona, Tracer } from "../packages/orchestrator/dist/index.js";
 import type { TravelerProfile, TripRequest } from "../packages/orchestrator/dist/index.js";
 
 const [, , inPath, outDir] = process.argv;
 if (!inPath || !outDir) {
-  console.error("usage: heuristic_labels.ts <split.jsonl> <out-dir>");
+  console.error("usage: heuristic_labels.mts <split.jsonl> <out-dir>");
   process.exit(1);
 }
 

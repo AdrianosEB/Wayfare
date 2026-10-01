@@ -1,9 +1,9 @@
 import type { AnswerValue, PartySize, TripRequest, Money } from "@wayfare/shared";
 
 /**
- * Merge clarifying answers into the TripRequest (source = 'answer'). Answering bumps a field's
- * source/confidence; skipped questions are left for the planner to default (and reveal as
- * assumptions, US-2.3). Value types follow the question format (API_CONTRACT.md §2).
+ * Merge clarifying answers into the TripRequest (source = 'answer'). Skipped questions are left
+ * for the planner to default and surface as assumptions (US-2.3). Value types follow the
+ * question format (API_CONTRACT.md §2).
  */
 
 const isMoney = (v: AnswerValue): v is Money =>
@@ -53,8 +53,8 @@ export function mergeAnswers(
         }
         break;
       case "vibe_dest": {
-        // drives island resolution; only non-default axes are written into vibe (keeps the
-        // stored vibe stable when the user confirms the quieter default).
+        // Drives island resolution. Only non-default axes are written, so confirming the
+        // quieter default leaves the stored vibe unchanged.
         const axis = String(value);
         const current = r.vibe?.value ?? [];
         const next = [...current];

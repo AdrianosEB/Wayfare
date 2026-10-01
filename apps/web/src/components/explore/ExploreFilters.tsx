@@ -10,11 +10,8 @@ import { cn } from '@/lib/cn';
 import { EXPLORE_SORTS, type ExploreFiltersProps, type ExploreSort } from './useExploreFilters';
 
 /**
- * Explore / Trending control bar — purely presentational, fully controlled by the props the
- * `useExploreFilters` hook returns (no filtering logic lives here). Renders labeled chip groups
- * for every facet (azure-filled when active via the shared `Chip`), a styled sort `<select>` on
- * the right, the live result count, and a "Clear all" ghost affordance that appears only when at
- * least one facet is active. Content is VISIBLE BY DEFAULT — no entrance animations gate it.
+ * Explore / Trending control bar. Presentational: fully controlled by the props the
+ * `useExploreFilters` hook returns.
  */
 
 /** One labeled facet group. The `<fieldset>`/`<legend>` gives the chip cluster an accessible name. */
@@ -54,9 +51,7 @@ export function ExploreFilters({
         </p>
 
         <div className="flex items-center gap-3">
-          {/* "Clear all" is rendered only when something is actually filtered — no dead control when
-              every chip is already off. activeCount (not resultCount) is the gate: it tracks lit
-              chips, so it's non-zero exactly when there's something to clear. */}
+          {/* "Clear all" shows only when at least one facet is active. */}
           {activeCount > 0 && (
             <button
               type="button"
@@ -68,11 +63,8 @@ export function ExploreFilters({
             </button>
           )}
 
-          {/* The native <select> is visually restyled (appearance-none + our own chevron), but stays
-              a real <select> for keyboard/AT support. The visible label is collapsed to sr-only to
-              keep the compact pill look, so we give the control an explicit accessible name — both
-              the sr-only <span> inside the wrapping <label> and the redundant aria-label guarantee
-              it's announced as "Sort trips" regardless of how the AT resolves the name. */}
+          {/* A real <select>, restyled, for keyboard/AT support. The visible label is sr-only,
+              so the control also carries an explicit aria-label. */}
           <label className="relative flex items-center">
             <span className="sr-only">Sort trips</span>
             <select
@@ -95,9 +87,8 @@ export function ExploreFilters({
         </div>
       </div>
 
-      {/* Facet groups. Note the two "selected" shapes below: single-select facets light a chip via
-          equality (region === value), while Vibe uses vibes.includes(value) because it's the one
-          multi-select group. Both go through the same onToggle* callbacks the hook owns. */}
+      {/* Single-select facets light a chip by equality; Vibe uses vibes.includes(value)
+          because it is the one multi-select group. */}
       <div className="flex flex-col gap-4">
         <FacetGroup label="Region">
           {TRIP_REGIONS.map((value) => (

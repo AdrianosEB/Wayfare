@@ -1,15 +1,12 @@
 /**
- * @wayfare/orchestrator — an orchestration of independent travel agents.
+ * @wayfare/orchestrator
  *
- * The pipeline: intake (sentence → structured request) → persona (who is this traveler) →
- * search (fan out to every provider in parallel) → verify (cross-check listings for
- * authenticity and price honesty; surface direct-vs-aggregator deals) → match (rank on the
- * persona's weights, within budget) → critique (self-check and, on failure, re-run) → booking
- * (stage bookings and hotel calls for human approval — never executed autonomously).
+ * Pipeline: intake (sentence → structured request) → persona → search (fan out to every
+ * provider in parallel) → verify (cross-check listings and prices, find direct-vs-aggregator
+ * deals) → match (rank on the persona's weights, within budget) → critique (re-run on
+ * failure) → booking (staged for human approval, never executed).
  *
- * Every price is a shared `Listing`, so its source, freshness, and confidence travel with the
- * number the whole way through. This package is the base for an AI-native travel agency; drop
- * real providers in behind the SearchProvider seam and the rest is unchanged.
+ * Real providers plug in behind the SearchProvider interface.
  */
 export * from "./types.js";
 export { Orchestrator } from "./orchestrator.js";

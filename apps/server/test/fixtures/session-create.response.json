@@ -1,6 +1,6 @@
 {
   "sessionId": "sess_abc123",
-  "agentMessage": "Nice — a relaxed 8 days by the sea in Greece, late August, for two, ~€2,500. Two quick things:",
+  "agentMessage": "Nice, a relaxed 8 days by the sea in Greece, late August, for two, ~€2,500. Two quick things:",
   "extracted": {
     "destination": { "value": "Greece", "source": "prompt", "confidence": 0.95 },
     "durationDays": { "value": 8, "source": "prompt", "confidence": 0.98 },

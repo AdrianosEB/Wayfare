@@ -11,9 +11,8 @@ import {
 import { foodPerDayEur, convertFromEur } from "../integrations/costIndex.js";
 
 /**
- * compute_budget — the ONLY place totals are summed (AGENT_DESIGN.md). Deterministic, pure,
- * and the arbiter of whole-trip cost. The model never sums prices itself; it calls this so the
- * running total is always exactly the sum of the chosen listings + a food/contingency buffer.
+ * compute_budget is the only place totals are summed (AGENT_DESIGN.md). The model never adds up
+ * prices itself: the total is the sum of the chosen listings plus a food/contingency buffer.
  */
 
 export const ComputeBudgetInputSchema = z
@@ -21,10 +20,10 @@ export const ComputeBudgetInputSchema = z
     items: z.array(ListingSchema),
     currency: z.string(),
     target: z.object({ amount: z.number(), type: BudgetTypeSchema }).optional(),
-    /** trip length in nights and party size — drive the food/buffer line. */
+    /** trip length in nights and party size drive the food/buffer line. */
     nights: z.number().int().min(1),
     partySize: z.number().int().min(1),
-    /** destination cost tier (1–5) for the food allowance. */
+    /** destination cost tier (1 to 5) for the food allowance. */
     tier: z.number().int().min(1).max(5),
   })
   .strict();
@@ -68,7 +67,6 @@ const CATEGORY_ORDER: BudgetCategory[] = [
 export function computeBudget(input: ComputeBudgetInput): Budget {
   const { items, currency, target, nights, partySize, tier } = input;
 
-  // group listings by category
   const byCat = new Map<BudgetCategory, Listing[]>();
   for (const l of items) {
     const cat = CATEGORY_BY_KIND[l.kind];
@@ -88,9 +86,8 @@ export function computeBudget(input: ComputeBudgetInput): Budget {
     });
   }
 
-  // food/contingency buffer — not an itinerary listing, so it has no itemRefs. It's a
-  // per-person, per-day food allowance scaled by the destination cost tier, rounded to the
-  // nearest 25 (major units) so it reads as a deliberate estimate, not a false-precision figure.
+  // Food/contingency buffer: a per-person, per-day allowance scaled by cost tier and rounded
+  // to the nearest 25 so it reads as an estimate. Not a listing, so no itemRefs.
   const bufferRaw = convertFromEur(nights * partySize * foodPerDayEur(tier), currency);
   const bufferAmount = Math.round(bufferRaw / 25) * 25;
   if (bufferAmount > 0) {

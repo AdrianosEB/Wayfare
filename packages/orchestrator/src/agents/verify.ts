@@ -3,17 +3,16 @@ import type { Candidate, VerifiedOption, Verdict, DirectDeal } from "../types.js
 import type { Tracer } from "../trace.js";
 
 /**
- * VerificationAgent — the reason this is an *agency* and not a search box. Every provider is
- * treated as an unreliable witness. The agent groups candidates by the real-world entity they
- * point at (same hotel, regardless of who listed it) and cross-examines them:
+ * Groups candidates by the real-world entity they point at (same hotel, regardless of who
+ * listed it) and cross-checks them:
  *
- *   - corroboration: how many independent sources agree this entity exists at ~this price;
- *   - price agreement: a wide spread across sources means one of them is lying or stale → suspect;
- *   - direct deal: a direct source undercutting the aggregators is money left on the table;
- *   - the ruling: `verified` (trust it), `unconfirmed` (only one source), or `suspect` (don't lead with it).
+ *   - corroboration: how many independent sources list this entity at about this price;
+ *   - price agreement: a wide spread across sources means one is wrong or stale → suspect;
+ *   - direct deal: a direct source undercutting the aggregators;
+ *   - verdict: `verified`, `unconfirmed` (only one source), or `suspect` (don't lead with it).
  *
- * It never invents trust: `best` is the lowest price we'd actually be willing to book, and the
- * verdict + flags let the matcher and the critic act on the uncertainty instead of hiding it.
+ * `best` is the lowest price we'd be willing to book. The verdict and flags are what the
+ * matcher and the critic act on.
  */
 
 export interface VerifyOptions {

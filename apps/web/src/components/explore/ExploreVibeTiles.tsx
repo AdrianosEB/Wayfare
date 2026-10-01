@@ -5,16 +5,14 @@ import { EXPLORE_TRIPS, TRIP_VIBES } from '@/lib/content';
 import type { ExploreTrip, TripVibe } from '@/lib/content';
 
 /**
- * "Browse by vibe" — a photo-rich shortcut row for the Explore page. For each vibe we borrow the
- * photo of the first trip carrying that vibe and show how many trips match, so the row stays in
- * sync with EXPLORE_TRIPS without any hand-tuned imagery. Tapping a tile hands the vibe up to the
- * page, which applies it as a filter. Renders self-contained; the parent wraps it in a Section.
+ * "Browse by vibe": a photo shortcut row for the Explore page. Each vibe borrows the photo of
+ * the first trip carrying it and shows how many trips match. Tapping a tile hands the vibe
+ * up to the page, which applies it as a filter.
  */
 export function ExploreVibeTiles({ onPick }: { onPick: (vibe: TripVibe) => void }) {
   const reduce = useReducedMotion();
 
-  // Derive one tile per vibe from the trip data: the first matching trip supplies the photo, and
-  // the match count supplies the badge. Vibes with no trips are dropped so we never render a blank.
+  // Vibes with no trips are dropped.
   const tiles = TRIP_VIBES.map((vibe) => {
     const matches = EXPLORE_TRIPS.filter((trip: ExploreTrip) => trip.vibes.includes(vibe));
     return { vibe, count: matches.length, imageKey: matches[0]?.imageKey };

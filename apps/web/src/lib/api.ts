@@ -11,12 +11,11 @@ import type {
 } from '@/types';
 
 /**
- * Thin client over the frozen wire (API_CONTRACT.md). Every call targets `/api` — in dev
- * that's either MSW (mocks) or the Vite proxy → :3000. The client never holds keys and
- * never talks to a provider directly.
+ * Client for the wire contract in API_CONTRACT.md. Every call targets `/api`, which in dev
+ * is either MSW (mocks) or the Vite proxy to :3000.
  *
  * The two streaming endpoints return the raw `Response` so the caller can read the SSE body
- * with `parseSseStream` (fetch + ReadableStream); JSON endpoints return parsed bodies.
+ * with `parseSseStream`. JSON endpoints return parsed bodies.
  */
 
 const BASE = '/api';
@@ -55,7 +54,7 @@ async function asError(res: Response): Promise<WayfareApiError> {
 
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8' };
 
-/** POST /api/session — submit prompt, get clarifying questions (cheap, synchronous). */
+/** POST /api/session: submit the prompt, get clarifying questions. */
 export async function createSession(
   prompt: string,
   signal?: AbortSignal,
@@ -70,7 +69,7 @@ export async function createSession(
   return (await res.json()) as SessionCreateResponse;
 }
 
-/** POST /api/session/:id/answers — submit answers, returns the SSE stream Response. */
+/** POST /api/session/:id/answers: submit answers, returns the SSE stream Response. */
 export async function postAnswers(
   sessionId: string,
   body: AnswersRequest,
@@ -86,7 +85,7 @@ export async function postAnswers(
   return res;
 }
 
-/** POST /api/session/:id/refine — natural-language refinement, returns the SSE stream. */
+/** POST /api/session/:id/refine: natural-language refinement, returns the SSE stream. */
 export async function postRefine(
   sessionId: string,
   body: RefineRequest,
@@ -102,7 +101,7 @@ export async function postRefine(
   return res;
 }
 
-/** GET /api/session/:id — fetch current state (used for resume / refresh). */
+/** GET /api/session/:id: fetch current state (used for resume / refresh). */
 export async function getSession(
   sessionId: string,
   signal?: AbortSignal,
@@ -112,12 +111,10 @@ export async function getSession(
   return (await res.json()) as SessionStateResponse;
 }
 
-/* ------------------------------------------------------------------------- auth --- */
-// Email + password (AUTH_CONTRACT.md). The session is an httpOnly cookie, so every auth call
-// sends `credentials: 'include'` and never touches a token. Guest mode is the default — a
-// guest is `user: null` from /me at 200, never an error.
+// Auth: email + password (AUTH_CONTRACT.md). The session is an httpOnly cookie, so every auth
+// call sends `credentials: 'include'`. A guest is `user: null` from /me at 200, not an error.
 
-/** POST /api/auth/signup — create an account; sets the session cookie. */
+/** POST /api/auth/signup: create an account; sets the session cookie. */
 export async function signup(body: SignupRequest, signal?: AbortSignal): Promise<AuthResponse> {
   const res = await fetch(`${BASE}/auth/signup`, {
     method: 'POST',
@@ -130,7 +127,7 @@ export async function signup(body: SignupRequest, signal?: AbortSignal): Promise
   return (await res.json()) as AuthResponse;
 }
 
-/** POST /api/auth/login — sign in; sets the session cookie. */
+/** POST /api/auth/login: sign in; sets the session cookie. */
 export async function login(body: LoginRequest, signal?: AbortSignal): Promise<AuthResponse> {
   const res = await fetch(`${BASE}/auth/login`, {
     method: 'POST',
@@ -143,7 +140,7 @@ export async function login(body: LoginRequest, signal?: AbortSignal): Promise<A
   return (await res.json()) as AuthResponse;
 }
 
-/** POST /api/auth/logout — clear the session cookie. Idempotent. */
+/** POST /api/auth/logout: clear the session cookie. Idempotent. */
 export async function logout(signal?: AbortSignal): Promise<void> {
   const res = await fetch(`${BASE}/auth/logout`, {
     method: 'POST',
@@ -153,7 +150,7 @@ export async function logout(signal?: AbortSignal): Promise<void> {
   if (!res.ok) throw await asError(res);
 }
 
-/** GET /api/auth/me — hydrate the session. Returns `{ user: null }` for guests (200). */
+/** GET /api/auth/me: hydrate the session. Returns `{ user: null }` for guests (200). */
 export async function getMe(signal?: AbortSignal): Promise<MeResponse> {
   const res = await fetch(`${BASE}/auth/me`, { credentials: 'include', signal });
   if (!res.ok) throw await asError(res);

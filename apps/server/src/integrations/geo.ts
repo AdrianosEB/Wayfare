@@ -1,9 +1,9 @@
 import { hashStr } from "../rng.js";
 
 /**
- * Geography: airport codes, coordinates, and great-circle distance — the basis of procedural
- * flight pricing. Known cities use a real-ish table; anything else gets stable pseudo-coords
- * derived from the name hash, so distances (and therefore prices) are deterministic globally.
+ * Airport codes, coordinates, and great-circle distance for procedural flight pricing. Known
+ * cities come from a table; anything else gets stable pseudo-coords from the name hash, so
+ * distances and prices stay deterministic.
  */
 
 export interface Place {
@@ -57,7 +57,6 @@ function pseudoPlace(name: string): Place {
 
 export function resolvePlace(input: string): Place {
   const key = normalize(input);
-  // direct hit
   if (KNOWN[key]) return KNOWN[key];
   // substring hit (e.g. "Naxos, Greece" → naxos; "flying from London" → london)
   for (const [k, v] of Object.entries(KNOWN)) {

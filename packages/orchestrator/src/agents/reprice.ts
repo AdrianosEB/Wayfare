@@ -14,14 +14,10 @@ import { queryKey } from "../limits.js";
 import { computeItineraryTotal, itineraryLegs } from "./supervisor.js";
 
 /**
- * RepriceAgent — the last gate before an itinerary is surfaced. Ranking and verification happen
- * on the market as first scanned; between then and now a price can move or vanish. This agent
- * goes back to each leg's *source*, re-fetches the live price for that exact entity, and
- * recomputes the whole-itinerary total. Only if every leg is still there and nothing drifted
- * past tolerance is the itinerary `confirmed` — i.e. actually bookable at the number we quote.
- *
- * This is the "agents cross-check findings at the source and re-price the full itinerary before
- * surfacing it, returning confirmed bookable options" step.
+ * The last gate before an itinerary is surfaced. Prices can move between the first scan and
+ * now, so this goes back to each leg's source, re-fetches the price for that entity, and
+ * recomputes the itinerary total. The itinerary is `confirmed` only if every leg is still
+ * there and nothing drifted past tolerance.
  */
 
 export interface RepriceArgs {
@@ -32,7 +28,7 @@ export interface RepriceArgs {
   travelers: number;
   now: string;
   tracer: Tracer;
-  /** the shared fan-out limiter — reprice is the last gate and must respect the same cap. */
+  /** the shared fan-out limiter, so reprice respects the same per-provider cap. */
   limits?: SearchLimits<Candidate[]>;
   /** allowed fractional drift per leg and on the total before we withhold "confirmed". */
   tolerance?: number;
@@ -46,8 +42,8 @@ export async function repriceItinerary(args: RepriceArgs): Promise<ItineraryConf
   const lines: RepriceLine[] = [];
   const nowByKind: { flight?: number; stay?: number; activities: number[] } = { activities: [] };
 
-  // re-fetch every leg concurrently, at its source — through the shared limiter so this last
-  // gate can't itself become an unbounded 429 storm.
+  // re-fetch every leg concurrently at its source, through the shared limiter so reprice
+  // can't set off its own 429 storm.
   const fetched = await Promise.all(
     legs.map((leg) =>
       currentPriceAtSource(providers, destination, leg.option, args.limits).catch(() => undefined),
@@ -94,8 +90,8 @@ export async function repriceItinerary(args: RepriceArgs): Promise<ItineraryConf
     checkedAt: now,
     lines,
     note: confirmed
-      ? `Re-priced all ${lines.length} legs at source — total holds at ${repricedTotal} ${combo.currency}. Bookable.`
-      : `Re-price found drift (${drift >= 0 ? "+" : ""}${drift} ${combo.currency}) or a missing leg — surfacing as unconfirmed.`,
+      ? `Re-priced all ${lines.length} legs at source. Total holds at ${repricedTotal} ${combo.currency}. Bookable.`
+      : `Re-price found drift (${drift >= 0 ? "+" : ""}${drift} ${combo.currency}) or a missing leg. Surfacing as unconfirmed.`,
   };
   tracer.emit("reprice", "checked", { confirmed, drift, legs: lines.length });
   return confirmation;

@@ -22,8 +22,7 @@ export const CATEGORY_ORDER: BudgetCategory[] = [
   'buffer',
 ];
 
-/** Maps a budget status to its semantic token + plain-language label (color is never the
- *  only signal — text/icon accompany it, per the a11y target). */
+/** Maps a budget status to its semantic token + plain-language label. */
 export function statusMeta(status: Budget['status']) {
   switch (status) {
     case 'under':

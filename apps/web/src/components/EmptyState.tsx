@@ -8,9 +8,8 @@ import { PromptInput } from './PromptInput';
 import { ExamplePromptChips } from './ExamplePromptChips';
 
 /**
- * The planner empty state (SCREENS Screen 1): a near-empty, inviting hero. One large input
- * plus the example prompts spanning the personas. `initialPrompt` pre-fills the box when the
- * planner was entered from a trip-type tile (seed, don't auto-start).
+ * The planner empty state (SCREENS Screen 1). `initialPrompt` pre-fills the box when the
+ * planner was entered from a trip-type tile; it does not auto-start.
  */
 export interface EmptyStateProps {
   initialPrompt?: string;
@@ -23,21 +22,12 @@ export function EmptyState({ initialPrompt }: EmptyStateProps) {
   const [value, setValue] = useState(initialPrompt ?? '');
 
   return (
-    // Root spans the FULL width so the decorative glow reads as an ambient page wash. If the
-    // backdrop lived inside the max-w-2xl content column it would paint as a hard-edged blue
-    // rectangle floating in the white page. Content is re-constrained to max-w-2xl below.
+    // Root is full width so the backdrop glow isn't cut off at the max-w-2xl column, where
+    // it would show as a hard-edged blue rectangle. Content is re-constrained below.
     <div className="relative flex min-h-full w-full flex-col items-center justify-center overflow-hidden px-5 py-12">
       {/*
-        Decorative backdrop — same tone/technique as `components/explore/ExploreBackdrop.tsx`
-        (soft brand-azure glows: heavy blur + low opacity, over a vertical azure wash), but
-        implemented inline here because the explore one is tuned to that page's hero band.
-
-        - VISIBLE BY DEFAULT: static, no animation, no opacity entrance. `aria-hidden` +
-          `pointer-events-none` keep it out of the a11y tree and off the hit-testing path.
-        - NO HORIZONTAL BLEED: every element is horizontally constrained (`inset-x-0` /
-          `left-0` / `right-0` / `left-1/2 -translate-x-1/2`) — never negative horizontal
-          insets — and the root's `overflow-hidden` clips anything reaching an edge, so this
-          layer can never widen the page or produce a mobile scrollbar.
+        Decorative backdrop, same technique as `components/explore/ExploreBackdrop.tsx`. Static,
+        and with no negative horizontal insets so it can't widen the page on mobile.
       */}
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-[34rem] bg-gradient-to-b from-azure-100 via-azure-50/60 to-transparent" />
@@ -47,12 +37,8 @@ export function EmptyState({ initialPrompt }: EmptyStateProps) {
       </div>
 
       {/*
-        VISIBLE BY DEFAULT (see the "disappearing UI" guardrail): this wraps the whole planner
-        empty state — heading, prompt box, example chips — so it must never be gated behind an
-        opacity:0 entrance. A stalled fade here (e.g. on the SPA route change from the marketing
-        nav's "Plan my trip") would leave the planner body blank under the TopBar. So we animate
-        only a gentle slide-up as an enhancement; opacity stays 1 throughout, and under reduced
-        motion we skip the initial offset entirely.
+        Slide-up only, never an opacity:0 entrance: a stalled fade (e.g. on the SPA route
+        change from the marketing nav) would leave the planner body blank under the TopBar.
       */}
       <motion.div
         initial={reduce ? false : { y: 16 }}
@@ -68,7 +54,7 @@ export function EmptyState({ initialPrompt }: EmptyStateProps) {
           Where do you want to go?
         </h1>
         <p className="mx-auto mt-4 max-w-md text-pretty text-ink-2">
-          Tell me about your trip and I'll plan the whole thing — flights, stays, and a
+          Tell me about your trip and I'll plan the whole thing: flights, stays, and a
           day-by-day plan that fits your budget.
         </p>
 

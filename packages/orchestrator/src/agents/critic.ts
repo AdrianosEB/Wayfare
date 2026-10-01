@@ -3,13 +3,9 @@ import type { CriticIssue, CriticReport, RankedOption, TravelerProfile } from ".
 import type { Tracer } from "../trace.js";
 
 /**
- * CriticAgent — the self-check. After a pass produces a plan, the critic re-reads it against
- * the invariants that make the answer trustworthy and returns issues, each with a `remedy` the
- * orchestrator knows how to act on. Blockers force another pass (broaden the search, relax a
- * weight); warnings are surfaced but don't fail the plan.
- *
- * This is what "self-check and verify" means at the plan level: the orchestration doesn't just
- * emit its first guess, it grades it and tries again when it falls short.
+ * Checks a pass's plan and returns issues, each with a `remedy` the orchestrator can act on.
+ * Blockers force another pass (broaden the search, relax a weight). Warnings are surfaced but
+ * don't fail the plan.
  */
 
 export interface CriticInput {
@@ -25,7 +21,7 @@ export function review(input: CriticInput, tracer: Tracer): CriticReport {
   const issues: CriticIssue[] = [];
   const { selection, budget, profile, expectedKinds } = input;
 
-  // 1. every expected category actually got filled.
+  // 1. every expected category got filled.
   for (const kind of expectedKinds) {
     if (!selection[kind]) {
       issues.push({
@@ -50,13 +46,13 @@ export function review(input: CriticInput, tracer: Tracer): CriticReport {
       issues.push({
         severity: "warning",
         code: "unconfirmed_selection",
-        message: `"${r.option.entity.name}" is only listed by one source — price not corroborated.`,
+        message: `"${r.option.entity.name}" is only listed by one source, so the price is not corroborated.`,
         remedy: "broaden_search",
       });
     }
   }
 
-  // 3. budget respected — a hard cap is a blocker, a soft overage is a warning.
+  // 3. budget respected: a hard cap is a blocker, a soft overage is a warning.
   if (budget.status === "over") {
     const hard = budget.target?.type === "hard";
     issues.push({

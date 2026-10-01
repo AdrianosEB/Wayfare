@@ -1,10 +1,7 @@
 /**
- * Configuration — every knob is an env var, and every default is the cheap one.
- *
- * The governing rule: this orchestrator costs tokens, so it is off unless someone explicitly
- * turned it on. `WAYFARE_LLM_ORCHESTRATOR` must be the literal string "true"; absent, empty, or
- * malformed is disabled. It is deliberately NOT inferred from an API key being present — a key
- * on disk is for the existing planner and must never silently opt you into nine agents.
+ * Every setting is an env var and every default is the cheap one. `WAYFARE_LLM_ORCHESTRATOR`
+ * must be the literal string "true"; absent, empty, or malformed means disabled. It is not
+ * inferred from an API key being present, because that key is for the existing planner.
  */
 
 /** The ten graph nodes, in execution order. `select` is split out of `supervisor`. */
@@ -24,7 +21,7 @@ export const AGENT_NAMES = [
 export type AgentName = (typeof AGENT_NAMES)[number];
 
 export interface LlmConfig {
-  /** master switch — WAYFARE_LLM_ORCHESTRATOR === "true". */
+  /** master switch: WAYFARE_LLM_ORCHESTRATOR === "true". */
   enabled: boolean;
   /** which agents actually call a model; the rest fall back to @wayfare/orchestrator. */
   agents: Set<AgentName>;
@@ -34,15 +31,13 @@ export interface LlmConfig {
   maxTokens: number;
   /** build + log prompts without calling the API. */
   dryRun: boolean;
-  /** LLM path retries less than the deterministic one — each pass is ~10 calls. */
+  /** LLM path retries less than the deterministic one, since each pass is ~10 calls. */
   maxPasses: number;
   model: string;
   /**
-   * Base URL of an OpenAI-compatible server to use INSTEAD of Anthropic — set this to the
-   * `mlx_lm.server` serving `training/fused`, and the persona agent runs on the locally
-   * distilled student instead of a frontier model. No API key is involved.
-   *
-   * Absent → Anthropic, exactly as before.
+   * Base URL of an OpenAI-compatible server to use instead of Anthropic. Point it at the
+   * `mlx_lm.server` serving `training/fused` and the persona agent runs on the locally distilled
+   * student, with no API key. When absent, Anthropic is used.
    */
   localBaseUrl: string | undefined;
   /** Model name to send to that server. `mlx_lm.server` accepts the served path. */
@@ -58,8 +53,8 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 }
 
 /**
- * Parse the agent allowlist. Unset or empty → all ten. Unknown names are ignored rather than
- * throwing, so a typo degrades to "that agent stays deterministic" instead of breaking a plan.
+ * Parses the agent allowlist. Unset or empty means all ten. Unknown names are ignored, so a typo
+ * leaves that agent deterministic instead of breaking a plan.
  */
 export function parseAgents(raw: string | undefined): Set<AgentName> {
   if (raw == null || raw.trim() === "") return new Set(AGENT_NAMES);

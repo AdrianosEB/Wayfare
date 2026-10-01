@@ -1,21 +1,17 @@
 /**
- * Client for the background agent orchestration — the verify-and-book pipeline that already
- * exists in `apps/server` and `packages/orchestrator` but which nothing in the web app has
- * ever called.
+ * Client for the background agent orchestration (the verify-and-book pipeline in
+ * `apps/server` and `packages/orchestrator`).
  *
- * Three endpoints (apps/server/src/routes/orchestrate.ts):
+ * Endpoints (apps/server/src/routes/orchestrate.ts):
  *   POST /api/orchestrate            → 202 { jobId, status }
  *   GET  /api/orchestrate/:id        → { jobId, status, result?, error? }
  *   GET  /api/orchestrate/:id/events → SSE: `trace` … then `complete` or `error`
  *
- * The types below are a deliberately narrow local mirror of the orchestrator's schemas,
- * covering only the fields this UI renders. `packages/orchestrator` is a server-side package
- * and is not on the client's dependency path; mirroring the handful of fields we display
- * keeps the boundary honest rather than pulling the whole graph in.
+ * The types below mirror only the orchestrator schema fields this UI renders, because
+ * `packages/orchestrator` is server-side and not a client dependency.
  *
- * `Listing` is the exception and is imported for real: it comes from `@wayfare/shared`, which
- * IS the shared contract (`@/types` re-exports it verbatim), so an intent's price keeps its
- * source/freshness/confidence and renders through the existing <Price> + <SourceChip>. Never
+ * `Listing` is imported from `@wayfare/shared` (via `@/types`), so an intent's price keeps
+ * its source/freshness/confidence and renders through <Price> + <SourceChip>. Do not
  * re-mirror a shape that already lives in @wayfare/shared.
  */
 
@@ -41,17 +37,15 @@ export interface EntityRef {
 }
 
 /**
- * Mirrors BookingIntentSchema. Note `status` is the literal `"requires_approval"` — the
- * booking agent stages intents and never executes them, which is a hard line in that agent,
- * not a TODO. This UI must not imply anything has been booked.
+ * Mirrors BookingIntentSchema. `status` is always `"requires_approval"`: the booking agent
+ * stages intents and never executes them, so this UI must not imply anything has been booked.
  */
 export interface BookingIntent {
   entity: EntityRef;
   channel: string;
   /**
-   * The priced unit behind the intent, carrying its own provenance. Rendering the amount
-   * without `source.label` next to it would present the backend's sample prices as live
-   * quotes — ListingSchema requires the label precisely so the UI cannot do that.
+   * The priced unit behind the intent. Always render `source.label` next to the amount,
+   * otherwise the backend's sample prices read as live quotes.
    */
   listing: Listing;
   target?: string;
@@ -61,10 +55,9 @@ export interface BookingIntent {
 }
 
 /**
- * Per-agent accounting from the LLM orchestrator's budget. `llm: false` means that agent ran
- * its deterministic implementation — either because it is not in `WAYFARE_LLM_AGENTS`, or
- * because the model's answer failed schema validation and `decide()` degraded. Both are normal
- * and worth showing rather than hiding.
+ * Per-agent accounting from the LLM orchestrator's budget. `llm: false` means the agent ran
+ * its deterministic implementation, either because it is not in `WAYFARE_LLM_AGENTS` or
+ * because the model's answer failed schema validation and `decide()` degraded.
  */
 export interface AgentUsage {
   agent: string;
@@ -93,7 +86,7 @@ export interface PlanResultView {
   [key: string]: unknown;
 }
 
-/** `GET /api/health` — tells the page which runtime is actually serving the agents. */
+/** `GET /api/health`: which runtime is serving the agents. */
 export interface OrchestratorHealth {
   llm: boolean;
   agents: string[];
@@ -140,13 +133,9 @@ export type OrchestrateEvent =
   | { event: 'error'; data: { code?: string; message: string } };
 
 /**
- * Reads the orchestration stream.
- *
- * Deliberately separate from `lib/sse.ts`: that parser is typed to the *planner's* event
- * vocabulary (`status` | `partial` | `assumption` | `message` | `complete`) via the shared
- * `SseEvent` union, and this stream speaks a different one (`trace` | `complete` | `error`).
- * Widening the shared parser would loosen the types the working planner relies on, so the
- * framing rules are repeated here instead — about twenty lines, and the planner stays sound.
+ * Reads the orchestration stream. Separate from `lib/sse.ts` because that parser is typed to
+ * the planner's `SseEvent` union and this stream uses different events
+ * (`trace` | `complete` | `error`).
  */
 export async function* streamOrchestration(
   jobId: string,

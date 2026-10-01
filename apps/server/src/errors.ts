@@ -1,8 +1,6 @@
 import type { ErrorCode, ApiError } from "@wayfare/shared";
 
-/**
- * Typed application error mapping to the uniform error shape + HTTP status in API_CONTRACT.md.
- */
+/** Error codes and HTTP statuses from API_CONTRACT.md. */
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   invalid_request: 400,
   session_not_found: 404,

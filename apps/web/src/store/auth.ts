@@ -11,17 +11,16 @@ import {
 /**
  * Email + password auth state (AUTH_CONTRACT.md).
  *
- * Guest mode is the DEFAULT: `user: null` is a fully-functional, unauthenticated visitor.
- * This store only personalizes the TopBar — it never gates the planner. The session lives in
- * an httpOnly cookie; the API client always sends `credentials: 'include'`, so we keep no
- * token here.
+ * `user: null` is a guest, which is the default. This store only personalizes the TopBar
+ * and never gates the planner. The session lives in an httpOnly cookie, so no token is kept
+ * here.
  *
- * `hydrate()` runs once on app mount (wired in main.tsx) and resolves the current session via
- * GET /api/auth/me. It must never throw into the app: a failure leaves the user as a guest.
+ * `hydrate()` runs once on app mount (main.tsx) and resolves the session via
+ * GET /api/auth/me. It must never throw: a failure leaves the user as a guest.
  */
 
 export type AuthStatus =
-  | 'idle' // before hydrate() — treated as guest
+  | 'idle' // before hydrate(), treated as guest
   | 'loading' // hydrate() in flight
   | 'authenticated'
   | 'guest';
@@ -57,14 +56,14 @@ export const useAuth = create<AuthState>((set) => ({
   error: null,
   pending: false,
 
-  /** Called ONCE on app mount. Resolves the session; never throws into the app. */
+  /** Called once on app mount. Never throws. */
   async hydrate() {
     set({ status: 'loading' });
     try {
       const { user } = await getMe();
       set({ user, status: user ? 'authenticated' : 'guest' });
     } catch {
-      // Offline / server down / unexpected — degrade to guest, keep the app usable.
+      // Offline or server down: degrade to guest.
       set({ user: null, status: 'guest' });
     }
   },

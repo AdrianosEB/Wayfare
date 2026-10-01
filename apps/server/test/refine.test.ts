@@ -16,7 +16,7 @@ async function baseTrip(): Promise<{ trip: Trip; request: import("@wayfare/share
   return { trip: await planDeterministic(request, planDeps(), emit), request };
 }
 
-describe("refine — partial re-planning (US-4.2, US-4.3, US-4.4)", () => {
+describe("refine: partial re-planning (US-4.2, US-4.3, US-4.4)", () => {
   it("the canonical lodging+day-trip refinement matches the fixture deltas", async () => {
     const { trip, request } = await baseTrip();
     const { emit } = capturingEmitter();
@@ -43,7 +43,7 @@ describe("refine — partial re-planning (US-4.2, US-4.3, US-4.4)", () => {
     expect(addDiff?.priceDelta).toBe(85);
   });
 
-  it("freezes the unaffected slices — flights and day 1 stay byte-identical (US-4.2)", async () => {
+  it("freezes the unaffected slices: flights and day 1 stay byte-identical (US-4.2)", async () => {
     const { trip, request } = await baseTrip();
     const { emit } = capturingEmitter();
     const result = await refine(

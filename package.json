@@ -2,7 +2,7 @@
   "name": "wayfare",
   "version": "0.0.0",
   "private": true,
-  "description": "Wayfare \u2014 a trip planned for you from one sentence.",
+  "description": "Wayfare: a trip planned for you from one sentence.",
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"

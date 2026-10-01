@@ -1,8 +1,8 @@
 import type { Freshness, Money } from '@/types';
 
 /**
- * Money & freshness formatting. All prices render with tabular figures (the `.tabular`
- * utility on the element) so budget columns align; this module only produces the strings.
+ * Money and freshness formatting. Only produces strings; callers put the `.tabular` utility
+ * on the element so budget columns align.
  */
 
 const currencySymbols: Record<string, string> = {
@@ -12,7 +12,7 @@ const currencySymbols: Record<string, string> = {
   JPY: '¥',
 };
 
-/** "€2,410" — no decimals when the amount is whole, otherwise 2dp. */
+/** "€2,410". No decimals when the amount is whole, otherwise 2dp. */
 export function formatMoney(money: Money, opts: { sign?: boolean } = {}): string {
   const { amount, currency } = money;
   return formatAmount(amount, currency, opts);
@@ -54,9 +54,8 @@ export const currencySymbol = (currency: string): string =>
   currencySymbols[currency] ?? currency;
 
 /**
- * Human freshness suffix for the SourceChip. The chip's primary text is always
- * `source.label` (e.g. "Estimated price", "Amadeus · 2h ago"); this only adds a relative
- * recency hint for live/cached prices and is never the string "mock".
+ * Relative recency suffix for the SourceChip, shown after `source.label` for live/cached
+ * prices only.
  */
 export function freshnessNote(freshness: Freshness, fetchedAt?: string): string | null {
   switch (freshness) {
@@ -66,7 +65,7 @@ export function freshnessNote(freshness: Freshness, fetchedAt?: string): string 
       return fetchedAt ? relativeTime(fetchedAt) : 'cached';
     case 'estimate':
     case 'mock':
-      // No recency claim for non-real prices — the label already says what it is.
+      // No recency claim for estimates; the label already says what it is.
       return null;
   }
 }

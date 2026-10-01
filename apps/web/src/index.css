@@ -3,27 +3,25 @@
 @tailwind utilities;
 
 /*
- * Wayfare azure token system — see docs/design/TOKENS.md.
- * White-dominant, bright sky-azure (#2F80ED) used with intent. Light theme only.
+ * Wayfare azure tokens, see docs/design/TOKENS.md. Light theme only.
  *
  * Colors are stored as space-separated RGB channel triples so Tailwind opacity
  * modifiers work (e.g. `bg-azure-500/10`, `text-ink-2/60`). The tailwind config
  * wraps each as `rgb(var(--x) / <alpha-value>)`.
  *
  * Legacy token names (sand / primary / accent / muted / faint / ontarget) are
- * aliased onto this azure palette in tailwind.config.ts, so the planner that was
- * built on the older "golden-hour" tokens re-skins to azure with no churn.
+ * aliased onto this palette in tailwind.config.ts.
  */
 @layer base {
   :root {
     color-scheme: light;
 
-    /* Base / surfaces — white dominant */
+    /* Base / surfaces */
     --bg: 255 255 255; /* #FFFFFF */
     --surface: 247 249 252; /* #F7F9FC */
     --surface-2: 238 243 250; /* #EEF3FA */
     --border: 226 232 240; /* #E2E8F0 */
-    --scrim: 15 23 42; /* slate-900 channels — used at ~45% over hero photos */
+    --scrim: 15 23 42; /* slate-900 channels, used at ~45% over hero photos */
 
     /* Ink / text */
     --ink: 15 23 42; /* #0F172A */
@@ -35,15 +33,15 @@
     --azure-100: 214 230 253; /* #D6E6FD */
     --azure-200: 175 207 251; /* #AFCFFB */
     --azure-400: 92 156 240; /* #5C9CF0 */
-    --azure-500: 47 128 237; /* #2F80ED — PRIMARY */
-    --azure-600: 30 111 224; /* #1E6FE0 — hover / pressed */
-    --azure-700: 26 95 191; /* #1A5FBF — emphasis text on light */
+    --azure-500: 47 128 237; /* #2F80ED, primary */
+    --azure-600: 30 111 224; /* #1E6FE0, hover / pressed */
+    --azure-700: 26 95 191; /* #1A5FBF, emphasis text on light */
     --azure-ring: 47 128 237; /* ring uses azure-500 at ~35% */
 
-    /* Semantic — budget state (used sparingly) */
+    /* Semantic: budget state */
     --under: 22 163 74; /* #16A34A under budget */
     --on-target: 47 128 237; /* on target stays on-brand azure */
-    --over: 224 83 61; /* #E0533D over budget — calm warm red */
+    --over: 224 83 61; /* #E0533D over budget */
 
     /* soft tints (budget pills, status backgrounds) */
     --under-soft: 219 244 228;
@@ -52,7 +50,7 @@
 
     /* Source / freshness */
     --live: 22 163 74; /* live price */
-    --estimate: 148 163 184; /* mock / estimate — neutral, honest */
+    --estimate: 148 163 184; /* mock / estimate */
   }
 
   html,
@@ -98,11 +96,10 @@
   /*
    * Scrim gradient for legible text over photography.
    *
-   * Deliberately NOT named `.bg-scrim`: `scrim` is also registered as a colour in
-   * tailwind.config.ts, so Tailwind emits its own `.bg-scrim { background-color: ... }`
-   * with no alpha. The two collide, the opaque colour wins, and every photo behind one
-   * disappears behind a solid slate block. The colour token is still the right tool when
-   * you want an alpha modifier (`bg-scrim/45`); this utility is for the gradient.
+   * Not named `.bg-scrim`: `scrim` is also a colour in tailwind.config.ts, so Tailwind
+   * emits its own opaque `.bg-scrim { background-color: ... }`, which wins and hides the
+   * photo. Use the colour token for an alpha modifier (`bg-scrim/45`) and this utility for
+   * the gradient.
    */
   .photo-scrim {
     background-image: linear-gradient(
@@ -114,9 +111,8 @@
   }
 
   /*
-   * Two very soft azure radial washes. Kept at <10% alpha on purpose: TOKENS.md §6 wants
-   * white to carry ~90% of any screen and azure reserved for brand and interactive
-   * elements, so this reads as depth rather than as a coloured panel.
+   * Two soft azure radial washes, kept under 10% alpha: TOKENS.md §6 wants white to carry
+   * ~90% of any screen.
    */
   .section-glow {
     background-image:

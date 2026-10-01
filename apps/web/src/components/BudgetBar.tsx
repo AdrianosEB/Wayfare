@@ -5,9 +5,8 @@ import { growBar } from '@/lib/motion';
 import { CATEGORY_META, CATEGORY_ORDER } from './budgetMeta';
 
 /**
- * A stacked, smoothly-growing budget bar: one segment per category, with a target marker
- * line. The scale is max(total, target) padded a little, so going over target visibly
- * pushes past the marker.
+ * Stacked budget bar, one segment per category, with a target marker. The scale is
+ * max(total, target) plus a little padding, so going over target pushes past the marker.
  */
 export function BudgetBar({ budget }: { budget: Budget }) {
   const reduce = useReducedMotion();

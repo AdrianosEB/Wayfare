@@ -17,11 +17,9 @@ import { planDeterministic, type PlanDeps, type PlanEmitter } from "./planner.js
 import { SYSTEM_PROMPT } from "./prompts.js";
 
 /**
- * The Anthropic tool-use loop (AGENT_DESIGN.md). The MODEL orchestrates — it resolves the
- * destination, calls the four read/compute tools, and chooses the combination via `present_plan`
- * — while deterministic CODE does the math and final assembly (compute_budget is the only
- * summer; structure is schema-valid by construction). Bounded turns/tool-calls (NFR-5); on
- * exhaustion or malformed output it falls back to the deterministic best-so-far plan (NFR).
+ * The Anthropic tool-use loop (AGENT_DESIGN.md). The model picks listings via `present_plan`;
+ * code does the math and assembly. Turns and tool calls are bounded (NFR-5), and on exhaustion
+ * or malformed output it falls back to the deterministic plan.
  */
 
 const MAX_TURNS = 10;
@@ -39,7 +37,7 @@ const PRESENT_PLAN_TOOL: Anthropic.Tool = {
       returnFlightId: { type: "string" },
       stayId: { type: "string" },
       activityIds: { type: "array", items: { type: "string" } },
-      summary: { type: "string", description: "one-line summary, e.g. '8 days on Naxos — €2,410 for two'" },
+      summary: { type: "string", description: "one-line summary, e.g. '8 days on Naxos, €2,410 for two'" },
       savingHint: {
         type: "object",
         properties: {
@@ -74,11 +72,8 @@ export async function planWithAgent(
   const provider = new MockProvider({ now: deps.ctx.now, currency: pc.currency });
   const toolbox = new Toolbox(provider);
 
-  // The model only ever sees and returns Listing IDs (strings), never the full typed objects.
-  // As each search tool runs we stash its results here keyed by id (see `capture`), so when the
-  // model calls present_plan with its chosen ids we can resolve them back to typed Flight/Stay/
-  // Activity objects (see `assembleFromSelection`). An id the model invents that isn't in these
-  // maps fails resolution → fall back to the deterministic plan.
+  // The model returns listing ids only. Search results are stashed here so present_plan's ids
+  // can be resolved back to typed objects; an invented id fails resolution and we fall back.
   const flightsById = new Map<string, Flight>();
   const staysById = new Map<string, Stay>();
   const activitiesById = new Map<string, Activity>();
@@ -86,7 +81,7 @@ export async function planWithAgent(
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
-      content: `Plan this trip. Constraints (TripRequest JSON):\n${JSON.stringify(request)}\n\nResolved hints — origin: ${pc.origin}, dates: ${pc.dates.start}→${pc.dates.end} (${pc.dates.nights} nights), party: ${pc.pax}, currency: ${pc.currency}, tier: ${pc.tier}. Search, then call present_plan.`,
+      content: `Plan this trip. Constraints (TripRequest JSON):\n${JSON.stringify(request)}\n\nResolved hints: origin ${pc.origin}, dates: ${pc.dates.start}→${pc.dates.end} (${pc.dates.nights} nights), party: ${pc.pax}, currency: ${pc.currency}, tier: ${pc.tier}. Search, then call present_plan.`,
     },
   ];
 
@@ -113,8 +108,8 @@ export async function planWithAgent(
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "ok" });
         continue;
       }
-      // Hard cap on search calls (NFR-5). Past the budget we stop running tools but keep the
-      // loop alive, nudging the model to finalize with what it already has rather than looping.
+      // Hard cap on search calls (NFR-5). Past it we stop running tools and tell the model to
+      // finalize with what it has.
       if (++toolCalls > MAX_TOOL_CALLS) {
         results.push({ type: "tool_result", tool_use_id: tu.id, content: "tool budget exhausted; call present_plan now", is_error: true });
         continue;

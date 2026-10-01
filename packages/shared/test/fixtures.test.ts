@@ -17,11 +17,10 @@ import {
  * are kept in lockstep with API_CONTRACT.md. If a schema drifts from the wire contract,
  * these fail.
  *
- * Note: refine-complete.json and the `complete` event inside sse-stream.example.txt are
- * deliberately ABBREVIATED in the source docs (their own notes say only the changed slice
- * is shown; the real payload carries the full Trip). So we validate the full-shape fixtures
- * (trip-complete, session-create) strictly, and the abbreviated ones at the granularity the
- * docs actually pin down.
+ * refine-complete.json and the `complete` event inside sse-stream.example.txt are abbreviated
+ * in the source docs (only the changed slice is shown; the real payload carries the full
+ * Trip). The full-shape fixtures (trip-complete, session-create) are validated strictly, the
+ * abbreviated ones only as far as the docs specify.
  */
 
 const dir = dirname(fileURLToPath(import.meta.url));

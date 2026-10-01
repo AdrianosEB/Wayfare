@@ -5,10 +5,7 @@ import { cn } from '@/lib/cn';
 import { humanize } from '@/lib/format';
 import { InfoIcon, ChevronDownIcon } from './icons';
 
-/**
- * The "ⓘ assumptions" reveal (US-5.2): lists the inferred defaults the agent took (e.g. on
- * skipped questions), so every assumption is visible rather than silent.
- */
+/** The "ⓘ assumptions" reveal (US-5.2): the defaults the agent inferred, e.g. on skipped questions. */
 export function AssumptionsReveal({ assumptions }: { assumptions: Assumption[] }) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);

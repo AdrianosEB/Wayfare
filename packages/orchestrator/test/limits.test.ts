@@ -14,8 +14,6 @@ import type { SearchProvider } from "../src/index.js";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-// --- Limiter --------------------------------------------------------------
-
 describe("Limiter", () => {
   it("(1) never exceeds max, and engages backpressure", async () => {
     const lim = new Limiter(5);
@@ -41,7 +39,7 @@ describe("Limiter", () => {
     expect(lim.inFlight).toBe(0);
   });
 
-  it("(3) returns the slot on failure — half reject, the rest still run, pool survives", async () => {
+  it("(3) returns the slot on failure: half reject, the rest still run, pool survives", async () => {
     const lim = new Limiter(3);
     const settled = await Promise.allSettled(
       Array.from({ length: 10 }, (_, i) =>
@@ -66,8 +64,6 @@ describe("Limiter", () => {
     expect(lim.queuedPeak).toBe(0);
   });
 });
-
-// --- SingleFlight ---------------------------------------------------------
 
 describe("SingleFlight", () => {
   it("(5) coalesces 50 concurrent calls on one key into a single invocation", async () => {
@@ -119,8 +115,6 @@ describe("SingleFlight", () => {
   });
 });
 
-// --- TTLCache -------------------------------------------------------------
-
 describe("TTLCache", () => {
   it("(8) serves before expiry, misses after", async () => {
     const c = new TTLCache<number>(20);
@@ -151,8 +145,6 @@ describe("TTLCache", () => {
     expect(c.size).toBe(0);
   });
 });
-
-// --- queryKey -------------------------------------------------------------
 
 describe("queryKey", () => {
   it("(11) is stable across property insertion order", () => {
@@ -189,7 +181,7 @@ describe("queryKey", () => {
   });
 });
 
-// --- runSearch integration ------------------------------------------------
+// runSearch integration
 
 function candidate(kind: ListingKind, provider: string, where: string): Candidate {
   return {

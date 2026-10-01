@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
-"""Prove a fused model actually has its adapters in it. Run on EVERY fuse before measuring.
+"""Check that a fused model has its adapters applied. Run on every fuse before measuring.
 
     ./.venv/bin/python verify_fuse.py --fused ./fused-A --adapters ./adapters-A
 
-`mlx_lm fuse` into a quantized base silently produces a model with the adapters *not applied* —
-no error, no warning; it loads and answers as the untuned base (2026-08-15, iter-650 checkpoint;
-`fuse.sh` now passes `--dequantize`). A generation smoke test catches the loud version of that
-failure, where the unfused model emits prose. It does not catch the quiet version: once a base
-is capable enough to emit plausible JSON on its own, "it produced JSON" stops being evidence
-that anything was fused, and the arm gets measured under the student's name.
+`mlx_lm fuse` into a quantized base produces a model without the adapters applied, with no
+error or warning (2026-08-15, iter-650 checkpoint; `fuse.sh` now passes `--dequantize`). A
+generation smoke test only catches that when the unfused model emits prose. A base that can
+emit plausible JSON on its own would pass it, so this compares the weights:
 
-So this checks the weights directly, not the behaviour:
+* For every layer the adapter touches, dequantize the base tensor and compare it to the fused
+  one. `W_fused` should be `W_base + (scale/rank) * B @ A`, so a max-abs delta at
+  dequantization roundoff means the adapter was dropped.
+* Layers below the LoRA window are the control. They went through the same dequantization and
+  nothing else, so their delta is the roundoff floor that targeted layers must exceed.
 
-* **Targeted projections must differ.** For every layer the adapter touches, dequantize the base
-  tensor and compare it to the fused one. `W_fused` should be `W_base + (scale/rank) * B @ A`,
-  which is non-zero for a trained adapter. A max-abs delta at dequantization roundoff means the
-  adapter was dropped.
-* **Untouched layers are the control.** Layers below the LoRA window went through the same
-  dequantization and nothing else, so their delta bounds the roundoff floor. If the targeted
-  layers do not clearly exceed that floor, the difference is not the adapter.
-
-Exit status is non-zero when the check fails, so it can gate a pipeline.
+Exits non-zero when the check fails.
 """
 
 import argparse
@@ -111,7 +105,7 @@ def main():
             return None
         return float(np.abs(fw - bw).max())
 
-    # Control: layers below the LoRA window — dequantized, never adapted.
+    # Control: layers below the LoRA window (dequantized, never adapted).
     control = []
     for layer in range(0, touched[0]):
         for proj in ("self_attn.q_proj", "mlp.up_proj"):
@@ -122,7 +116,7 @@ def main():
             break
     floor = max(control) if control else 0.0
     print(f"control (layers 0–{touched[0] - 1}, dequantized only): max |Δ| = {floor:.3e} "
-          f"over {len(control)} tensors — this is the roundoff floor")
+          f"over {len(control)} tensors (the roundoff floor)")
 
     checked, failures = [], []
     for name in targets[: args.sample] + targets[-args.sample:]:
@@ -139,14 +133,14 @@ def main():
         print(f"  {name:52} max |Δ| = {d:.3e}{flag}")
 
     if not checked:
-        raise SystemExit("verify_fuse: FAIL — no targeted tensors could be compared")
+        raise SystemExit("verify_fuse: FAIL, no targeted tensors could be compared")
     if failures:
-        print(f"\nFAIL — {len(failures)}/{len(checked)} targeted tensors are at or below the "
+        print(f"\nFAIL: {len(failures)}/{len(checked)} targeted tensors are at or below the "
               f"roundoff floor. The adapters were not applied; this model is the base.")
         raise SystemExit(1)
 
     ratio = min(d for _, d in checked) / floor if floor else float("inf")
-    print(f"\nPASS — every sampled targeted projection differs from the base by more than the "
+    print(f"\nPASS: every sampled targeted projection differs from the base by more than the "
           f"dequantization floor (smallest is {ratio:.0f}x the floor). Adapters are fused in.")
 
 

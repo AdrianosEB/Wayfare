@@ -6,11 +6,9 @@ import { EXPLORE_TRIPS } from '@/lib/content';
 import type { ExploreTrip } from '@/lib/content';
 
 /**
- * "Curated collections" — a small editorial row on `/explore` that groups the trips into a few
- * themed ways in. Each collection is DERIVED from EXPLORE_TRIPS (matching trips + count computed
- * here, never hardcoded), so it stays honest if the data changes. Tapping a card seeds the
- * planner with that collection's prompt and auto-starts. Solid by default — no entrance gating,
- * only a guarded hover lift on the photo motif.
+ * "Curated collections": a row on `/explore` that groups the trips into a few themes. Each
+ * collection is derived from EXPLORE_TRIPS (matching trips + count), not hardcoded. Tapping a
+ * card seeds the planner with that collection's prompt and auto-starts.
  */
 
 interface Collection {
@@ -47,7 +45,7 @@ export function ExploreCollections() {
       <div className="max-w-xl">
         <h2 className="font-display text-3xl font-semibold text-ink">Curated collections</h2>
         <p className="mt-2 text-ink-2">
-          A few themed ways in — tap one and we’ll start a plan in that spirit.
+          A few themed ways in. Tap one and we’ll start a plan in that spirit.
         </p>
       </div>
 
@@ -85,7 +83,7 @@ function CollectionCard({ collection, trips }: { collection: Collection; trips: 
   );
 }
 
-/** A small overlapping stack of 2–3 photos; when more trips match, the last tile shows "+N". */
+/** A small overlapping stack of 2 or 3 photos; when more trips match, the last tile shows "+N". */
 function PhotoMotif({ keys, extra, reduce }: { keys: string[]; extra: number; reduce: boolean }) {
   const scale = reduce ? undefined : 'transition-transform duration-300 group-hover:scale-[1.03]';
   return (

@@ -1,15 +1,14 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Wayfare azure design tokens — docs/design/TOKENS.md.
+ * Wayfare azure design tokens, see docs/design/TOKENS.md. Light theme only.
  *
- * White-dominant, bright sky-azure (#2F80ED) used with intent. Light theme only.
  * Colors reference RGB-channel CSS variables (index.css) via `rgb(var(--x) / <alpha-value>)`
  * so every token supports Tailwind opacity modifiers (`bg-azure-500/10`).
  *
- * Canonical names come straight from TOKENS.md. Legacy aliases (sand/primary/accent/muted/
- * faint/ontarget + *-soft) re-point the older planner styles onto the azure palette, so the
- * existing app re-skins with no churn. Prefer the canonical names in new code.
+ * Canonical names come from TOKENS.md. Legacy aliases (sand/primary/accent/muted/
+ * faint/ontarget + *-soft) point the older planner styles at the azure palette. Prefer the
+ * canonical names in new code.
  */
 const rgb = (v: string) => `rgb(var(${v}) / <alpha-value>)`;
 
@@ -18,7 +17,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ---- canonical (TOKENS.md) ----
+        // canonical (TOKENS.md)
         bg: rgb('--bg'),
         surface: { DEFAULT: rgb('--surface'), 2: rgb('--surface-2') },
         border: rgb('--border'),
@@ -40,7 +39,7 @@ export default {
         live: rgb('--live'),
         estimate: rgb('--estimate'),
 
-        // ---- legacy aliases → azure palette (re-skin without churn) ----
+        // legacy aliases → azure palette
         sand: rgb('--bg'),
         'surface-2': rgb('--surface-2'),
         muted: rgb('--ink-2'),
@@ -68,7 +67,7 @@ export default {
         display: ['General Sans', 'Inter var', 'Inter', 'sans-serif'],
       },
       fontSize: {
-        // hero / display headline — clamps 40 → 64
+        // hero / display headline, clamps 40 → 64
         display: ['clamp(2.5rem, 6vw, 4rem)', { lineHeight: '1.05', fontWeight: '600' }],
       },
       borderRadius: {

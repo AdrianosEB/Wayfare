@@ -1,3 +1,2 @@
-# MLX fine-tuning for the persona distillation. Apple Silicon only — this project trains with
-# MLX, not CUDA; Unsloth/bitsandbytes/QLoRA tooling does not run on this machine.
+# MLX fine-tuning for the persona distillation. Apple Silicon only, no CUDA.
 mlx-lm>=0.21

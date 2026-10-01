@@ -13,12 +13,7 @@ import {
   WalkIcon,
 } from './icons';
 
-/**
- * One ordered item within a day: activity / transit / meal / free. Shows time, title,
- * walking distance from the previous item, a kid-suitability mark where relevant, and a
- * price + source chip when priced. "Free" items are styled distinctly (and celebrated for
- * budget users).
- */
+/** One ordered item within a day: activity / transit / meal / free. */
 
 const kindIcon = {
   activity: ActivityIcon,

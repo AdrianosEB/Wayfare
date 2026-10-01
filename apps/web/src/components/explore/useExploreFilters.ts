@@ -9,12 +9,8 @@ import {
 } from '@/lib/content';
 
 /**
- * Explore / Trending filtering + sorting brain.
- *
- * Owns all facet + sort state, derives `filtered` with `useMemo`, and hands the UI a fully
- * controlled `filterControlProps` bundle (current selections + their toggle/setter callbacks +
- * resultCount + clearAll). The `ExploreFilters` component is purely presentational — no filtering
- * logic lives there. See docs contract in the page composer:
+ * Explore / Trending filtering + sorting. Owns all facet + sort state, derives `filtered`,
+ * and hands `ExploreFilters` a fully controlled `filterControlProps` bundle:
  *
  *   const { filtered, filterControlProps, activeCount, resultCount } = useExploreFilters(EXPLORE_TRIPS);
  *   <ExploreFilters {...filterControlProps} />
@@ -28,7 +24,7 @@ export type ExploreSort =
   | 'Shortest'
   | 'Longest';
 
-/** Render order for the sort control — keep `Trending` first (default). */
+/** Render order for the sort control. Keep `Trending` first (default). */
 export const EXPLORE_SORTS: ExploreSort[] = [
   'Trending',
   'Price: low to high',
@@ -37,20 +33,14 @@ export const EXPLORE_SORTS: ExploreSort[] = [
   'Longest',
 ];
 
-/**
- * Trend priority for the default `Trending` sort: Hot > Rising > Steady. Lower rank sorts first,
- * so this is a lookup we subtract in the comparator (a.rank - b.rank) rather than a label list.
- */
+/** Trend priority for the default `Trending` sort: Hot > Rising > Steady. Lower rank sorts first. */
 const TREND_RANK: Record<ExploreTrip['trending'], number> = {
   Hot: 0,
   Rising: 1,
   Steady: 2,
 };
 
-/**
- * Props for the presentational `ExploreFilters` bar. `useExploreFilters` returns a value that is
- * exactly assignable to this, so the page can spread `<ExploreFilters {...filterControlProps} />`.
- */
+/** Props for `ExploreFilters`. `useExploreFilters` returns a value assignable to this. */
 export interface ExploreFiltersProps {
   /** Single-select region, or undefined for "all regions". */
   region: TripRegion | undefined;
@@ -60,19 +50,15 @@ export interface ExploreFiltersProps {
   band: BudgetBand | undefined;
   /** Multi-select vibes (OR semantics). Empty array = "all". */
   vibes: TripVibe[];
-  /** Current sort mode. */
   sort: ExploreSort;
   /** Toggle a region (clicking the active one clears it). */
   onToggleRegion: (region: TripRegion) => void;
-  /** Toggle a party. */
   onToggleParty: (party: TripParty) => void;
-  /** Toggle a budget band. */
   onToggleBand: (band: BudgetBand) => void;
   /** Toggle a vibe in/out of the multi-select set. */
   onToggleVibe: (vibe: TripVibe) => void;
-  /** Set the sort mode. */
   onSortChange: (sort: ExploreSort) => void;
-  /** Reset every facet (sort is preserved — see clearAll docs). */
+  /** Reset every facet (sort is preserved). */
   clearAll: () => void;
   /** Number of active facet selections (region + party + band + each selected vibe). */
   activeCount: number;
@@ -80,7 +66,6 @@ export interface ExploreFiltersProps {
   resultCount: number;
 }
 
-/** What the hook returns to the page. */
 export interface UseExploreFiltersResult {
   filtered: ExploreTrip[];
   filterControlProps: ExploreFiltersProps;
@@ -89,10 +74,8 @@ export interface UseExploreFiltersResult {
 }
 
 /**
- * Toggle helper for single-select facets: pick a new value, or clear it when the same value is
- * clicked again. This "click the active chip to unset it" behaviour is why region/party/band are
- * modeled as a lone value-or-undefined rather than a set — there's no separate "clear" affordance
- * per group; re-tapping the lit chip is the clear.
+ * Toggle for single-select facets: pick a new value, or clear it when the active value is
+ * clicked again.
  */
 function toggleSingle<T>(current: T | undefined, next: T): T | undefined {
   return current === next ? undefined : next;
@@ -117,8 +100,8 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
     (next: BudgetBand) => setBand((cur) => toggleSingle(cur, next)),
     [],
   );
-  // Vibe is the one MULTI-select facet: toggling adds/removes from a set rather than replacing,
-  // because a trip can legitimately match several vibes at once (see the OR match in `filtered`).
+  // Vibe is the one multi-select facet: a trip can match several vibes at once (see the OR
+  // match in `filtered`).
   const onToggleVibe = useCallback(
     (next: TripVibe) =>
       setVibes((cur) =>
@@ -128,11 +111,7 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
   );
   const onSortChange = useCallback((next: ExploreSort) => setSort(next), []);
 
-  /**
-   * Reset every facet. Sort is intentionally PRESERVED — "Clear all" is about the *filter* facets,
-   * and a user who deliberately picked, say, "Price: low to high" shouldn't have it snap back to
-   * `Trending` just because they widened their search. Note this doesn't touch `sort` at all.
-   */
+  /** Reset every facet. Sort is preserved: "Clear all" is about the filter facets. */
   const clearAll = useCallback(() => {
     setRegion(undefined);
     setParty(undefined);
@@ -145,7 +124,7 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
       if (region && trip.region !== region) return false;
       if (party && trip.party !== party) return false;
       if (band && budgetBand(trip.total) !== band) return false;
-      // Vibe is OR: keep a trip if it has ANY selected vibe. No selection = all.
+      // Vibe is OR: keep a trip if it has any selected vibe. No selection = all.
       if (vibes.length > 0 && !vibes.some((v) => trip.vibes.includes(v))) return false;
       return true;
     });
@@ -166,9 +145,8 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
         break;
       case 'Trending':
       default:
-        // Default ordering: bucket by trend momentum (Hot > Rising > Steady), then within a bucket
-        // break ties by raw popularity (plannedThisWeek descending). The `|| b - a` is a classic
-        // comparator chain — the second key only decides when TREND_RANK is equal.
+        // Default ordering: by trend (Hot > Rising > Steady), then by plannedThisWeek
+        // descending.
         sorted.sort(
           (a, b) =>
             TREND_RANK[a.trending] - TREND_RANK[b.trending] ||
@@ -179,10 +157,8 @@ export function useExploreFilters(trips: ExploreTrip[]): UseExploreFiltersResult
     return sorted;
   }, [trips, region, party, band, vibes, sort]);
 
-  // activeCount is the count of *chips lit*, not facet groups touched: each single-select facet
-  // contributes 0 or 1, and every selected vibe counts individually. It gates the "Clear all"
-  // affordance in the UI (shown only when > 0), not the filtering itself. resultCount is derived
-  // rather than tracked so it always mirrors `filtered` exactly.
+  // activeCount counts lit chips, not facet groups: each single-select facet contributes 0
+  // or 1 and every selected vibe counts individually.
   const activeCount =
     (region ? 1 : 0) + (party ? 1 : 0) + (band ? 1 : 0) + vibes.length;
   const resultCount = filtered.length;

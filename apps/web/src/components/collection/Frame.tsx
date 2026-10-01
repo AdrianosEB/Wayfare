@@ -5,16 +5,13 @@ import { useReveal } from './useReveal';
 import { releasePlay, requestPlay } from './videoDirector';
 
 /**
- * One frame in a chapter — a real photograph, a real video loop, or a declared gap.
- *
- * The gap case is deliberately visible rather than hidden: an outlined box naming the asset
- * that belongs there. A missing photo should look missing, not be quietly papered over with
- * a gradient or a decorative stand-in.
+ * One frame in a chapter: a photograph, a video loop, or a declared gap. A gap renders as an
+ * outlined box naming the asset that belongs there, not a gradient or stand-in.
  */
 
 export interface FrameProps {
   slot: Slot;
-  /** Value for the `sizes` attribute — set per slot, since large and small differ a lot. */
+  /** Value for the `sizes` attribute, set per slot since large and small differ a lot. */
   sizes: string;
   /** Chapter one is above the fold and loads eagerly; everything below it is lazy. */
   eager?: boolean;
@@ -42,7 +39,6 @@ export function Frame({
       // One step deeper than the page ground, so an unloaded frame still reads as a frame.
       className={cn('relative overflow-hidden bg-azure-100', className)}
       style={{
-        // One transform plus opacity, 600ms, ease-out, no overshoot.
         transition: 'opacity 600ms cubic-bezier(0.16,1,0.3,1), transform 600ms cubic-bezier(0.16,1,0.3,1)',
         transitionDelay: `${delay}ms`,
         opacity: revealed ? 1 : 0,
@@ -67,19 +63,16 @@ function FramePhoto({
 }) {
   const [loaded, setLoaded] = useState(false);
   const lqip = lqipFor(slot.key);
-  // The travelling layer is taller than its window; the overhang is exactly what the
-  // parallax consumes, so the frame is never left showing empty space at an edge.
-  // Both layers are absolutely positioned so the photo paints ON TOP of its LQIP. Leaving
-  // them `relative` stacks them in normal flow, pushing the real photo out of the
-  // overflow-hidden frame entirely — a loaded, opacity-1 image that renders as an empty box.
+  // Both layers are absolutely positioned so the photo paints on top of its LQIP. Left
+  // `relative` they stack in normal flow, which pushes the photo out of the overflow-hidden
+  // frame and renders an empty box.
   const media = { className: 'absolute inset-0 h-full w-full', style: undefined };
 
   return (
     <div className="absolute inset-0">
       {/*
-        LQIP: a ~16px JPEG of THIS photograph, inlined and blurred while the full image
-        arrives. It is a loading state for a real image, never a stand-in for a missing one —
-        a slot with no photograph renders as a gap instead.
+        LQIP: a ~16px JPEG of this photograph, inlined and blurred while the full image
+        arrives. A slot with no photograph renders as a gap instead.
       */}
       {lqip && (
         <img
@@ -126,18 +119,14 @@ function FrameVideo({ slot }: { slot: Extract<Slot, { kind: 'video' }> }) {
     if (!video) return;
 
     /*
-     * Set `muted` on the element itself, not just via the JSX prop.
-     *
-     * React does not reliably reflect `muted` to the DOM attribute, and the autoplay policy
-     * reads the live property when `play()` is called. Without this the browser loads the
-     * video, refuses to start it, and reports exactly what we saw: readyState 4, paused
-     * true, no error — an autoplay rejection that looks like nothing happened at all.
+     * Set `muted` on the element itself, not just via the JSX prop. React does not reliably
+     * reflect `muted` to the DOM attribute, and the autoplay policy reads the live property
+     * when `play()` is called. Without this the video loads but never starts, with no error.
      */
     video.muted = true;
     video.defaultMuted = true;
 
-    // Reduced motion: hold frame one. The poster is that exact frame, so the clip simply
-    // reads as a still photograph.
+    // Reduced motion: hold frame one. The poster is that exact frame.
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const observer = new IntersectionObserver(
@@ -176,12 +165,7 @@ function FrameVideo({ slot }: { slot: Extract<Slot, { kind: 'video' }> }) {
 
 function FrameGap({ slot }: { slot: Extract<Slot, { kind: 'gap' }> }) {
   return (
-    /*
-      MISSING ASSET — supply a real file for this slot.
-      Subject:     see data-subject below
-      Orientation: see data-orientation
-      Min width:   see data-min-width
-    */
+    /* Missing asset: supply a real file for this slot (see the data-* attributes below). */
     <div
       data-missing-asset=""
       data-subject={slot.subject}
@@ -190,7 +174,7 @@ function FrameGap({ slot }: { slot: Extract<Slot, { kind: 'gap' }> }) {
       className="flex h-full w-full items-center justify-center border border-dashed border-border p-6"
     >
       <p className="max-w-sm text-center font-mono text-[11px] leading-relaxed text-ink-3">
-        Asset needed — {slot.subject}
+        Asset needed: {slot.subject}
         <br />
         {slot.orientation}, min {slot.minWidth}px wide
       </p>

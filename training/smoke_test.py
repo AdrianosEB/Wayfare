@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """One-prompt smoke test for HUMAN GATE 2: does the model emit schema-valid PersonaSchema JSON?
 
-This is a gate check, not an evaluation — it asks "is the thing wired up and emitting the right
-shape", not "is it any good". Quality measurement is Phase 4 (eval.py) over the held-out splits.
+This only checks that the output has the right shape. Quality is measured by eval.py over the
+held-out splits.
 
 The validator mirrors the Zod schemas by hand (PersonaSchema in packages/orchestrator/src/types.ts,
-PreferencesSchema in packages/shared/src/trip.ts). Both are `.strict()`, so unknown keys are a
-failure, not a warning — a Python check that silently tolerated extra keys would pass models the
-real pipeline rejects.
+PreferencesSchema in packages/shared/src/trip.ts). Both are `.strict()`, so unknown keys fail.
 
 Usage:
     ./.venv/bin/python smoke_test.py                      # ./fused, first row of test.jsonl
@@ -28,11 +26,10 @@ def validate_persona(obj, require_summary=True):
 
     Mirrors PersonaSchema/PreferencesSchema including their .strict() unknown-key rejection.
 
-    `require_summary=False` validates against the round-2 arm-B target instead — the same schema
-    with `summary` dropped, which is what `make_variants.py` trains student-B to emit. It is a
-    *different* schema from the one production enforces, never a relaxation of it: an arm scored
-    this way has not been shown to satisfy `PersonaSchema`, and `eval.py` records the strict
-    verdict alongside it so the distinction cannot be lost between here and the tables.
+    `require_summary=False` validates against the round-2 arm-B target: the same schema with
+    `summary` dropped, which is what `make_variants.py` trains student-B to emit. Passing it
+    does not show the output satisfies production `PersonaSchema`. `eval.py` records the
+    strict verdict alongside.
     """
     errs = []
     if not isinstance(obj, dict):
@@ -50,7 +47,7 @@ def validate_persona(obj, require_summary=True):
     else:
         errs += _str_array(r, "reasoning")
 
-    # --- weights -----------------------------------------------------------
+    # weights
     w = obj.get("weights")
     if w is None:
         errs.append("missing `weights`")
@@ -68,13 +65,12 @@ def validate_persona(obj, require_summary=True):
             elif v < 0:
                 errs.append(f"`weights.{k}` is {v}, expected >= 0")
 
-    # --- preferences -------------------------------------------------------
+    # preferences
     p = obj.get("preferences")
     if p is None:
         errs.append("missing `preferences`")
     elif isinstance(p, str):
-        # The teacher's own 0.5% failure mode (RESULTS.md measurement note 1). Called out by
-        # name so a student inheriting it is visible here, not just in the Phase 4 tables.
+        # The teacher's own 0.5% failure mode (RESULTS.md measurement note 1).
         errs.append("`preferences` is a JSON string, expected a nested object (teacher's known failure mode)")
     elif not isinstance(p, dict):
         errs.append(f"`preferences` is {type(p).__name__}, expected object")
@@ -88,11 +84,8 @@ def validate_persona(obj, require_summary=True):
         if "pace" not in p:
             errs.append("`preferences.pace` missing (required)")
         elif not isinstance(p["pace"], str):
-            # `not in` on a set raises TypeError for an unhashable value, so the type check has
-            # to come first. The untuned base emits `"pace": ["relaxed"]`, which crashed the
-            # whole eval run rather than being recorded as the schema violation it is — the
-            # arm that produces the most malformed output is exactly the one that must not be
-            # able to take the scorer down with it.
+            # `not in` on a set raises TypeError for an unhashable value, so check the type
+            # first. The untuned base emits `"pace": ["relaxed"]`, which used to crash the eval.
             errs.append(f"`preferences.pace` is {type(p['pace']).__name__}, expected string")
         elif p["pace"] not in PACE_VALUES:
             errs.append(f"`preferences.pace` is {p['pace']!r}, expected one of {sorted(PACE_VALUES)}")
@@ -122,7 +115,7 @@ def validate_persona(obj, require_summary=True):
                 if "preferredTimes" in fp:
                     errs += _str_array(fp["preferredTimes"], "flightPrefs.preferredTimes")
 
-    # --- summary -----------------------------------------------------------
+    # summary
     s = obj.get("summary")
     if s is None:
         if require_summary:
@@ -149,7 +142,7 @@ def main():
     ap.add_argument("--no-require-summary", action="store_true",
                     help="validate against the arm-B target (PersonaSchema minus `summary`). "
                          "Required to gate student-B, which is trained not to emit it; a pass "
-                         "under this flag is NOT a pass against production PersonaSchema.")
+                         "under this flag is not a pass against production PersonaSchema.")
     args = ap.parse_args()
 
     with open(args.data) as f:
@@ -176,21 +169,20 @@ def main():
     try:
         parsed = json.loads(out)
     except json.JSONDecodeError as e:
-        # Retry on a fenced/prefixed payload — a model that wraps valid JSON in prose is a
-        # different (milder) failure than one emitting malformed JSON, and the gate should
-        # distinguish them rather than lumping both under "invalid".
+        # Retry on a fenced or prefixed payload. Valid JSON wrapped in prose is a milder
+        # failure than malformed JSON, so report it separately.
         start, end = out.find("{"), out.rfind("}")
         if start != -1 and end > start:
             try:
                 parsed = json.loads(out[start:end + 1])
                 print(f"NOTE: output was not bare JSON ({e}); recovered by extracting the outermost "
-                      f"{{...}}. The production path expects bare JSON — this is a real defect, "
+                      f"{{...}}. The production path expects bare JSON, so this is a defect, "
                       f"reported as a caveat rather than a pass.\n")
             except json.JSONDecodeError as e2:
-                print(f"FAIL — not valid JSON, and outermost {{...}} did not parse either: {e2}")
+                print(f"FAIL: not valid JSON, and outermost {{...}} did not parse either: {e2}")
                 sys.exit(1)
         else:
-            print(f"FAIL — not valid JSON and no {{...}} found: {e}")
+            print(f"FAIL: not valid JSON and no {{...}} found: {e}")
             sys.exit(1)
 
     errs = validate_persona(parsed, require_summary=not args.no_require_summary)
@@ -201,13 +193,13 @@ def main():
     print(teacher[:400] + ("..." if len(teacher) > 400 else "") + "\n")
 
     if errs:
-        print(f"FAIL — {len(errs)} schema violation(s):")
+        print(f"FAIL: {len(errs)} schema violation(s):")
         for e in errs:
             print(f"  - {e}")
         sys.exit(1)
 
     w = parsed["weights"]
-    print(f"PASS — schema-valid PersonaSchema JSON.")
+    print(f"PASS: schema-valid PersonaSchema JSON.")
     print(f"  weights sum: {sum(w.values()):.3f} (schema does not enforce ~1.0; noted, not asserted)")
     print(f"  top dimension: {max(w, key=w.get)}")
 

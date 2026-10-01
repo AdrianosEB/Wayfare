@@ -3,9 +3,8 @@ import { cn } from '@/lib/cn';
 import { XIcon } from './icons';
 
 /**
- * Chip / pill — docs/design/COMPONENTS.md. Example prompts, quick-refine, trip-type,
- * multi-select answers, saving hints. Idle azure-50/azure-700 → hover azure-100; selected
- * fills azure-500 white.
+ * Chip / pill (docs/design/COMPONENTS.md). Used for example prompts, quick-refine, trip-type,
+ * multi-select answers and saving hints.
  */
 export interface ChipProps {
   children: ReactNode;

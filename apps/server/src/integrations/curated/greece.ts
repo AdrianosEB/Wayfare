@@ -7,10 +7,9 @@ import { nightsBetween } from "../../dates.js";
 import type { CuratedPack, TransitLeg } from "./index.js";
 
 /**
- * Greek-islands curated hero pack. Flights route via the Santorini (JTR) gateway with a ferry
- * hop to the chosen island; the quieter vibe resolves to Naxos (the canonical journey). Prices
- * are authored per-person so the canonical 2-traveler request reproduces the ~€2,410 plan, and
- * scale sensibly for other party sizes.
+ * Curated Greek-islands pack. Flights go via Santorini (JTR) with a ferry to the chosen island;
+ * the quieter vibe resolves to Naxos. Prices are per person, set so the canonical 2-traveler
+ * request reproduces the ~€2,410 plan.
  */
 
 const GATEWAY = { iata: "JTR", name: "Santorini" };
@@ -20,13 +19,13 @@ function islandForVibe(request: TripRequest): { name: string; reason: string } {
   const mustHaves = (request.mustHaves?.value ?? []).join(" ").toLowerCase();
   const blob = `${vibe} ${mustHaves}`;
   if (/livel|party|mykonos|nightlife/.test(blob))
-    return { name: "Mykonos", reason: "you leaned lively — Mykonos has the nightlife and beach-club scene." };
+    return { name: "Mykonos", reason: "you leaned lively, and Mykonos has the nightlife and beach-club scene." };
   if (/mix|balanc/.test(blob))
     return { name: "Paros", reason: "Paros balances buzzy Naoussa nights with quiet southern beaches." };
   return {
     name: "Naxos",
     reason:
-      "you wanted quieter — Naxos has long sandy beaches (Agios Prokopios, Plaka), cheaper stays than Mykonos, and easy ferry hops to even quieter islands.",
+      "you wanted quieter, and Naxos has long sandy beaches (Agios Prokopios, Plaka), cheaper stays than Mykonos, and easy ferry hops to even quieter islands.",
   };
 }
 
@@ -108,7 +107,7 @@ const greeceStays = (q: StayQuery, ctx: MockContext): Stay[] => {
       listing: mockListing(ctx, {
         id: makeId("lst", "stay", "naxos", d.id),
         kind: "stay",
-        title: `${d.name} — ${nights} night${nights === 1 ? "" : "s"}`,
+        title: `${d.name}, ${nights} night${nights === 1 ? "" : "s"}`,
         priceEur: totalEur,
         tier: "curated",
         confidence: 0.7,

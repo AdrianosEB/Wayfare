@@ -15,9 +15,8 @@ import {
 } from './icons';
 
 /**
- * The agent "thinking out loud" (NFR-2): streamed status lines with a typing-style reveal.
- * While running, the latest line pulses; earlier lines sit quietly above it. When the run
- * completes the whole group collapses to a single "done" line, expandable to see the steps.
+ * Streamed agent status lines (NFR-2). Once the run completes the group collapses to a
+ * single "done" line that expands to show the steps.
  */
 
 const stepIcon: Record<AgentStep, typeof PlaneIcon> = {

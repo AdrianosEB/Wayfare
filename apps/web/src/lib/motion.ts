@@ -1,30 +1,26 @@
 import type { Easing, Transition, Variants } from 'framer-motion';
 
 /**
- * Shared Framer Motion variants — docs/design/MOTION.md. Calm, purposeful motion:
- * reveal don't bounce, stagger to show thinking, highlight change. Defined once, reused
- * everywhere. Components also honor `prefers-reduced-motion` via `useReducedMotion`; these
- * degrade to opacity-only there.
+ * Shared Framer Motion variants. See docs/design/MOTION.md. Under `prefers-reduced-motion`
+ * these degrade to opacity-only.
  */
 
-/** Standard easing (ease-out-quint-ish) from MOTION.md. */
+/** Standard easing from MOTION.md. */
 export const EASE: Easing = [0.22, 1, 0.36, 1];
 /** Legacy alias kept for existing planner imports. */
 export const easeOut = EASE;
 
 /**
- * ⚠️ "Disappearing UI" guardrail — read before reusing these on critical content.
+ * Do not use the stagger variants for must-see content.
  *
- * `staggerChild` starts at opacity:0 and is revealed by its parent `staggerContainer`'s
- * `staggerChildren` orchestration. That orchestration can STALL — under React StrictMode's
- * dev double-mount (now removed in main.tsx) or in paused/backgrounded tabs — leaving the
- * children frozen near opacity:0, i.e. invisible. That was the "disappearing UI" bug.
+ * `staggerChild` starts at opacity 0 and relies on its parent's `staggerChildren`
+ * orchestration, which can stall under React StrictMode's dev double-mount (removed in
+ * main.tsx) or in backgrounded tabs and leave the children invisible.
  *
- * Safe usage (what the landing does): drive these from `whileInView` with
- * `viewport={{ once: true }}` for non-essential, scroll-revealed marketing chrome — the
- * IntersectionObserver re-triggers and self-heals. Do NOT gate must-see content (the streamed
- * itinerary, plan, or budget in the planner) behind an opacity-from-0 entrance; render that
- * VISIBLE BY DEFAULT. See main.tsx and store/session.ts.
+ * Drive them from `whileInView` with `viewport={{ once: true }}` for scroll-revealed
+ * marketing sections, where the IntersectionObserver re-triggers. The streamed itinerary,
+ * plan and budget in the planner must render visible by default. See main.tsx and
+ * store/session.ts.
  */
 
 /** Container that staggers its children in (cards, itinerary items, question cards). */
@@ -89,13 +85,10 @@ export const sheet: Variants = {
 };
 
 /**
- * Scroll reveal for marketing sections — a slightly larger, slower move than `staggerChild`,
- * which was tuned for in-app lists where things should appear briskly. On a landing page the
- * content is the event, so it gets 24px of travel and ~0.5s to settle.
+ * Scroll reveal for marketing sections: more travel and a slower settle than `staggerChild`,
+ * which is tuned for in-app lists.
  *
- * Always drive these from `whileInView` with `revealViewport` (i.e. `once: true`). Per the
- * guardrail above, that is what makes them safe: the IntersectionObserver re-fires and
- * self-heals, so content can never get stranded near opacity 0.
+ * Always drive these from `whileInView` with `revealViewport` (see the note above).
  */
 export const revealContainer: Variants = {
   hidden: {},
@@ -103,10 +96,8 @@ export const revealContainer: Variants = {
 };
 
 /**
- * The slight scale is what separates "appears" from "settles" — travel alone reads as a
- * slide, while a 1.5% scale-up alongside it reads as the card coming to rest. Both are
- * compositor-only properties (transform + opacity), so a full grid staggering in never
- * touches layout or paint.
+ * The 1.5% scale-up makes the card read as settling instead of sliding. Only transform and
+ * opacity are animated, so a full grid staggering in stays on the compositor.
  */
 export const revealItem: Variants = {
   hidden: { opacity: 0, y: 22, scale: 0.985 },

@@ -5,9 +5,9 @@ import { RefinementRecordSchema } from "./session.js";
 import { ErrorCodeSchema } from "./api.js";
 
 /**
- * SSE protocol — the streaming contract for POST /answers and /refine (API_CONTRACT.md
- * "SSE protocol"). Each event has a named `event:` and a single-line JSON `data:` payload.
- * The stream terminates in a `complete` event carrying the full Trip.
+ * SSE protocol for POST /answers and /refine (API_CONTRACT.md "SSE protocol"). Each event has
+ * a named `event:` and a single-line JSON `data:` payload. The stream ends with a `complete`
+ * event carrying the full Trip.
  */
 
 /** The agent's progress step, surfaced in `status` events. */
@@ -22,15 +22,15 @@ export const AgentStepSchema = z.enum([
 export type AgentStep = z.infer<typeof AgentStepSchema>;
 
 /**
- * A `partial` patch is an RFC-7386-style shallow JSON-merge-patch against the working Trip;
- * arrays replace (no index merging). It is intentionally permissive — patches are for
- * perceived progress only; the `complete` event is authoritative. Don't validate working
- * state against this for correctness.
+ * A `partial` patch is an RFC-7386-style shallow JSON merge patch against the working Trip;
+ * arrays replace (no index merging). The schema is permissive because patches are only for
+ * perceived progress and the `complete` event is authoritative. Don't validate working state
+ * against this.
  */
 export const TripPatchSchema = z.record(z.string(), z.unknown());
 export type TripPatch = z.infer<typeof TripPatchSchema>;
 
-/* ----- per-event data payloads ----- */
+// per-event data payloads
 
 export const StatusEventDataSchema = z
   .object({ step: AgentStepSchema, message: z.string() })
@@ -69,7 +69,7 @@ export const ErrorEventDataSchema = z
   .strict();
 export type ErrorEventData = z.infer<typeof ErrorEventDataSchema>;
 
-/* ----- the discriminated event union ----- */
+// the discriminated event union
 
 export const SSE_EVENT_NAMES = [
   "status",

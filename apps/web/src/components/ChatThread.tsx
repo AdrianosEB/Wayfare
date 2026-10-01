@@ -8,11 +8,7 @@ import { AgentStatusGroup } from './AgentStatusLine';
 import { QuestionCardStack } from './QuestionCardStack';
 import { SparkleIcon, ArrowRightIcon } from './icons';
 
-/**
- * The conversation surface. Renders the flat message list — user/agent text, the batched
- * question cards, streamed status groups, and per-version summary recaps — and auto-scrolls
- * as new turns and status lines arrive.
- */
+/** The conversation surface: the flat message list, auto-scrolled as turns and status lines arrive. */
 export function ChatThread() {
   const messages = useSession((s) => s.messages);
   const clarifyQuestions = useSession((s) => s.clarifyQuestions);
@@ -95,12 +91,12 @@ function SummaryCard({
     );
   }
 
-  // RefinementRecord recap — what changed + budget delta (US-4.4).
+  // RefinementRecord recap: what changed + budget delta (US-4.4).
   const currency = guessCurrency(refinement);
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-accent/40 bg-accent-soft/40 px-4 py-3">
       <p className="text-sm font-semibold text-ink">
-        Done — {refinement.diff.length} change{refinement.diff.length === 1 ? '' : 's'}
+        Done: {refinement.diff.length} change{refinement.diff.length === 1 ? '' : 's'}
       </p>
       <ul className="flex flex-col gap-1.5">
         {refinement.diff.map((d, i) => (

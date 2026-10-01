@@ -1,11 +1,8 @@
 import { cn } from '@/lib/cn';
 
 /**
- * A quiet booking prompt at a chapter boundary. There are exactly two on the page.
- *
- * Deliberately not a filled button — these read as an offer, not a nag. With Book gone from
- * the bar, these two prompts and the real booking section at the end of the page are how the
- * panel is reached.
+ * A booking prompt at a chapter boundary. There are two on the page. Not a filled button, so
+ * it reads as an offer.
  */
 export function InlineBooking({
   line,

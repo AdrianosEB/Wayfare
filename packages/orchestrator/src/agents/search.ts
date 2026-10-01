@@ -5,12 +5,12 @@ import type { Tracer } from "../trace.js";
 import { SearchLimits, queryKey } from "../limits.js";
 
 /**
- * SearchAgent — two jobs: turn the request into concrete SearchQueries, then fan them out to
- * every relevant provider *in parallel* and return the union of candidates. It is provider-
- * agnostic; the orchestrator injects the registry (mock in tests, real APIs in production).
+ * Turns the request into SearchQueries, fans them out to every relevant provider in parallel,
+ * and returns the union of candidates. The orchestrator injects the provider registry (mock in
+ * tests, real APIs in production).
  *
- * `breadthMultiplier` is the knob the self-check loop turns: when the critic says "too few
- * verified options" or "over budget", the orchestrator widens the price band and re-runs.
+ * `breadthMultiplier` is what the self-check loop turns: when the critic says "too few verified
+ * options" or "over budget", the orchestrator widens the price band and re-runs.
  */
 
 export interface SearchPlanOptions {
@@ -63,8 +63,7 @@ export async function runSearch(
   for (const query of queries) {
     for (const provider of providers) {
       if (!provider.kinds.includes(query.kind)) continue;
-      // Route every upstream call through the shared limiter: bounded per-provider concurrency,
-      // in-flight coalescing, and a short TTL cache. Cached/coalesced callers never take a slot.
+      // Every upstream call goes through the shared limiter (per-provider cap, coalescing, cache).
       jobs.push(
         limits
           .run(provider.id, queryKey(provider.id, query), () => provider.search(query))

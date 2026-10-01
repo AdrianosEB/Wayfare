@@ -2,18 +2,12 @@ import { cn } from '@/lib/cn';
 import type { TripTrend } from '@/lib/content';
 
 /**
- * Compact trending pill for the Explore card photo — must stay legible over imagery, so it
- * uses a semi-opaque background + backdrop-blur like the price pill in PricingPage. Kept short
- * (status only) so it never collides with the "from €X" price pill on the opposite corner; the
- * "planned this week" social-proof count lives in the card body instead.
- *
- * 'Hot' reads strongest (filled azure), 'Rising' a lighter azure, 'Steady' a neutral surface.
- * Visible by default — no entrance animation.
+ * Compact trending pill for the Explore card photo. A semi-opaque background + backdrop-blur
+ * keep it legible over imagery. Kept short (status only) so it never collides with the
+ * "from €X" price pill on the opposite corner.
  */
-// Tone steps down the azure ramp with intensity (600 → 500 → neutral surface). The /90–/85
-// alpha keeps each background semi-opaque so the backdrop-blur reads over any photo while the
-// hue still shows through. Glyphs are aria-hidden decoration — the accessible name comes from
-// the aria-label below, so the raw emoji/arrow never reaches a screen reader.
+// Tone steps down the azure ramp with intensity (600 → 500 → neutral surface). Glyphs are
+// aria-hidden; the accessible name comes from the aria-label below.
 const TREND_META: Record<TripTrend, { glyph: string; label: TripTrend; tone: string }> = {
   Hot: { glyph: '🔥', label: 'Hot', tone: 'bg-azure-600/90 text-white' },
   Rising: { glyph: '↑', label: 'Rising', tone: 'bg-azure-500/85 text-white' },

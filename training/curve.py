@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Parse train.log into the validation-loss curve for HUMAN GATE 2 / RESULTS.md.
 
-Reads the log rather than re-running anything, so it works on a finished run, a running one,
-or an archived crashed one (training/_diverged-20260815/train.log).
+Only reads the log, so it works on a finished run, a running one, or an archived crashed one
+(training/_diverged-20260815/train.log).
 
     ./.venv/bin/python curve.py [--log train.log] [--patience 4]
 
-`--patience` is the early-stop window in *evaluations*, not iterations: how many consecutive
-evals may pass with no new best before the curve counts as plateaued. This run's curve twice
-looked flat and then dropped again (iter 250 rose 0.013, iter 400 gained only 0.003, and both
-were followed by new bests), so a 2-eval window would have stopped it early. 4 is the window
-that survives the noise actually observed here.
+`--patience` is the early-stop window in evaluations, not iterations: how many consecutive
+evals may pass with no new best before the curve counts as plateaued. The default is 4 because
+this run's curve twice looked flat and then dropped again (iter 250 and iter 400), so a 2-eval
+window would have stopped it early.
 """
 
 import argparse
@@ -47,15 +46,15 @@ def main():
     print()
     if nan_iters:
         print(f"DIVERGED: train loss NaN from iter {nan_iters[0]} "
-              f"({len(nan_iters)} NaN readings) — checkpoints at or after this iter are poisoned")
+              f"({len(nan_iters)} NaN readings). Checkpoints at or after this iter are poisoned")
 
     since = sum(1 for i, _ in vals if i > best_i)
     print(f"best: {best_v:.3f} at iter {best_i}")
     print(f"evals since best: {since} (patience {args.patience})")
     if since >= args.patience:
-        print(f"PLATEAUED — recommend fusing iter {best_i}: CKPT={best_i} ./fuse.sh")
+        print(f"PLATEAUED: recommend fusing iter {best_i}: CKPT={best_i} ./fuse.sh")
     else:
-        print(f"still improving or unresolved — {args.patience - since} more flat eval(s) "
+        print(f"still improving or unresolved: {args.patience - since} more flat eval(s) "
               f"would confirm a plateau")
 
 

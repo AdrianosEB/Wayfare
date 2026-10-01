@@ -2,10 +2,7 @@ import { useSession } from '@/store/session';
 import { PromptInput } from './PromptInput';
 import { QuickRefineChips } from './QuickRefineChips';
 
-/**
- * The persistent refine zone at the foot of the chat: quick-action chips + the same
- * PromptInput (refine variant). Always reachable so the conversation can continue.
- */
+/** The refine zone at the foot of the chat: quick-action chips + PromptInput (refine variant). */
 export function RefineComposer() {
   const refine = useSession((s) => s.refine);
   const phase = useSession((s) => s.phase);
@@ -17,7 +14,7 @@ export function RefineComposer() {
       <QuickRefineChips onPick={refine} disabled={busy || planning} />
       <PromptInput
         variant="refine"
-        placeholder="Refine your trip — “make it cheaper”, “swap the hotel”…"
+        placeholder="Refine your trip: “make it cheaper”, “swap the hotel”…"
         busy={busy}
         disabled={planning}
         onSubmit={refine}

@@ -2,20 +2,13 @@ import { cn } from '@/lib/cn';
 import type { BudgetSplit } from '@/lib/content';
 
 /**
- * A thin, segmented horizontal bar showing how a trip's `total` splits across flights / stay /
- * activities / food. Four on-brand tints — the azure trio (600/400/200) plus the calm green
- * `under` token as the distinct warm-ish accent for food (azure-300 does NOT exist in the
- * palette; see TOKENS). A compact dotted legend underneath shows each segment's share.
- *
- * Rendered solid by default — no opacity entrance animation — and carries an aria-label that
- * summarizes the whole split for screen readers.
+ * A thin segmented bar showing how a trip's `total` splits across flights / stay / activities
+ * / food, with a dotted legend underneath. Its aria-label summarizes the whole split.
  */
 type SegmentKey = keyof BudgetSplit;
 
-// Segment order is fixed (flights → stay → activities → food) so the stacked bar and the legend
-// below always read left-to-right in the same order. Tints step DOWN the azure ramp
-// (600 → 400 → 200) for the first three, then break to `under` (green) for food — that contrast
-// is what makes food distinguishable, since azure-300 is intentionally absent from the palette.
+// Fixed order, so the bar and the legend read the same way. The first three step down the
+// azure ramp (600 → 400 → 200); food uses `under` (green) because the palette has no azure-300.
 const SEGMENTS: { key: SegmentKey; label: string; bar: string; dot: string }[] = [
   { key: 'flights', label: 'Flights', bar: 'bg-azure-600', dot: 'bg-azure-600' },
   { key: 'stay', label: 'Stay', bar: 'bg-azure-400', dot: 'bg-azure-400' },
@@ -34,10 +27,9 @@ export function BudgetSplitBar({
   currency: string;
   className?: string;
 }) {
-  // Percentages are taken against `total` (the trip's headline price), NOT the sum of the four
-  // segments — so if the segments don't fully account for the total the bar honestly under-fills
-  // rather than silently normalizing to 100%. Fall back to the segment sum, then to 1, only to
-  // keep the divisor positive and widths finite when `total` is missing/zero.
+  // Percentages are against `total` (the trip's headline price), not the sum of the segments,
+  // so if the segments don't account for the whole total the bar under-fills. Fall back to
+  // the segment sum, then 1, to keep the divisor positive when `total` is missing/zero.
   const sum = budget.flights + budget.stay + budget.activities + budget.food;
   const denom = total > 0 ? total : sum > 0 ? sum : 1;
   const pct = (n: number) => Math.round((n / denom) * 100);
@@ -48,9 +40,8 @@ export function BudgetSplitBar({
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      {/* role="img" + aria-label collapses the decorative segment spans into one described image;
-          the individual bars are aria-hidden below. The bar track shows bg-surface-2 in any gap
-          left when the segments sum to under 100% of the total. */}
+      {/* role="img" + aria-label present the bar as one described image; the segment spans
+          below are aria-hidden. */}
       <div
         role="img"
         aria-label={`Budget split (${currency}): ${summary}`}

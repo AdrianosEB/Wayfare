@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build-hero-frames.sh — turn a source video into the scroll-scrubbed hero's frame sets.
+# Turn a source video into the scroll-scrubbed hero's frame sets.
 #
 #   scripts/build-hero-frames.sh <source.mp4> [--frames N] [--quality N]
 #                                             [--start SS] [--duration SS]
@@ -12,14 +12,14 @@
 # and writes the real frame count, dimensions, and byte totals to
 #   apps/web/src/lib/hero-manifest.json
 #
-# Everything comes out of ONE ffmpeg pass. The filter graph decodes the video once, thins it
-# to the target frame count, then splits the stream four ways — two scales × two codecs — so
-# there is no multi-hundred-megabyte intermediate PNG directory and no decoding the source
-# four times. Re-running is cheap enough to tune --quality against the 8MB budget.
+# Everything comes out of one ffmpeg pass: the filter graph decodes the video once, thins it
+# to the target frame count, then splits the stream four ways (two scales × two codecs).
+# There is no intermediate PNG directory, so re-running to tune --quality against the 8MB
+# budget is cheap.
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------- args & config
+# args & config
 
 SRC=""
 TARGET_FRAMES=150   # 120–180 is the useful band: below ~120 the scrub visibly steps,
@@ -50,10 +50,9 @@ done
 [ -n "$SRC" ] || { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 [ -f "$SRC" ] || die "source not found: $SRC"
 
-# 1920 is the right default for graphic or low-detail footage. Detail-dense live action —
-# rippling water especially — is near-incompressible, so hitting the byte budget there
-# usually means dropping this rather than dropping --quality, which buys artifacts far
-# faster than it buys bytes. See the README for the measured numbers.
+# 1920 suits graphic or low-detail footage. Detail-dense live action (rippling water
+# especially) barely compresses, so to hit the byte budget lower this before --quality,
+# which costs artifacts faster than it saves bytes. Measured numbers are in the README.
 DESKTOP_WIDTH="${DESKTOP_WIDTH_OPT:-1920}"
 MOBILE_WIDTH=960
 BUDGET_BYTES=$((8 * 1024 * 1024))
@@ -64,18 +63,17 @@ WEB_DIR="$(dirname "$SCRIPT_DIR")"
 OUT_DIR="$WEB_DIR/public/hero"
 MANIFEST="$WEB_DIR/src/lib/hero-manifest.json"
 
-# ------------------------------------------------------------------------------- preflight
+# preflight
 
-command -v ffmpeg  >/dev/null 2>&1 || die "ffmpeg not found — 'brew install ffmpeg' (macOS) or 'apt install ffmpeg'"
+command -v ffmpeg  >/dev/null 2>&1 || die "ffmpeg not found. Install it with 'brew install ffmpeg' (macOS) or 'apt install ffmpeg'"
 command -v ffprobe >/dev/null 2>&1 || die "ffprobe not found (ships with ffmpeg)"
 command -v node    >/dev/null 2>&1 || die "node not found (used to write the manifest)"
 
 ffmpeg -hide_banner -encoders 2>/dev/null | grep -q ' libwebp' \
-  || die "this ffmpeg has no libwebp encoder — reinstall with WebP support ('brew install ffmpeg' includes it)"
+  || die "this ffmpeg has no libwebp encoder. Reinstall with WebP support ('brew install ffmpeg' includes it)"
 
-# `-fps_mode` replaced `-vsync` in ffmpeg 5. Probe it by actually running a one-frame
-# encode rather than grepping `-h full`, whose layout varies between builds — ffmpeg 6.0
-# supports the flag but does not surface it where a naive grep finds it.
+# `-fps_mode` replaced `-vsync` in ffmpeg 5. Probe it with a one-frame encode instead of
+# grepping `-h full`: ffmpeg 6.0 supports the flag but its help layout hides it from a grep.
 if ffmpeg -hide_banner -f lavfi -i nullsrc=s=16x16:d=0.1 \
      -fps_mode passthrough -f null - >/dev/null 2>&1; then
   FPS_MODE=(-fps_mode passthrough)
@@ -83,7 +81,7 @@ else
   FPS_MODE=(-vsync 0)
 fi
 
-# ------------------------------------------------------------------------------------ probe
+# probe
 
 probe() {
   ffprobe -v error -select_streams v:0 -show_entries "$1" -of default=nw=1:nk=1 "$2" | head -1
@@ -98,35 +96,30 @@ SRC_DUR="$(probe format=duration "$SRC" 2>/dev/null || true)"
 CLIP_DUR="${DURATION:-$SRC_DUR}"
 awk "BEGIN{exit !($CLIP_DUR > 0)}" || die "could not determine a positive duration for $SRC"
 
-# Frames are thinned with the fps filter: fps = target_frames / clip_seconds. For an integer
-# decimation of a constant-frame-rate source you can instead use
+# Frames are thinned with the fps filter: fps = target_frames / clip_seconds.
 #   select='not(mod(n\,K))'
-# which picks every Kth *source* frame with no temporal resampling at all — marginally
-# crisper, but only correct when the ratio is a whole number. fps= is right in the general
-# case and the difference is invisible on a scrub.
+# would pick every Kth source frame with no temporal resampling, but it is only correct when
+# the ratio is a whole number, and the difference is invisible on a scrub.
 FPS="$(awk "BEGIN{printf \"%.6f\", $TARGET_FRAMES / $CLIP_DUR}")"
 
 note "source: ${SRC_W}x${SRC_H}, ${SRC_DUR}s"
 note "sampling ${TARGET_FRAMES} frames over ${CLIP_DUR}s → fps=${FPS}"
 
-# --------------------------------------------------------------------------------- extract
+# extract
 
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR/desktop" "$OUT_DIR/mobile"
 
-# BOTH trim flags must sit before -i, as *input* options.
-#
-# `-ss` there makes ffmpeg seek instead of decoding-and-discarding. `-t` there limits the
-# decode itself. Putting `-t` after `-i` makes it an *output* option, and an output option
-# binds only to the next output file — so with four `-map`ed outputs it would trim the first
-# and let the other three run to the end of the source. That asymmetry is what the
-# frame-count guard below catches.
+# Both trim flags must sit before -i, as input options. After -i, `-t` becomes an output
+# option that binds only to the next output file, so with four `-map`ed outputs it would
+# trim the first and let the other three run to the end of the source. The frame-count
+# guard below catches that.
 SEEK=()
 [ -n "$START" ] && SEEK+=(-ss "$START")
 [ -n "$DURATION" ] && SEEK+=(-t "$DURATION")
 
-# min(TARGET,iw) never upscales — a 1280px source stays 1280px instead of being blown up to
-# 1920 for nothing. -2 keeps the aspect ratio and rounds to an even number of pixels.
+# min(TARGET,iw) never upscales. -2 keeps the aspect ratio and rounds to an even number of
+# pixels.
 FILTER="fps=${FPS},split=2[hi][lo];\
 [hi]scale=w='min(${DESKTOP_WIDTH}\,iw)':h=-2:flags=lanczos,split=2[dw][dj];\
 [lo]scale=w='min(${MOBILE_WIDTH}\,iw)':h=-2:flags=lanczos,split=2[mw][mj]"
@@ -140,28 +133,27 @@ ffmpeg -hide_banner -loglevel warning -y \
   -map '[mw]' "${FPS_MODE[@]}" -c:v libwebp -quality "$WEBP_QUALITY" -compression_level 6 -preset photo "$OUT_DIR/mobile/frame-%04d.webp" \
   -map '[mj]' "${FPS_MODE[@]}" -c:v mjpeg   -q:v "$JPEG_Q"                                  "$OUT_DIR/mobile/frame-%04d.jpg"
 
-# Posters are pulled straight from the source rather than re-encoded from a lossy frame —
-# this is the one image every visitor sees, including everyone who never gets the sequence.
+# Posters come straight from the source, not re-encoded from a lossy frame: every visitor
+# sees this image, including those who never get the sequence.
 note "rendering posters…"
 for pair in "desktop:$DESKTOP_WIDTH" "mobile:$MOBILE_WIDTH"; do
   variant="${pair%%:*}"; width="${pair##*:}"
   # `-update 1` is required: the image2 muxer refuses a filename with no %d pattern
-  # unless told it is deliberately writing one file repeatedly.
+  # without it.
   ffmpeg -hide_banner -loglevel warning -y \
     "${SEEK[@]}" -i "$SRC" -frames:v 1 -update 1 \
     -vf "scale=w='min(${width}\,iw)':h=-2:flags=lanczos" \
     -q:v 3 "$OUT_DIR/poster-${variant}.jpg"
 done
 
-# ---------------------------------------------------------------------------------- measure
+# measure
 
 count_files() { find "$1" -name "*.$2" -type f | wc -l | tr -d ' '; }
-# `cat | wc -c` rather than stat, because stat's size flag differs between BSD and GNU and
-# this script has to run on a Mac and in CI.
+# `cat | wc -c` instead of stat: stat's size flag differs between BSD and GNU, and this
+# script runs on a Mac and in CI.
 byte_total() { find "$1" -name "*.$2" -type f -exec cat {} + | wc -c | tr -d ' '; }
-# Values are passed with `awk -v` rather than interpolated into the program text: nesting
-# escaped quotes inside a command substitution is fragile across shells and silently
-# mangled the percentage below into an unparseable program.
+# Pass values with `awk -v`, not interpolated into the program text. Nested escaped quotes
+# inside a command substitution broke the percentage calculation below.
 human() { awk -v b="$1" 'BEGIN{ printf "%.2f MB", b/1048576 }'; }
 pct() { awk -v b="$1" -v t="$2" 'BEGIN{ printf "%.0f", 100*b/t }'; }
 
@@ -170,7 +162,7 @@ FRAME_COUNT="$(count_files "$OUT_DIR/desktop" webp)"
 
 MOBILE_COUNT="$(count_files "$OUT_DIR/mobile" webp)"
 [ "$FRAME_COUNT" = "$MOBILE_COUNT" ] \
-  || die "frame counts diverged (desktop $FRAME_COUNT, mobile $MOBILE_COUNT) — the manifest assumes they match"
+  || die "frame counts diverged (desktop $FRAME_COUNT, mobile $MOBILE_COUNT); the manifest assumes they match"
 
 DESKTOP_WEBP_BYTES="$(byte_total "$OUT_DIR/desktop" webp)"
 DESKTOP_JPEG_BYTES="$(byte_total "$OUT_DIR/desktop" jpg)"
@@ -182,14 +174,13 @@ DESKTOP_H="$(probe stream=height "$OUT_DIR/desktop/frame-0001.webp")"
 MOBILE_W="$(probe stream=width  "$OUT_DIR/mobile/frame-0001.webp")"
 MOBILE_H="$(probe stream=height "$OUT_DIR/mobile/frame-0001.webp")"
 
-# --------------------------------------------------------------------------------- manifest
+# manifest
 
 node -e '
 const [out, frames, dw, dh, db, mw, mh, mb, dur, fps] = process.argv.slice(1);
 const manifest = {
-  // Cache-busting stamp. Frames live at stable paths under public/, so without this a
-  // re-run of this script leaves returning visitors on the previously cached frames —
-  // potentially a mix of old and new, which on a scrub looks like the footage glitching.
+  // Cache-busting stamp. Frames live at stable paths under public/, so without it returning
+  // visitors keep cached frames after a re-run, possibly mixed with new ones.
   version: Date.now().toString(36),
   frames: Number(frames),
   pad: 4,
@@ -207,7 +198,7 @@ require("fs").writeFileSync(out, JSON.stringify(manifest, null, 2) + "\n");
 ' "$MANIFEST" "$FRAME_COUNT" "$DESKTOP_W" "$DESKTOP_H" "$DESKTOP_WEBP_BYTES" \
   "$MOBILE_W" "$MOBILE_H" "$MOBILE_WEBP_BYTES" "$CLIP_DUR" "$FPS"
 
-# ----------------------------------------------------------------------------------- report
+# report
 
 printf '\n\033[1mframes\033[0m  %s\n' "$FRAME_COUNT"
 printf '\033[1mdesktop\033[0m %sx%s   webp %s   (jpg fallback %s)\n' \
@@ -216,17 +207,17 @@ printf '\033[1mmobile\033[0m  %sx%s    webp %s   (jpg fallback %s)\n' \
   "$MOBILE_W" "$MOBILE_H" "$(human "$MOBILE_WEBP_BYTES")" "$(human "$MOBILE_JPEG_BYTES")"
 printf '\033[1mmanifest\033[0m %s\n\n' "${MANIFEST#"$WEB_DIR/"}"
 
-# The budget applies to the WebP set: that is what a real visitor downloads. The JPEGs exist
-# only for engines without WebP, and no visitor fetches both.
+# The budget applies to the WebP set, which is what a visitor downloads. The JPEGs are only
+# for engines without WebP.
 if [ "$DESKTOP_WEBP_BYTES" -gt "$BUDGET_BYTES" ]; then
   OVER_MB="$(human $((DESKTOP_WEBP_BYTES - BUDGET_BYTES)))"
   printf '\033[31m✗ over the 8MB desktop budget by %s\033[0m\n' "$OVER_MB"
   printf '  retry lower, in this order of preference:\n'
-  printf '    --width %s         (smaller frames — best bytes-per-quality on detailed footage)\n' \
+  printf '    --width %s         (smaller frames: best bytes-per-quality on detailed footage)\n' \
     $((DESKTOP_WIDTH > 1440 ? 1440 : DESKTOP_WIDTH - 160))
-  printf '    --frames %s        (fewer frames — linear saving, scrub stays smooth to ~120)\n' \
+  printf '    --frames %s        (fewer frames: linear saving, scrub stays smooth to ~120)\n' \
     $((FRAME_COUNT > 130 ? FRAME_COUNT - 30 : 120))
-  printf '    --quality %s       (last resort — on noisy footage this costs quality faster than bytes)\n' \
+  printf '    --quality %s       (last resort: on noisy footage this costs quality faster than bytes)\n' \
     $((WEBP_QUALITY > 60 ? WEBP_QUALITY - 12 : 50))
   exit 1
 fi

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useSyncExternalStore } from 'react';
 
 /**
- * Tiny history-API router — no router dependency (the design stack is React + Vite + Zustand
+ * Small history-API router, no router dependency (the design stack is React + Vite + Zustand
  * + React Query only). Two routes:
  *   `/`            → marketing landing
  *   `/plan/:type?` → in-app planner (optional trip-type seeds the prompt)
@@ -26,7 +26,7 @@ export function navigate(to: string): void {
 /**
  * Navigate to a marketing section by id (e.g. `how-it-works`). Sections only exist on the
  * landing (`/`), so from any other page we route home with the hash and let the landing scroll
- * on mount (see `useScrollToHash`). When already on the landing we scroll smoothly in place.
+ * on mount (see `useScrollToHash`).
  */
 export function navigateToSection(id: string): void {
   if (window.location.pathname === '/') {
@@ -75,9 +75,8 @@ export function usePathname(): string {
 
 /**
  * Landing-only: when the URL carries a `#section` (e.g. arriving from `/pricing` via a nav
- * section link), scroll that section into view after the page mounts. Reacts to the path so a
- * cross-page navigation that lands on `/#how-it-works` scrolls even though the component was
- * already mounted is not a concern here — the landing remounts on route change.
+ * section link), scroll that section into view after the page mounts. The landing remounts
+ * on route change, so keying on the path is enough.
  */
 export function useScrollToHash(): void {
   const path = usePathname();

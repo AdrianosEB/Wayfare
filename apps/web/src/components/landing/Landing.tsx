@@ -13,10 +13,9 @@ import { SiteFooter } from './SiteFooter';
 import { useScrollToHash } from '@/lib/router';
 
 /**
- * Marketing landing page (`/`) — modeled on layla.ai, re-skinned white + azure, photo-rich.
- * The page is explored by scrolling (the nav has no jump-tabs): Hero → how it works →
- * trip types → budget trips → recently planned → social proof → FAQ. All copy, presets, and
- * imagery come from lib/content.ts + lib/images.ts; routing via lib/router.ts.
+ * Marketing landing page (`/`), modeled on layla.ai. Sections, top to bottom: Hero → how it
+ * works → trip types → budget trips → recently planned → social proof → FAQ. Copy, presets
+ * and imagery come from lib/content.ts + lib/images.ts; routing via lib/router.ts.
  */
 export function Landing() {
   useScrollToHash();

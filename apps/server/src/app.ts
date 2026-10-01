@@ -12,8 +12,8 @@ import { readConfig as readLlmConfig } from "@wayfare/orchestrator-llm";
 import { createAuthRouter, createInMemoryAuthDeps, type AuthDeps } from "./auth/index.js";
 
 /**
- * Build the Express application. Factory form so tests can inject a fresh store/clock and drive
- * it with supertest. All endpoints live under `/api` (API_CONTRACT.md global conventions).
+ * Build the Express app. A factory so tests can inject a fresh store and clock. All endpoints
+ * live under `/api` (API_CONTRACT.md).
  */
 export function createApp(deps: RouteDeps): Application {
   const app = express();
@@ -21,9 +21,8 @@ export function createApp(deps: RouteDeps): Application {
   app.use(cookieParser());
 
   app.get("/api/health", (_req, res) => {
-    // `planner` describes the /session path. `orchestrator` describes the /orchestrate path,
-    // which is configured separately — reporting only the former made it look like the LLM
-    // agents were off when they were running. `model` is a name, never a key or a URL secret.
+    // `planner` is the /session path; `orchestrator` is /orchestrate, configured separately.
+    // `model` is a name, never a key or URL.
     const llm = readLlmConfig();
     res.json({
       status: "ok",
@@ -37,30 +36,23 @@ export function createApp(deps: RouteDeps): Application {
     });
   });
 
-  // Auth is additive: mounted alongside the planner, never gating it. If the caller didn't
-  // inject auth deps, fall back to a fresh in-memory wiring (mirrors how tests build the app).
+  // Auth is mounted alongside the planner and never gates it.
   const authDeps: AuthDeps = deps.auth ?? createInMemoryAuthDeps(deps.now);
   app.use("/api", createAuthRouter(authDeps));
 
   app.use("/api", createSessionRouter(deps));
 
-  // Background agent orchestration (verify-and-book pipeline). Additive alongside the planner:
-  // kicks jobs off async and streams their trace over SSE. Falls back to a fresh in-memory job
-  // store when the caller didn't inject one (mirrors the auth wiring above).
+  // Background agent orchestration (verify-and-book pipeline): jobs run async and stream their
+  // trace over SSE.
   const orchestration = deps.orchestration ?? new InMemoryOrchestrationJobStore(deps.now);
   app.use("/api", createOrchestrateRouter({ store: orchestration, now: deps.now }));
 
-  // Serve the built web client from this same process, so one server answers both the SPA and
-  // /api — no CORS, and the SameSite=Lax auth cookie works because everything is one origin.
-  // Mounted only when a build exists, so API-only dev (`pnpm dev:server`) and the tests are
-  // unaffected. Resolved relative to this module: `src/` and `dist/` are both one level under
-  // apps/server, so the same relative path works in dev (tsx) and after `pnpm build`.
+  // Serve the built web client from this process when a build exists: one origin, so no CORS
+  // and the SameSite=Lax auth cookie works. The relative path is the same from `src/` and `dist/`.
   const webDist = deps.webDist ?? fileURLToPath(new URL("../../web/dist", import.meta.url));
   if (existsSync(webDist)) {
     app.use(express.static(webDist));
-    // SPA fallback: any non-/api GET that didn't match a file serves index.html so client-side
-    // routes (/pricing, /explore, …) survive a refresh. Guarded so an unknown /api path still
-    // 404s as JSON instead of silently returning the HTML shell.
+    // SPA fallback so client-side routes survive a refresh. Unknown /api paths still 404.
     app.get(/^(?!\/api\/).*/, (req, res, next) => {
       if (req.method !== "GET") return next();
       res.sendFile(join(webDist, "index.html"));

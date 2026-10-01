@@ -1,18 +1,16 @@
 /**
- * Marketing copy deck + presets — docs/design/CONTENT_VOICE.md and LANDING_PAGE.md.
- * Single source for landing copy, trip-type presets, example prompts, FAQ, testimonials.
- * Voice: a friendly, money-aware travel sidekick — warm, plain, always honest about price.
+ * Marketing copy and presets. See docs/design/CONTENT_VOICE.md and LANDING_PAGE.md.
  */
 
 export const MARKETING = {
   hero: {
     headline: 'Your trip. Planned in minutes.',
-    subhead: "Tell us the trip you want — we'll plan it, price it, and keep it honest.",
+    subhead: "Tell us the trip you want. We'll plan it, price it, and keep it honest.",
     promptPlaceholder:
       'Describe your dream trip… e.g. "relaxed 8 days in Greece for two, ~€2,500"',
     cta: 'Plan my trip',
   },
-  allInOne: 'Flights, stays, activities, and a running budget — all in one chat.',
+  allInOne: 'Flights, stays, activities, and a running budget, all in one chat.',
   partnersCaption: 'Prices and booking via trusted partners.',
   footerSignoff: 'Made with 💙 by Wayfare.',
 } as const;
@@ -46,7 +44,7 @@ export interface TripType {
   imageKey: string;
 }
 
-/** Trip-type presets — `/plan/:type` seeds a tailored prompt. */
+/** Trip-type presets. `/plan/:type` seeds a tailored prompt. */
 export const TRIP_TYPES: TripType[] = [
   { type: 'couple', label: 'Couples & honeymoons', imageKey: 'couple', prompt: 'Romantic week away for two, somewhere warm, mid-range budget' },
   { type: 'family', label: 'Family vacations', imageKey: 'family', prompt: 'Family trip the kids will love, 5–7 days, easygoing pace' },
@@ -62,7 +60,7 @@ export function tripTypeByKey(type: string | undefined): TripType | undefined {
   return TRIP_TYPES.find((t) => t.type === type);
 }
 
-/** Sample destination cards — "Where to go next". Prices render as honest "from" estimates. */
+/** Sample destination cards for "Where to go next". Prices render as "from" estimates. */
 export interface SampleTrip {
   place: string;
   imageKey: string;
@@ -113,9 +111,8 @@ export const SAMPLE_TRIPS: SampleTrip[] = [
 ];
 
 /**
- * Budget showcase for the `/pricing` page — the cheapest trips we'd point someone to.
- * `fromAmount` is an illustrative "from" figure (marketing copy for a few nights, solo or
- * two-person framing), not a sourced Listing price. Tapping a card seeds the planner.
+ * Cheapest trips for the `/pricing` page. `fromAmount` is an illustrative "from" figure,
+ * not a sourced Listing price. Tapping a card seeds the planner.
  */
 export const BUDGET_TRIPS: SampleTrip[] = [
   {
@@ -202,10 +199,8 @@ export const BUDGET_TRIPS: SampleTrip[] = [
 ];
 
 /**
- * Recently-planned showcase — curated example trips used as inspiration / social proof on the
- * landing. For now this is hand-authored marketing content; it's shaped to become real saved
- * per-user trip history when trip-saving lands (swap the array for the user's trips, keep the
- * card). `summary` is the one-line recap, `vibe` a short mood line, `prompt` seeds the planner.
+ * Curated example trips for the landing page. Hand-authored for now, shaped so the array can
+ * be swapped for a user's saved trips once trip-saving lands.
  */
 export interface PastTrip {
   place: string;
@@ -219,61 +214,58 @@ export const PAST_TRIPS: PastTrip[] = [
   {
     place: 'Naxos, Greece',
     imageKey: 'naxos',
-    summary: '8 days on Naxos — €2,410 for two',
+    summary: '8 days on Naxos, €2,410 for two',
     vibe: 'Slow beach mornings, taverna nights.',
     prompt: 'Relaxed 8-day beach trip on Naxos for two in late August, around €2,500',
   },
   {
     place: 'Lisbon, Portugal',
     imageKey: 'lisbon',
-    summary: '4 days in Lisbon — €720 for two',
+    summary: '4 days in Lisbon, €720 for two',
     vibe: 'Pastéis, viewpoints, and tram 28.',
     prompt: 'A 4-day city break in Lisbon with great food and viewpoints, around €800',
   },
   {
     place: 'Kyoto, Japan',
     imageKey: 'kyoto',
-    summary: '7 days in Kyoto — €2,980 for two',
+    summary: '7 days in Kyoto, €2,980 for two',
     vibe: 'Temples at dawn, ramen at midnight.',
     prompt: 'A week in Kyoto for two, temples and food, mid-range budget',
   },
   {
     place: 'Amalfi Coast, Italy',
     imageKey: 'amalfi',
-    summary: '6 days on the Amalfi Coast — €1,840 for two',
+    summary: '6 days on the Amalfi Coast, €1,840 for two',
     vibe: 'Cliffside drives and lemon spritz.',
     prompt: 'A 6-day coastal trip on the Amalfi Coast for two, scenic and romantic',
   },
   {
     place: 'Valencia, Spain',
     imageKey: 'valencia',
-    summary: 'A solo week in Valencia — €610',
+    summary: 'A solo week in Valencia, €610',
     vibe: 'Beach, tapas, and zero stress.',
     prompt: 'A relaxed solo week in Valencia, beach and tapas, around €600',
   },
   {
     place: 'Kraków, Poland',
     imageKey: 'krakow',
-    summary: '3 nights in Kraków — €170 solo',
+    summary: '3 nights in Kraków, €170 solo',
     vibe: 'Old town wanders on a tiny budget.',
     prompt: 'A budget 3-night solo trip to Kraków, Poland, old town and food, around €170',
   },
 ];
 
-/* ------------------------------------------------------------------ *
- * Explore / Trending hub  (`/explore`)
+/*
+ * Explore / Trending hub (`/explore`)
  *
- * A richer, filterable gallery that absorbs the budget showcase and the "what others have
- * done" social-proof angle into one browsable destination. Curated marketing content for now,
- * shaped to graduate into real saved-trip data when trip-saving lands (Phase 2): swap the
- * array, keep the cards + filters.
+ * Curated marketing content for now, shaped to become real saved-trip data when trip-saving
+ * lands (Phase 2).
  *
- * Provenance rule (see SourceChip / price-provenance-rule): `source` + `freshness` are honest
- * display strings — today every figure is a clearly-labelled "Estimated" starting point. Never
- * hardcode the word "mock"; the card renders these strings verbatim, so the same chip flips to
- * "Amadeus · 2h ago" later with zero card changes. `total` is the whole-trip illustrative cost
- * for the stated party (not per-person) and equals the sum of the `budget` split.
- * ------------------------------------------------------------------ */
+ * Provenance (see SourceChip / price-provenance-rule): the card renders `source` and
+ * `freshness` verbatim. Every figure is currently labelled "Estimated"; never hardcode the
+ * word "mock". `total` is the whole-trip cost for the stated party (not per-person) and
+ * equals the sum of the `budget` split.
+ */
 
 export type TripRegion = 'Europe' | 'Asia' | 'Americas';
 export type TripParty = 'Solo' | 'Couple' | 'Family' | 'Group';
@@ -285,12 +277,12 @@ export type TripVibe =
   | 'Foodie'
   | 'Nightlife'
   | 'Adventure';
-/** How a trip is trending — drives the TrendingBadge tone. */
+/** Drives the TrendingBadge tone. */
 export type TripTrend = 'Hot' | 'Rising' | 'Steady';
 /** Budget tiers used by the Explore filter (derived from `total` via `budgetBand`). */
 export type BudgetBand = 'Budget' | 'Mid-range' | 'Splurge';
 
-/** The four cost buckets of a trip — render the BudgetSplitBar; sum to `ExploreTrip.total`. */
+/** The four cost buckets of a trip. Rendered by BudgetSplitBar; they sum to `ExploreTrip.total`. */
 export interface BudgetSplit {
   flights: number;
   stay: number;
@@ -299,14 +291,14 @@ export interface BudgetSplit {
 }
 
 export interface ExploreTrip {
-  /** Stable slug — React key and future `/trip/:id` handle. */
+  /** Stable slug: React key and future `/trip/:id` handle. */
   id: string;
   place: string;
   imageKey: string;
   region: TripRegion;
   party: TripParty;
   partySize: number;
-  /** One or more vibes — used for both filtering and the card's chips. */
+  /** Used for both filtering and the card's chips. */
   vibes: TripVibe[];
   lengthDays: number;
   /** Whole-trip illustrative total for the party (== sum of `budget`). */
@@ -315,10 +307,10 @@ export interface ExploreTrip {
   budget: BudgetSplit;
   /** When it's best to go, e.g. "May–Sep". */
   bestSeason: string;
-  /** Price provenance — honest label, never "mock". Renders as `${source} · ${freshness}`. */
+  /** Price provenance label, never "mock". Renders as `${source} · ${freshness}`. */
   source: string;
   freshness: string;
-  /** Social proof — how many travellers planned something like this in the last week. */
+  /** How many travellers planned something like this in the last week. */
   plannedThisWeek: number;
   trending: TripTrend;
   /** One-line "what others did" recap. */
@@ -341,7 +333,7 @@ export const TRIP_VIBES: TripVibe[] = [
   'Adventure',
 ];
 
-/** Derive the budget band from a whole-trip total (keeps the band off the data — no drift). */
+/** Derived from the whole-trip total so the band is never stored on the data. */
 export function budgetBand(total: number): BudgetBand {
   if (total <= 800) return 'Budget';
   if (total <= 2000) return 'Mid-range';
@@ -366,7 +358,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 64,
     trending: 'Hot',
-    blurb: 'Old-town wanders, milk-bar lunches, and a Wieliczka mine day — all on a tiny budget.',
+    blurb: 'Old-town wanders, milk-bar lunches, and a Wieliczka mine day, all on a tiny budget.',
     prompt: 'A budget 3-night solo trip to Kraków, Poland, old town and food, around €170',
   },
   {
@@ -386,7 +378,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 18,
     trending: 'Rising',
-    blurb: 'Cheapest capital on the board — free walking tours and a Vitosha mountain escape.',
+    blurb: 'The cheapest capital on the board, with free walking tours and a Vitosha mountain escape.',
     prompt: 'A cheap 3-night solo city break in Sofia, Bulgaria, around €160 all-in',
   },
   {
@@ -426,7 +418,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 25,
     trending: 'Steady',
-    blurb: 'Castle-district mornings and riverside beers — a cheap, romantic long weekend.',
+    blurb: 'Castle-district mornings and riverside beers: a cheap, romantic long weekend.',
     prompt: 'A cheap 4-night city break in Prague for two, around €210pp',
   },
   {
@@ -466,7 +458,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 51,
     trending: 'Hot',
-    blurb: 'Pastéis, viewpoints, and tram 28 — the all-time favourite city break for two.',
+    blurb: 'Pastéis, viewpoints, and tram 28. The all-time favourite city break for two.',
     prompt: 'A 4-day city break in Lisbon with great food and viewpoints, around €800',
   },
   {
@@ -486,7 +478,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 47,
     trending: 'Hot',
-    blurb: 'Four friends, thermal baths by day and ruin bars by night — split-friendly throughout.',
+    blurb: 'Four friends, thermal baths by day and ruin bars by night, split-friendly throughout.',
     prompt: 'A budget 4-night trip to Budapest for four, thermal baths and ruin bars, split-friendly',
   },
   {
@@ -506,7 +498,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 21,
     trending: 'Steady',
-    blurb: 'Acropolis at opening, rooftop tavernas at dusk — ancient history for the group.',
+    blurb: 'Acropolis at opening, rooftop tavernas at dusk. Ancient history for the group.',
     prompt: 'A 4-night trip to Athens for four, ruins and rooftop tavernas',
   },
   {
@@ -626,7 +618,7 @@ export const EXPLORE_TRIPS: ExploreTrip[] = [
     freshness: 'Updated this week',
     plannedThisWeek: 38,
     trending: 'Hot',
-    blurb: 'Slow beach mornings and taverna nights — the relaxed 8-day Greece favourite.',
+    blurb: 'Slow beach mornings and taverna nights. The relaxed 8-day Greece favourite.',
     prompt: 'Relaxed 8-day beach trip on Naxos for two in late August, around €2,500',
   },
   {
@@ -658,9 +650,9 @@ export interface ValueCardItem {
 }
 
 export const VALUE_CARDS: ValueCardItem[] = [
-  { key: 'tailor', title: 'Tailor-made', body: 'A plan shaped to your dates, budget, and vibe — not a template.' },
+  { key: 'tailor', title: 'Tailor-made', body: 'A plan shaped to your dates, budget, and vibe, not a template.' },
   { key: 'cheaper', title: 'Cheaper', body: 'We optimize the whole trip against your budget, and show the math.' },
-  { key: 'gems', title: 'Hidden gems', body: 'Beyond the tourist list — local picks and free finds.' },
+  { key: 'gems', title: 'Hidden gems', body: 'Beyond the tourist list: local picks and free finds.' },
   { key: 'honest', title: 'No surprises', body: 'Every price sourced and dated. The total is always honest.' },
 ];
 
@@ -672,13 +664,13 @@ export interface Testimonial {
   author: string;
   tripTaken: string;
   rating: number;
-  /** image key for lib/images.ts — the destination they travelled to. */
+  /** image key for lib/images.ts (the destination they travelled to). */
   imageKey: string;
 }
 
 export const TESTIMONIALS: Testimonial[] = [
   {
-    quote: 'It planned our whole Greece trip in one chat — flights, a beachfront studio, and a budget that actually added up.',
+    quote: 'It planned our whole Greece trip in one chat: flights, a beachfront studio, and a budget that actually added up.',
     author: 'Mara & Tom',
     tripTaken: '8 days on Naxos',
     rating: 5,
@@ -712,11 +704,11 @@ export const FAQ: FaqItem[] = [
   },
   {
     q: 'Can I book through Wayfare?',
-    a: 'Booking hand-off to trusted partners is coming. Today we plan and price the whole trip — flights, stays and a day-by-day plan — so it’s ready to book.',
+    a: 'Booking hand-off to trusted partners is coming. Today we plan and price the whole trip (flights, stays and a day-by-day plan) so it’s ready to book.',
   },
   {
     q: 'Is it free?',
-    a: 'Yes — planning is free. Tell us about your trip and we’ll put the whole thing together.',
+    a: 'Yes, planning is free. Tell us about your trip and we’ll put the whole thing together.',
   },
   {
     q: 'How does it know my budget?',
@@ -724,7 +716,7 @@ export const FAQ: FaqItem[] = [
   },
   {
     q: 'Can I change the plan?',
-    a: 'Anytime — just chat. Say “make it cheaper”, “swap the hotel”, or “add a day trip” and we re-plan only what’s affected, then show you what changed.',
+    a: 'Anytime, just chat. Say “make it cheaper”, “swap the hotel”, or “add a day trip” and we re-plan only what’s affected, then show you what changed.',
   },
   {
     q: 'Which destinations can I plan?',

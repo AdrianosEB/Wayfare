@@ -7,9 +7,9 @@ import { tierOf, flightPerKmEur } from "../costIndex.js";
 import { mockListing, round, type MockContext, type MockTier } from "../listingFactory.js";
 
 /**
- * Procedural flights — priced from great-circle distance × a tier per-km rate, with seeded
- * modifiers for stops, date flexibility, and demand. Returns candidate round trips as
- * consecutive [outbound, return] pairs, best (cheapest) first. Listing prices are party totals.
+ * Procedural flights, priced from great-circle distance × a tier per-km rate, with seeded
+ * modifiers for stops, date flexibility, and demand. Returns round trips as consecutive
+ * [outbound, return] pairs, cheapest first. Listing prices are party totals.
  */
 
 const CARRIERS = ["EasyJet", "Ryanair", "Vueling", "Lufthansa", "ITA Airways", "Aegean", "KLM", "Wizz Air"];
@@ -38,7 +38,7 @@ export function generateFlights(
   const pax = q.adults + (q.children ?? 0);
   const flex = FLEX_DISCOUNT[q.dateFlexibility];
 
-  // base round-trip fare per person (both legs), with a sane floor for very short hops.
+  // round-trip fare per person, with a floor for very short hops
   const baseRtPP = Math.max(49, flightPerKmEur(destTier) * dist * 2);
 
   type Option = { stops: number; mult: number; carrier: string };
@@ -52,11 +52,9 @@ export function generateFlights(
   const flightHours = Math.max(1, dist / 750) + 0.6;
 
   const built = options.map((opt, i) => {
-    // Per-person round-trip fare = base × option multiplier × seeded demand jitter, plus a flat
-    // €35 per stop. Split evenly across the two legs and scaled to a party total; each leg's
-    // Listing price is therefore (rtPP / 2) × pax, and `total` (both legs) drives the sort.
-    // (The `opt.stops === 1 ? 1 : 1` term is an intentional no-op placeholder for a future
-    // stops-based multiplier — stops are currently priced only via the flat +35 above.)
+    // Per-person round trip = base × option multiplier × demand jitter + €35 per stop, split
+    // evenly across the two legs. The `opt.stops === 1 ? 1 : 1` term is a no-op placeholder
+    // for a stops-based multiplier.
     const demand = 0.9 + rng.float() * 0.3;
     const rtPP = baseRtPP * opt.mult * demand * (opt.stops === 1 ? 1 : 1) + opt.stops * 35;
     const legPriceParty = round((rtPP / 2) * pax);

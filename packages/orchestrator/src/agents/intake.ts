@@ -10,14 +10,12 @@ import type { TravelerProfile } from "../types.js";
 import type { Tracer } from "../trace.js";
 
 /**
- * IntakeAgent — turns "one sentence + a traveler profile" into a structured, provenance-
- * tracked TripRequest. The parsing here is deliberately transparent heuristics so the package
- * runs with zero external calls; an LLM parser implements the same signature and drops in
- * without touching any downstream agent.
+ * Turns a one-sentence prompt plus a traveler profile into a TripRequest. Parsing is keyword
+ * heuristics so the package runs with no external calls. An LLM parser can implement the same
+ * signature.
  *
- * Every field it emits is `Tracked` — value + where it came from (prompt / profile default) +
- * confidence — so the conversation layer can ask only for what's genuinely missing and the
- * critic can tell an assumption from a stated fact.
+ * Every field is `Tracked` (value, source, confidence) so the conversation layer can ask only
+ * for what's missing and the critic can tell an assumption from a stated fact.
  */
 
 function track<T>(value: T, source: FieldSource, confidence: number): Tracked<T> {
@@ -89,7 +87,7 @@ export function intake(
 }
 
 function parseDestination(prompt: string): string | undefined {
-  // "to Naxos", "in Lisbon", "visit Tokyo" — capture 1–2 capitalized words.
+  // "to Naxos", "in Lisbon", "visit Tokyo": capture one or two capitalized words.
   const m = prompt.match(/\b(?:to|in|visit|trip to|going to)\s+([A-Z][\w-]+(?:\s+[A-Z][\w-]+)?)/);
   if (m?.[1]) return m[1].trim();
   // fallback: first capitalized token that isn't the sentence's first word.

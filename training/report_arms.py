@@ -4,33 +4,28 @@
     ./.venv/bin/python report_arms.py --split test
     ./.venv/bin/python report_arms.py --split test-adversarial
 
-Arms: heuristic (`derivePersona`) · untuned base · student-A · student-B · teacher.
+Arms: heuristic (`derivePersona`), untuned base, student-A, student-B, teacher.
 
-Two reference predictors are computed from the teacher's own labels on the same split and
-printed beside every arm, because *neither* of the obvious references survives round 1:
+Two reference predictors are computed from the teacher's labels on the same split and printed
+beside every arm:
 
-* **Constant predictor** — the teacher's mean weight vector for every row. Round 1's student
-  lost to this (0.0587 vs 0.0565). Any arm that does not beat it has not learned a mapping,
-  whatever its MAE looks like in isolation.
-* **Majority-class predictor** — always answer the split's modal top dimension. Round 1's
-  student scored *exactly* this, on the same rows. It is the number a top-dimension agreement
-  has to clear to mean anything.
+* Constant predictor: the teacher's mean weight vector for every row. Round 1's student lost
+  to this (0.0587 vs 0.0565).
+* Majority-class predictor: always answer the split's modal top dimension. Round 1's student
+  scored exactly this, on the same rows.
 
-The measured teacher-teacher figure (17/25) is deliberately NOT printed as a floor. Round 2
-established it equalled chance agreement under the round-1 marginal (0.680 vs 0.678), so it
-bounded nothing; re-measuring it under the round-2 prompt needs API credits and has not been
-done. Reporting it here would reintroduce the error the round-1 analysis exists to correct.
+The teacher-teacher figure (17/25) is not printed as a floor. It equalled chance agreement
+under the round-1 marginal (0.680 vs 0.678), and it has not been re-measured under the round-2
+prompt.
 
-**Two agreement columns, two claims.** `top-dim agr.` is argmax match: did the arm name the same
-single highest dimension. `rank agr.` is Spearman's rho and Kendall's tau-b over the full
+`top-dim agr.` is argmax match. `rank agr.` is Spearman's rho and Kendall's tau-b over the full
 five-dimension ordering, mean and median, with `n ranked` as its own denominator (rows where
-either vector is entirely flat have no ordering and are excluded, not scored as zero). The
-constant predictor's rank agreement is printed beside the arms for the same reason its MAE is:
-one fixed ordering already correlates with the teacher's, and an arm has to clear that.
+either vector is entirely flat are excluded, not scored as zero). The constant predictor's rank
+agreement is printed too, because one fixed ordering already correlates with the teacher's.
 
 `schema-valid` is against each arm's target schema; `production` is against `PersonaSchema` as
 the orchestrator enforces it. They differ only for student-B, which is trained without
-`summary` — see `eval.py:build_records`.
+`summary` (see `eval.py:build_records`).
 """
 
 import argparse
@@ -53,11 +48,9 @@ ARM_LABEL = {
 
 
 def teacher_refs(data_dir, split, records_by_index):
-    """Constant- and majority-predictor scores over the same rows an arm actually scored.
+    """Constant- and majority-predictor scores over the same rows an arm scored.
 
-    Computed per call against `records_by_index` so the reference and the arm share a
-    denominator. A constant predictor evaluated over 250 rows is not a fair reference for an arm
-    that produced 12 — round 1's baseline arm is exactly that case.
+    Restricted to `records_by_index` so the reference and the arm share a denominator.
     """
     rows = [json.loads(l) for l in (Path(data_dir) / f"{split}.jsonl").open()]
     labels = []
@@ -83,10 +76,8 @@ def teacher_refs(data_dir, split, records_by_index):
     const_mae = statistics.mean(
         sum(abs(a - b) for a, b in zip(mean_vec, v)) / len(DIMS) for _, v in subset)
     subset_tops = [DIMS[max(range(len(DIMS)), key=lambda i: v[i])] for _, v in subset]
-    # Rank agreement needs a reference for the same reason MAE did. The constant predictor emits
-    # one ordering for every row, so its rho against the teacher is not zero — it is whatever the
-    # teacher's own ordering-vs-mean-ordering happens to be, and an arm that does not clear it
-    # has learned nothing about ordering either.
+    # The constant predictor emits one ordering for every row, so its rho against the teacher
+    # is not zero. An arm has to clear it.
     const_rhos = [r for r in (spearman_rho(mean_vec, v) for _, v in subset) if r is not None]
     const_taus = [t for t in (kendall_tau(mean_vec, v) for _, v in subset) if t is not None]
     return {
@@ -142,7 +133,7 @@ def table(title, blobs, slice_name, data_dir, split, note=""):
                     if (slice_name is None or r["slice"] == slice_name)}
             ref_seen = teacher_refs(data_dir, split, idxs)
     if ref_seen:
-        print(f"\nReferences over the same {ref_seen['n']} rows — constant predictor (teacher "
+        print(f"\nReferences over the same {ref_seen['n']} rows: constant predictor (teacher "
               f"mean vector) MAE **{ref_seen['const_mae']:.4f}**, its rank agreement ρ "
               f"**{fmt(ref_seen['const_rho'], '.3f')}** / τ "
               f"**{fmt(ref_seen['const_tau'], '.3f')}**; majority-class predictor "
@@ -170,13 +161,13 @@ def main():
         print(f"_Arms with no `{args.split}` results file: {', '.join(missing)}._\n")
 
     n = next(iter(blobs.values()))["n_rows"] if blobs else 0
-    print(f"## Five-arm comparison — `{args.split}` split, {n} rows\n")
+    print(f"## Five-arm comparison: `{args.split}` split, {n} rows\n")
 
-    table(f"`{args.split}` — whole split", blobs, None, args.data_dir, args.split)
+    table(f"`{args.split}`: whole split", blobs, None, args.data_dir, args.split)
     if args.split == "test":
-        table("`test` — clean slice", blobs, "clean", args.data_dir, args.split,
+        table("`test`: clean slice", blobs, "clean", args.data_dir, args.split,
               note="Slices are never averaged (measurement note). Reported separately, always.")
-        table("`test` — conflict slice", blobs, "conflict", args.data_dir, args.split)
+        table("`test`: conflict slice", blobs, "conflict", args.data_dir, args.split)
 
     for name in ARM_ORDER:
         blob = blobs.get(name)

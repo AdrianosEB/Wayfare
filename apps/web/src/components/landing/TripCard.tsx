@@ -7,8 +7,8 @@ import { formatFrom } from './_shared';
 import type { SampleTrip } from '@/lib/content';
 
 /**
- * A destination card for "Where to go next" — photo, place, "{days} days · from {price}",
- * and a vibe chip. Tapping it seeds the prompt and enters the planner. Hover lifts.
+ * A destination card for "Where to go next". Tapping it seeds the prompt and enters the
+ * planner.
  */
 export function TripCard({ trip, onClick }: { trip: SampleTrip; onClick: () => void }) {
   const reduce = useReducedMotion();
@@ -25,7 +25,7 @@ export function TripCard({ trip, onClick }: { trip: SampleTrip; onClick: () => v
       <Photo
         image={images.for(trip.imageKey)}
         imageKey={trip.imageKey}
-        alt={`${trip.place} — ${trip.vibe.toLowerCase()}`}
+        alt={`${trip.place}: ${trip.vibe.toLowerCase()}`}
         ratio="aspect-[16/10]"
       />
       <div className="flex flex-1 flex-col gap-3 p-4">

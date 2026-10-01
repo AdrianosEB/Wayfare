@@ -28,14 +28,12 @@ import { prepareBookings } from "./agents/booking.js";
 import { review } from "./agents/critic.js";
 
 /**
- * Orchestrator — the conductor. It runs the agents as an independent pipeline and closes the
- * loop: intake → persona → (search → verify → rank → supervise → critique)* → reprice → booking.
+ * Runs the pipeline: intake → persona → (search → verify → rank → supervise → critique)* →
+ * reprice → booking.
  *
- * The supervisor fans out across flight × stay × date combinations and prunes branches against
- * budget before expanding; the reprice agent re-checks the winning itinerary at its sources
- * before it is surfaced. When the critic finds a blocker the plan isn't shipped — the search
- * broadens or the persona relaxes and the middle runs again, up to `maxPasses`. What comes out
- * is a whole-trip plan that has graded, re-priced, and corrected itself.
+ * When the critic finds a blocker, the search broadens or the persona relaxes and the middle
+ * section runs again, up to `maxPasses`. The reprice agent re-checks the chosen itinerary at
+ * its sources before it is returned.
  */
 
 export interface OrchestratorOptions {

@@ -1,9 +1,8 @@
 import type { TraceEvent } from "./types.js";
 
 /**
- * Tracer — the shared audit trail. Every agent records what it did here, so a finished plan
- * carries its own explanation and the self-check loop is inspectable. An optional `onEvent`
- * sink lets a host stream progress (e.g. over SSE) without the agents knowing about it.
+ * Shared audit trail. Every agent records what it did here. The optional `onEvent` sink lets
+ * a host stream progress (e.g. over SSE).
  */
 export class Tracer {
   private readonly events: TraceEvent[] = [];
