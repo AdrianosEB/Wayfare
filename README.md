@@ -143,13 +143,11 @@ same `PlanResult` as the default path.
 ### Local LoRA model
 
 The `persona` agent, which turns a traveller's free-text preferences into weights the rest of
-the pipeline uses, can run on a small local model in place of Claude. The model is
-Qwen2.5-1.5B fine-tuned with a LoRA adapter using MLX, and it exists to cut inference cost: it
-runs on your own machine and needs no API key.
+the pipeline uses, can run locally on a small model. The model is Qwen2.5-1.5B fine-tuned with a
+LoRA adapter using MLX. It runs on your own machine and needs no API key.
 
-Serve it with `pnpm serve:student`, then set `WAYFARE_LOCAL_MODEL_URL` to that server. When the
-variable is unset, the agent uses Anthropic as usual. The scripts that train and fuse the
-adapter are in [`training/`](training/README.md).
+Serve it with `pnpm serve:student`, then set `WAYFARE_LOCAL_MODEL_URL` to that server. The
+scripts that train and fuse the adapter are in [`training/`](training/README.md).
 
 ## What's next
 
